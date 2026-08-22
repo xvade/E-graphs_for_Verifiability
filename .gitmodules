@@ -1,0 +1,10 @@
+[submodule "egg"]
+	path = egg
+	url = https://github.com/yycdavid/egg.git
+[submodule "taso"]
+	path = taso
+	url = https://github.com/xvade/TASO.git
+	branch = klone-cpu-gpu-build
+[submodule "tensat"]
+	path = tensat
+	url = https://github.com/xvade/tensat.git

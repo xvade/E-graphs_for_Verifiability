@@ -1,0 +1,8 @@
+# Large artifacts, deliberately not tracked -- see README.md "Recreating
+# excluded artifacts" for how to regenerate each of these.
+/tensat.sif
+/alpha-beta-CROWN/
+
+# Python
+__pycache__/
+*.pyc

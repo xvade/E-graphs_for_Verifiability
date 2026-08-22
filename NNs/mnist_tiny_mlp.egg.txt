@@ -1,0 +1,1 @@
+(matmul 0 (relu (matmul 0 (reshape (input input_0@1_1_28_28) 1_784) (transpose (weight w_0@20_784) 1_0 1))) (transpose (weight w_2@10_20) 1_0 1))
