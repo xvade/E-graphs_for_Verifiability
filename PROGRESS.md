@@ -80,3 +80,43 @@ full write-ups of bugs found in vanilla TASO/tensat.
 - Wrote `BUGS.md` cataloguing all five bugs found (one in `tensat`, four
   in `taso`) with file/line references, root-cause analysis, and fix
   status, for filing as GitHub issues later.
+- Initialized this repo's own git history and pushed it to GitHub
+  (`xvade/E-graphs_for_Verifiability`). `egg`/`taso`/`tensat` are wired in
+  as proper submodules; `taso` and `tensat` carry local fixup commits that
+  only existed on this wipeable scratch filesystem, so those got pushed to
+  personal forks first (`xvade/TASO` on a new branch, since that fork's
+  `master` turned out to be an unrelated pre-existing history;
+  `xvade/tensat`'s `master` directly, since that was already this
+  project's tracked origin). `tensat.sif` and the `alpha-beta-CROWN`
+  checkout (mostly its own 8G `.venv` + datasets) are excluded from git;
+  `README.md` documents how to regenerate both.
+- Extended the round-trip pipeline to a second, larger alpha-beta-CROWN
+  example model: `mnist_cnn_a` (`model_defs.mnist_cnn_4layer` —
+  `Conv(1,16,4x4,s2,p1)→ReLU→Conv(16,32,4x4,s2,p1)→ReLU→Flatten→
+  Linear(1568,100)→ReLU→Linear(100,10)`, real trained weights from
+  `models/sdp/mnist_cnn_a_adv.model`), the first model in this project
+  with convolutions. Extended `taso`'s ONNX `Conv` importer (`_conv2d`)
+  with the same bias fix `_gemm` got earlier — this time needing a
+  `[1,C,1,1]` reshape first, since a conv bias broadcasts against the
+  channel axis rather than the trailing axis Gemm's bias aligns with —
+  and extended `NNs/reconstruct_optimized.py` with a `Conv` dispatch
+  branch. Hit and root-caused a much bigger bug doing this: TASO's
+  `Graph::get_operator_int_attr` computes its return value *inside* an
+  `assert(...)`, which is compiled to nothing under `NDEBUG` (i.e. any
+  CMake `Release` build — exactly what this project's GPU build uses),
+  silently returning uninitialized garbage for every attribute read
+  through that path (Conv/Pool's strides/kernel_shape/pads, but also —
+  turns out — `Transpose`'s `perm`, retroactively explaining the earlier
+  "not conclusively identified" transpose bug from bug #4). Fixed with a
+  two-line change (`taso` commit `fb0b3db`, pushed alongside the Conv bias
+  fix). The identical assert-with-side-effect pattern recurs many times in
+  `substitution.cc` (the rewrite-matching engine itself) — flagged in
+  `BUGS.md` as an open, unaudited risk, not fixed. Ran `mnist_cnn_a`
+  through `tensat`'s GPU optimizer (real cuDNN-measured cost, 0.0646 →
+  0.0169, ~3.8x runtime improvement) — worth noting honestly that the
+  extracted graph came back structurally isomorphic to the input for this
+  run (no rewrite fired), so this specific result demonstrates the
+  pipeline working end-to-end on a conv model rather than TENSAT finding a
+  nontrivial restructuring. Reconstructed real weights and verified
+  numerically against the PyTorch reference: **max abs diff 9.5e-07**,
+  same as the tiny MLP case.

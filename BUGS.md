@@ -70,17 +70,21 @@ def _gemm(op, graph, tensors, initializer):
 [Gemm spec](https://github.com/onnx/onnx/blob/master/docs/Operators.md#Gemm),
 but only `inputs[0]`/`inputs[1]` (A, B) are ever used.
 
-**Related, not fixed:** `_conv2d()` (same file, ~line 203) has the identical
-pattern — it also fetches but never uses Conv's optional bias input
-(`inputs[2]`). Not hit in this session (no conv layers involved), but the
-same class of bug.
+**Related, also fixed (2026-08-22, extending to `mnist_cnn_a`):**
+`_conv2d()` (same file, ~line 203) had the identical pattern — it also
+fetched but never used Conv's optional bias input (`inputs[2]`). Unlike
+Gemm's bias (shape `[out_features]`, already aligned with the trailing axis
+of a `[..., out_features]` matmul result), a Conv bias is `[C]` against an
+`[N,C,H,W]` conv output — TASO's `add()` only does NumPy-style
+trailing-dim broadcast, so the fix reshapes the bias to `[1,C,1,1]` first
+(`graph.reshape(inputs[2], (1, num_channels, 1, 1))`) before adding.
 
-**Status:** Fixed for `Gemm` in this fork — commit `bd8ba5d`, "Fix ONNX Gemm
-importer silently dropping the bias input." Now calls `graph.add(outputs,
-inputs[2])` when a third input is present (TASO's `Model::broadcastable`,
-`element.cc:19`, handles broadcasting a `[out_features]` bias against a
-`[..., out_features]` matmul result with no reshape needed). `_conv2d`'s
-identical gap is **not** fixed.
+**Status:** Fixed in this fork — `Gemm` in commit `bd8ba5d` ("Fix ONNX Gemm
+importer silently dropping the bias input"), `Conv` in commit `fb0b3db`
+("Fix Graph::get_operator_int_attr silently returning garbage in Release
+builds", which bundles this alongside bug #6 below). Both now call
+`graph.add()` with a correctly-shaped bias (TASO's `Model::broadcastable`,
+`element.cc:19`, handles the rest).
 
 ---
 
@@ -163,30 +167,21 @@ For `perm=(1,0)`, `N=2`: encodes to `2`. The Cython getter decodes the same
 way in reverse (`dims[i] = perIdx % N; perIdx //= N`, walking backward from
 the last axis).
 
-**Root cause: not conclusively identified.** Hand-tracing the encode
-(`transpose.cc`) and decode (`core.pyx`) formulas in isolation for exactly
-this case (`perm=(1,0)`, `N=2`) gives a mathematically correct round trip
-back to `(1, 0)` — not the `(0, 0)` actually observed. Also traced
-`get_operator_int_attr` → `find_op_or_fail` (`ops.cc:597-605`, a plain
-linear search by `.guid`, looks correct) → `Transpose::get_int_parameter`'s
-`PM_PERM` case (returns the stored `permIdx` directly, no extra logic) —
-every piece inspected in isolation is internally consistent, yet the
-actual runtime value is wrong. There is a second `get_or_create_transpose`
-overload (`transpose.cc:65-79`) that deduplicates Transpose ops by an
-`(input, perm, shuffle)` key while still handing back a freshly-incremented
-guid regardless of dedup hits — looked at as a candidate mechanism, no
-collision found for our specific case, but not ruled out for other
-shapes/graphs. Confirming the actual root cause would need runtime
-instrumentation (prints or a debugger against a real build), not just
-static reading.
+**Root cause: found 2026-08-22, see bug #6.** Originally reported here as
+"not conclusively identified" after hand-tracing the encode/decode formulas
+in isolation found no flaw. The actual bug turned out to be one level up
+the call stack, in `Graph::get_operator_int_attr` itself (`ops.cc:669-675`)
+— see bug #6 for the full explanation. `PM_PERM`'s value is read through
+exactly that same broken path, so it silently returns uninitialized stack
+garbage in a Release build, same as this section originally observed.
+Fixed by the same commit as bug #6.
 
-**Status:** Not fixed. Worked around in our own reconstruction script
-(`NNs/reconstruct_optimized.py`) by transposing the real weight arrays
-ourselves in numpy *before* handing TASO a literal `new_weight(...)` node,
-bypassing `graph.transpose()` (and this whole broken attribute path)
-entirely for weight-derived transposes. This only covers transposes whose
-input is a leaf weight; a transpose applied to a non-weight (activation)
-tensor would still hit this bug and has no workaround yet.
+**Status:** Fixed as of commit `fb0b3db` (see bug #6) — `graph.transpose()`
+now round-trips correctly through `export_onnx()` in a Release build.
+`NNs/reconstruct_optimized.py` still transposes weight-derived arrays
+directly in numpy rather than calling `graph.transpose()`, since that
+workaround was never actually wrong, just no longer necessary; not
+reverted, to avoid re-touching working code without a reason.
 
 ---
 
@@ -221,3 +216,106 @@ emitting invalid ONNX op name for Matmul." Added a small override table
 `op_type` string passed to `helper.make_node`; `_add_node_attribute()` and
 `operator_attrs` are still keyed on TASO's own name, unaffected. Not
 audited for other possible name mismatches beyond this one.
+
+---
+
+## 6. `taso`: `Graph::get_operator_int_attr` returns garbage in Release builds
+
+**Where:** `taso/src/core/ops.cc:669-675`.
+
+**Symptom:** Found 2026-08-22 while extending the pipeline to
+`mnist_cnn_a` (adds Conv2D). `export_onnx()`'s attribute export for any
+`Conv` node came back with `strides=[0,0]`, `kernel_shape=[0,0]`,
+`pads=[0,0,0,0]` — every numeric attribute zeroed, even though the same
+graph's `strideH`/`strideW`/etc. were provably correct moments earlier
+(the numbered-format export from `Graph::export_to_file`, which reads
+these fields directly off the `Conv2D` object rather than through this
+path, wrote the right values). This is also, with high confidence, the
+real root cause of bug #4 above (`Transpose`'s `perm` attribute) — same
+call path, same failure mode, first misdiagnosed as a `Transpose`-specific
+issue before this session's Conv2D work exposed the actual mechanism.
+
+**Root cause:**
+```cpp
+int Graph::get_operator_int_attr(size_t guid, PMParameter attr)
+{
+  Op op = find_op_or_fail(guid);
+  int ret;
+  assert(op.ptr->get_int_parameter(attr, &ret));
+  return ret;
+}
+```
+`get_int_parameter(attr, &ret)` is the *only* thing that populates `ret` —
+it's not just a boolean check, it has a real side effect. Wrapping it in
+`assert(...)` means that in any build with `NDEBUG` defined (i.e. any
+CMake `Release` build — exactly what `taso/build_gpu/config.cmake` sets,
+since that's the config used for real GPU/cuDNN measurement), the standard
+library's `assert` macro expands to nothing and **never evaluates its
+argument at all**. The call that was supposed to fill in `ret` simply
+never happens, and the function returns whatever garbage was already on
+the stack at that address — which happened to read as all-zeros here,
+producing exactly the "zeroed attribute" and "corrupted perm" symptoms
+both bugs showed. A `Debug` build (asserts compiled in) would never have
+shown this at all, which is presumably how it went unnoticed: TASO's own
+benchmark suite and this project's earlier CPU-only work never exercised
+this exact path under a Release build with attribute export in the loop.
+
+**Scope beyond what's fixed here:** the identical anti-pattern —
+`assert(some_call_with_side_effects(...))` — recurs many times in
+`taso/src/core/substitution.cc` (e.g. lines 261-264, 272-273, 288-289,
+320, 328-330, 584, 840, 932-936, 1253-1257, 1298-1299), which implements
+the rewrite-rule matching/substitution engine used during equality
+saturation itself. None of those are touched by this fix. Whether any of
+them cause incorrect rewrite-rule matching in a Release build is
+**unaudited** — flagging as a real open risk, not confirmed to cause
+observable incorrect behavior (the `mnist_cnn_a` optimize run in this
+session completed and the final result verified numerically correct
+end-to-end, but that graph also didn't happen to have any rewrite fire, so
+it's not evidence either way for whether `substitution.cc`'s copies of
+this pattern are safe under Release builds).
+
+**Status:** Fixed the one call site that blocked this session's work —
+commit `fb0b3db`, splitting the call and the assert:
+```cpp
+bool found = op.ptr->get_int_parameter(attr, &ret);
+assert(found);
+```
+`substitution.cc`'s occurrences are not fixed and not audited.
+
+---
+
+## 7. `taso`: `export_onnx()` never emits a node for a fused Conv/Pool activation
+
+**Where:** `taso/python/taso/__init__.py`, `export_onnx()` (~line 856).
+
+**Symptom:** Not actually triggered in this session (the one `tensat`
+optimize run done so far didn't fuse an activation into a `Conv2D`'s
+`activation` field), but confirmed by code inspection while writing
+`NNs/reconstruct_optimized.py`'s `Conv` branch, since that script has to
+call `graph.conv2d(..., activation=...)` directly when reconstructing an
+optimized graph.
+
+**Root cause:** `TASO`'s `Conv2D`/pooling ops carry an `activation` field
+(`AC_MODE_NONE`/`SIGMOID`/`RELU`/`TANH`) that can be fused directly into
+the op (no separate `Relu` node needed at the TASO-graph level) — this is
+a real, intentional fusion TASO's own rewrite rules can produce. But
+`export_onnx()`'s main loop (`__init__.py:872-908`) only ever emits one
+ONNX node per TASO op, built from that op's own type and attributes; there
+is no code path that checks a `Conv`/`MaxPool`/`AveragePool` op's
+activation field and synthesizes a following `Relu`/`Sigmoid`/`Tanh` ONNX
+node for it. A `Conv2D` op with a fused activation, exported through this
+function, would silently produce an ONNX graph missing that activation
+entirely, with no error.
+
+**Status:** Not fixed (would require nontrivial graph surgery in the
+exporter — synthesizing a new node not present in `get_operator_list()`
+and rewiring the real consumer's input name to point to it). Worked
+around in `NNs/reconstruct_optimized.py`: when reconstructing a `Conv`
+node, always construct it with `activation="NONE"` and apply any actual
+fused activation as its own explicit `graph.relu()`/`sigmoid()`/`tanh()`
+call afterward, so `export_onnx()` never sees a Conv op with a non-`NONE`
+activation to begin with. This sidesteps the bug rather than fixing it,
+and only covers this project's own reconstruction path — any other code
+calling `export_onnx()` on a graph with a genuinely-fused Conv/Pool
+activation (e.g. one straight out of `tensat`'s optimizer, before this
+project's reconstruction step) would still hit it.

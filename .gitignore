@@ -6,3 +6,6 @@
 # Python
 __pycache__/
 *.pyc
+
+# Claude Code local session state
+/.claude/

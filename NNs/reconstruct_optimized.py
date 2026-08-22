@@ -86,6 +86,28 @@ def parse_and_build(model_path, original_weights):
             arr = np.transpose(weight_arrays[src_guid], perm)
             weight_arrays[guid] = arr
             node = [graph.new_weight(dims=arr.shape, data=arr)]
+        elif optype == "Conv":
+            # params layout (taso/src/core/ops.cc, Graph::export_op's
+            # OP_CONV2D case): 0-3 input dims, 4-7 weight dims, 8 strideH,
+            # 9 strideW, 10 padding enum (0=SAME,1=VALID, ops.h PaddingMode),
+            # 11 activation enum (0=NONE,1=SIGMOID,2=RELU,3=TANH, ops.h
+            # ActiMode), 12-13 padH/padW (unused -- parse.rs ignores them too).
+            stride_h, stride_w, pad_enum, act_enum = params[8], params[9], params[10], params[11]
+            padding = "SAME" if pad_enum == 0 else "VALID"
+            # Always construct with activation="NONE" and apply any fused
+            # activation as its own node below, never as conv2d's activation
+            # kwarg: taso's export_onnx() only emits a node's core op type
+            # and never synthesizes a following activation node for a fused
+            # Conv/Pool, so a non-NONE activation baked into the Conv2D op
+            # here would be silently dropped from the exported ONNX with no
+            # error (undocumented bug, see BUGS.md #6).
+            conv_out = graph.conv2d(input=nodes[deps[0][0]][deps[0][1]],
+                                     weight=nodes[deps[1][0]][deps[1][1]],
+                                     strides=(stride_h, stride_w), padding=padding,
+                                     activation="NONE")
+            activation_fns = {0: None, 1: graph.sigmoid, 2: graph.relu, 3: graph.tanh}
+            fn = activation_fns[act_enum]
+            node = [fn(conv_out) if fn else conv_out]
         elif optype == "Matmul":
             # tensat's own parser (parse.rs) ignores matmul's params too;
             # matching that semantics here for consistency.
