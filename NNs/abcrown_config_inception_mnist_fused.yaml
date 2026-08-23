@@ -1,0 +1,41 @@
+# Copy to alpha-beta-CROWN/complete_verifier/exp_configs/beta_crown/ before
+# use -- onnx_path below is relative to complete_verifier/, where abcrown.py
+# runs from, not to this file's own location. Run:
+#   cd alpha-beta-CROWN/complete_verifier && ../.venv/bin/python abcrown.py \
+#     --config exp_configs/beta_crown/abcrown_config_inception_mnist_fused.yaml
+#
+# NOTE per BUGS.md #11 and PROGRESS.md: this specific config does not
+# actually work -- alpha-beta-CROWN cannot verify this model at all, for a
+# structural reason (its tensat-selected fusion uses the batch axis
+# internally, which auto_LiRPA reserves for its own verification-batching
+# and explicitly refuses to bound-propagate a Concat through). Kept here
+# for reference/reproducibility of that finding, not as a working recipe.
+model:
+  onnx_path: ../../NNs/inception_mnist_fused_simplified.onnx
+data:
+  dataset: MNIST
+  mean: [0.]
+  std: [1.]
+  start: 0
+  end: 10
+specification:
+  norm: .inf
+  epsilon: 0.1
+attack:
+  # This model's tensat-selected structure batches two independent
+  # computations together via a Concat/Split along the input's own batch
+  # axis (axis 0) -- numerically valid for a single (batch=1) input, but
+  # incompatible with alpha-beta-CROWN's PGD attack phase, which itself
+  # vectorizes many adversarial restarts along that same axis
+  # (onnx2pytorch's Split then sees a real batch size instead of the
+  # hardcoded [1,1] our reconstruction assumes). Skip PGD, go straight to
+  # CROWN/BaB bound computation, which is the metric we actually care
+  # about here anyway.
+  pgd_order: skip
+  pgd_restarts: 50
+solver:
+  batch_size: 2048
+  beta-crown:
+    iteration: 20
+bab:
+  timeout: 60

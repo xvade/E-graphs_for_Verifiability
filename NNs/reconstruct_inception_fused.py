@@ -63,6 +63,24 @@ def load_named_weights():
         return {k: f[k] for k in f.files}
 
 
+def volume(t):
+    return int(np.prod([t.dim(i) for i in range(t.nDim)]))
+
+
+def add_larger_first(graph, a, b):
+    """graph.add() is mathematically commutative, but alpha-beta-CROWN's
+    onnx2pytorch loads ONNX Add as an in-place `out += inp`, which
+    requires the *first* input to already be the broadcast-target (larger)
+    shape -- discovered when a bias-reshape (e.g. [1,8,1,1]) ended up
+    first and a conv output (e.g. [1,8,28,28]) second, and onnx2pytorch's
+    in-place add couldn't grow into the second operand's shape. TASO's own
+    export order isn't guaranteed to put the larger tensor first, so
+    reorder explicitly here (harmless: Add is symmetric)."""
+    if volume(a) >= volume(b):
+        return graph.add(a, b)
+    return graph.add(b, a)
+
+
 def enlarge_np(w1, w2):
     """Mirrors taso/src/cudnn/enlarge_kernel.cu exactly: zero-pad w1's last
     two (spatial) dims to match w2's, centered."""
@@ -156,7 +174,7 @@ def parse_and_build(model_path, named_weights):
         elif optype == "Matmul":
             node = [graph.matmul(nodes[deps[0][0]][deps[0][1]], nodes[deps[1][0]][deps[1][1]])]
         elif optype == "Add":
-            node = [graph.add(nodes[deps[0][0]][deps[0][1]], nodes[deps[1][0]][deps[1][1]])]
+            node = [add_larger_first(graph, nodes[deps[0][0]][deps[0][1]], nodes[deps[1][0]][deps[1][1]])]
         elif optype == "Relu":
             node = [graph.relu(nodes[deps[0][0]][deps[0][1]])]
         else:

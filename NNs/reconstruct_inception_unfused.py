@@ -30,6 +30,20 @@ GUID_ROLES = {
 }
 
 
+def volume(t):
+    return int(np.prod([t.dim(i) for i in range(t.nDim)]))
+
+
+def add_larger_first(graph, a, b):
+    """See reconstruct_inception_fused.py's copy of this helper for why:
+    alpha-beta-CROWN's onnx2pytorch loads ONNX Add as an in-place
+    `out += inp`, which needs the first input to already be the larger
+    (broadcast-target) shape. Add is symmetric, so reordering is free."""
+    if volume(a) >= volume(b):
+        return graph.add(a, b)
+    return graph.add(b, a)
+
+
 def load_named_weights():
     with np.load(WEIGHTS_NPZ) as f:
         return {k: f[k] for k in f.files}
@@ -85,7 +99,7 @@ def parse_and_build(model_path, named_weights):
         elif optype == "Matmul":
             node = [graph.matmul(nodes[deps[0][0]][deps[0][1]], nodes[deps[1][0]][deps[1][1]])]
         elif optype == "Add":
-            node = [graph.add(nodes[deps[0][0]][deps[0][1]], nodes[deps[1][0]][deps[1][1]])]
+            node = [add_larger_first(graph, nodes[deps[0][0]][deps[0][1]], nodes[deps[1][0]][deps[1][1]])]
         elif optype == "Relu":
             node = [graph.relu(nodes[deps[0][0]][deps[0][1]])]
         else:

@@ -277,3 +277,96 @@ along the way, genuine success by the end.
     it had no `pip` `RECORD` file to let `pip` uninstall it cleanly) —
     didn't touch the still-broken base `miniconda3` env, since nothing
     in this session's pipeline actually depends on it directly.
+
+## 2026-08-23 — Ran the fused/unfused InceptionMNIST pair through alpha-beta-CROWN
+
+Goal: the actual comparison this whole project exists for — real
+verification results on the TENSAT-optimized model vs. the original,
+same real weights. First time any of this session's own TASO/tensat-
+reconstructed ONNX files (as opposed to a PyTorch `model_defs` class) had
+been run through `alpha-beta-CROWN` at all. Hit four more real,
+previously-unexercised integration bugs getting there, each root-caused
+and fixed or worked around in turn:
+
+- **`onnx2pytorch`'s `Add` is order-sensitive.** It converts ONNX `Add`
+  as an in-place `out += inp`, which needs the first operand to already
+  be the broadcast-target (larger) shape — our exported bias-adds
+  sometimes listed the smaller (bias) tensor first. Fixed by reordering
+  `Add`'s operands by real tensor volume in both reconstruction scripts
+  (`add_larger_first()` — mathematically free, `Add` is commutative).
+- **PGD attack batching collides with the fused model's own axis-0
+  fusion trick.** `onnx2pytorch`'s `Split` choked once the PGD attack's
+  internal batching (many parallel restarts) made the real tensor size
+  along axis 0 diverge from the model's hardcoded `[1,1]` split sizes.
+  Worked around with `pgd_order: skip` (applied to both configs, for a
+  fair identical methodology) — CROWN/BaB bound computation is the
+  metric that actually matters here anyway.
+- **`auto_LiRPA`'s bound propagation choked on TASO's Reshape-shape-
+  tensor decomposition** (`RuntimeError: shape '[1, 1519]' is invalid
+  for input of size 12152`, identically on both fused and unfused
+  models). Fixed on the `taso` side: `export_onnx()` was listing every
+  `Weight` and every `Reshape`'s shape constant as *both* a real
+  initializer and a formal graph input (`BUGS.md` #10, `taso` commit
+  `e73ced7` — the fix onnxruntime's own long-standing, previously-
+  ignored warning already pointed at). That alone didn't fully resolve
+  this specific crash, but running the (now-cleaner) exported ONNX
+  through `onnxsim` did — it folds the whole Reshape-shape
+  reconstruction machinery into a plain static reshape, cutting node
+  count roughly in half (21→14 fused, 18→10 unfused) and eliminating the
+  crash. Re-verified numerically correct after simplification (~1e-6,
+  same as before).
+- **The exported models hardcoded batch size 1**, breaking once BaB
+  needed to vectorize across multiple branch-and-bound sub-domains
+  (`RuntimeError: shape '[1, 6272]' is invalid for input of size 37632`
+  — exactly 6272×6, BaB's batch size at that point). Fixed by patching
+  the ONNX graph directly: the flatten `Reshape`'s target-shape constant
+  (`1` → `-1`, "infer from input") and the graph's declared input batch
+  dimension (fixed `1` → a symbolic `dim_param`). Confirmed both models
+  now handle batch>1 plain inference correctly.
+- **Found the real, unfixable limit for the fused model specifically**:
+  even with dynamic batching enabled, real batch>1 inference on the
+  fused model fails outright (`Split129 ... Sum of sizes in 'split' ...
+  was 2` against an actual axis-0 size of 4+) — and separately,
+  `auto_LiRPA` explicitly asserts `Concat`'s axis must be `> 0`
+  (`auto_LiRPA/operators/slice_concat.py`), never allowing bound
+  propagation through the batch axis at all. This is `BUGS.md` #11: not
+  a bug, a genuine structural fact. TENSAT's selected rewrite for this
+  model batches two independent computations together *by concatenating
+  along the input's own batch axis* — numerically correct and exactly
+  what made it faster (real GPU runtime 0.147→0.029, per the earlier
+  entry), but that exact same trick is fundamentally incompatible with
+  any verifier (not just `auto_LiRPA`) that itself needs to batch
+  multiple problem instances along that axis. **The fused model cannot
+  be verified by alpha-beta-CROWN at all**, for a structural reason, not
+  a tooling gap.
+
+**Actual verifiability results — unfused baseline** (10 real MNIST test
+images, `epsilon=0.1`, `Linf`, 60s `bab` timeout each,
+`exp_configs/beta_crown/inception_mnist_unfused.yaml`):
+- **Final verified accuracy: 20.0%** (2 of 10 safe-incomplete, 0 unsafe,
+  8 timeout/unknown)
+- Verified-safe indices: 0, 3. Mean time for verified instances: 22.5s.
+  Mean time overall: 55.1s (most instances ran to the full 60s timeout
+  without resolving either way).
+- Context: this is a real but weak classifier (85.65% test accuracy from
+  a deliberately short 1-epoch/10k-image training run — see the
+  2026-08-22/23 entry) at a fairly large `epsilon=0.1` for MNIST, so a
+  mostly-unresolved result at this compute budget is unsurprising rather
+  than alarming.
+
+**Fused model: not run** — structurally cannot be, per above. The
+honest, complete comparison this session produced is therefore: a real
+verifiability number for the original model, and a concrete,
+well-understood *reason* the optimized model can't be given one at all
+by this tool, which is itself a substantive finding for the project's
+core question (does TENSAT's optimization affect verifiability) — in
+this case, about as strongly as possible: it doesn't just change bound
+tightness, it can produce a graph that formal verification tooling
+cannot process, without changing the network's actual input-output
+behavior one bit.
+
+All ONNX-file patches applied directly to
+`NNs/inception_mnist_{fused,unfused}_simplified.onnx` (the batch-
+dimension and Reshape-shape edits) — not yet folded back into the
+`reconstruct_inception_*.py` scripts themselves, so regenerating from
+scratch would need those same patches reapplied by hand or scripted.

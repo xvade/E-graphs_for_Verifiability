@@ -392,3 +392,93 @@ containing a `Split` node is exported pinned to opset 11 (still fully
 supported by current onnxruntime, and no other op this project uses needs
 anything newer), rather than this project's usual opset 13. See
 `NNs/reconstruct_inception_fused.py`.
+
+---
+
+## 10. `taso`: `export_onnx()` lists every initializer as a formal graph input too
+
+**Where:** `taso/python/taso/__init__.py`, `export_onnx()` (~line 942).
+
+**Symptom:** Every ONNX file this project has ever exported carries a
+warning from onnxruntime that was never investigated (it loads and runs
+fine regardless, so it was easy to dismiss): `Initializer X appears in
+graph inputs and will not be treated as constant value/weight ... remove
+it ... with the tool onnxruntime/tools/python/remove_initializer_from_
+input.py`. It turned out to matter a lot once these files were fed to
+`alpha-beta-CROWN`'s `auto_LiRPA` for actual bound propagation (rather
+than just onnxruntime inference): `auto_LiRPA` built real `BoundBuffers`
+nodes and a whole `Split`/`Squeeze`/`Unsqueeze`/`Concat` decomposition to
+treat each of these "inputs" as a potentially-perturbable tensor, which
+is unnecessary overhead at best and at worst tangles up its own bound-
+shape bookkeeping (see the `RuntimeError: shape '[1, 1519]' is invalid
+for input of size 12152` hit reconstructing `InceptionMNIST` -- this fix
+didn't fully resolve that particular crash on its own, see bug #11, but
+is a real, independent correctness/cleanliness issue worth fixing
+regardless).
+
+**Root cause:** every `Weight` tensor and every `Reshape`'s shape
+constant gets added to *both* `graph_initializers` (with a real value)
+and `graph_inputs` (as a formal graph input):
+```python
+if intype == 'Input' or intype == 'Weight':
+    graph_inputs.append(helper.make_tensor_value_info(...))
+if intype == 'Weight':
+    graph_initializers.append(helper.make_tensor(...))
+...
+graph_inputs.append(helper.make_tensor_value_info('Reshape_attr{}'.format(op['guid']), ...))
+graph_initializers.append(helper.make_tensor('Reshape_attr{}'.format(op['guid']), ...))
+```
+Per the ONNX spec a name present in both lists is merely "an optional
+input with a default value" -- but nothing in `export_onnx()` filters
+`graph_inputs` down to genuinely-external inputs before building the
+graph, so `helper.make_graph()` gets every initializer listed twice.
+
+**Status:** Fixed -- commit `e73ced7`, "Fix export_onnx() listing
+initializers as formal graph inputs." Filters `graph_initializers`' names
+out of `graph_inputs` right before `helper.make_graph()` -- the standard
+fix onnxruntime's own warning points at.
+
+---
+
+## 11. `taso`-exported models are architecturally incompatible with CROWN-style verifiers when a rewrite fuses along the batch axis
+
+**Where:** Not a single code location -- a structural property of any
+graph containing a `Concat`/`Split` pair whose axis is 0 (the batch
+axis), which is exactly what `tensat`'s `PRE_DEFINED_MULTI` parallel-
+conv-fusion rule can produce (see `PROGRESS.md`'s `InceptionMNIST`
+entry) and did produce in the one real nontrivial rewrite this project
+extracted this session.
+
+**Symptom:** Found trying to run alpha-beta-CROWN on the reconstructed
+fused `InceptionMNIST` model. `auto_LiRPA`'s own bound-propagation code
+explicitly refuses to backward-propagate through a `Concat` on the batch
+axis:
+```python
+# auto_LiRPA/operators/slice_concat.py, BoundConcat.bound_backward
+assert self.axis > 0
+```
+This isn't a shape bug to patch -- it's deliberate. `auto_LiRPA` (like
+most CROWN-style verifiers) reserves axis 0 throughout its entire
+architecture for batching *verification queries themselves* (multiple
+images, multiple branch-and-bound sub-domains, multiple output-margin
+specs), and none of that machinery expects the network's own forward
+computation to also be using that axis for something else. Confirmed
+this isn't even an `auto_LiRPA`-specific limitation: plain onnxruntime
+inference on the same file at batch=2 fails outright too
+(`Cannot split using values in 'split' attribute ... Sum of sizes in
+'split' ... was 2` -- the fused conv's split is hardcoded to exactly 2
+along axis 0, which only happens to work when the *real* batch is 1,
+since the fusion trick itself doubles that axis internally).
+
+**Status:** Not a bug, not fixed -- a genuine, unavoidable structural
+fact about this specific TENSAT-selected rewrite. There is no ONNX-level
+or `auto_LiRPA`-config-level workaround: making the model batch-flexible
+elsewhere (bug in this doc, `patched` `graph.input`'s batch `dim_param`
+and the flatten `Reshape`'s shape) doesn't help here, since the conflict
+is that a *true* batch of anything other than exactly 1 collides with
+the fusion trick's *own* internal use of axis 0 for exactly 2 items.
+Verifying this specific model would require either changing which axis
+`tensat`'s fusion rule concatenates along (a change to the rule itself,
+`tensat/src/rewrites.rs`, well outside this session's scope) or picking
+a rewrite that doesn't use the batch axis at all. The unfused baseline
+has no such issue and was verified successfully (see `PROGRESS.md`).
