@@ -120,3 +120,160 @@ full write-ups of bugs found in vanilla TASO/tensat.
   nontrivial restructuring. Reconstructed real weights and verified
   numerically against the PyTorch reference: **max abs diff 9.5e-07**,
   same as the tiny MLP case.
+
+## 2026-08-22/23 — Chasing (and finally getting) a real nontrivial rewrite
+
+Goal for this stretch: find a real, TENSAT-*selected* structural rewrite
+(not just an isomorphic re-extraction) on a real-trained-weight model, and
+verify it numerically. Long chase, several dead ends, real bugs found
+along the way, genuine success by the end.
+
+- Picked `resnet2b` (`model_defs.resnet2b`, real CIFAR-10 weights from
+  `models/cifar10_resnet/resnet2b.pth`) as the next candidate — a real
+  ResNet with a residual/shortcut branch, the first model this session
+  with anything resembling a parallel structure. Hit a segfault
+  converting it: `taso`'s ONNX `Reshape` importer only looked for its
+  shape argument in the graph's `initializer` list, but this model's real
+  `torch.view()` call exports the shape via a separate `Constant` node
+  instead (every earlier model's `Flatten`-based export needed no shape
+  arg at all, so this path was never exercised before). Root-caused and
+  fixed (`taso` commit `af3770a`, `BUGS.md` #8) — see the entry logged
+  under 2026-08-22 above for the fix itself; write-up in `BUGS.md` was
+  filled in this stretch.
+- Ran `resnet2b` through `tensat`'s optimizer (single-pattern rules only,
+  various `--n_iter`/`--n_sec` budgets, `-e greedy`): every run extracted
+  a graph structurally *isomorphic* to the input (same op-type multiset,
+  same params, just guid-renumbered) — no rewrite ever won under the real
+  cost model, even after letting saturation fully converge.
+- Built genuine random sampling into `tensat` itself (`--n_random N
+  --random_seed S`, new CLI flags; `RandomCost` in `tensat/src/
+  optimize.rs`) since egg has no built-in "extract N alternates" mode.
+  First version (pure random cost, summed over children) reliably
+  reproduced the same isomorphic structure every time — traced this to a
+  real bias: summing random per-node costs penalizes any multi-node
+  equivalent subtree, since it accumulates more random draws than a
+  single-node alternative almost regardless of the draws.
+- Enabled `tensat`'s multi-pattern rewrite mechanism (`--use_multi -t
+  converted_multi.txt`) for the first time this session — it implements
+  the classic TASO parallel-conv-fusion rule (pad/enlarge one conv's
+  kernel, concat weights, one wider conv, split back), gated behind a
+  flag no run had used yet. Zero matches on `resnet2b`. Root-caused:
+  `PRE_DEFINED_MULTI`'s patterns hardcode stride=(1,1) literally, and
+  `resnet2b`'s only same-input parallel-conv point (its downsampling
+  shortcut) is stride=2 by construction, like every model in `alpha-beta-
+  CROWN`'s whole ResNet family — shortcuts there only ever exist
+  *together with* stride-2 downsampling, never at stride 1.
+- Same zero-match result on `tensat`'s own built-in synthetic ResNet50
+  benchmark (`-d resnet50`, random weights) — surprising, since that's
+  exactly the kind of model these rules were written against. Root cause
+  #2: `--iter_multi` (how many saturation iterations the multi-pattern
+  search actually runs on) defaults to 1, so it only ever searched
+  iteration 0, before single-pattern rewriting had normalized anything.
+  Raising it let the search run properly, but on ResNet50 the egraph then
+  exploded (562k → 2.97M nodes across attempts) from combinatorial
+  single-pattern axiom growth, without ever finding a multi-pattern match
+  either — inconclusive on real matching, informative on scale limits.
+- Went back to `resnet2b` with instrumented multi-pattern matching (added
+  debug counters through every stage of `MultiPatterns::apply_match_pair`
+  in `tensat/src/rewrites.rs` — search hits, compatibility, validity,
+  cycle-check) to get real data instead of guessing. Found the rewrite
+  *does* apply thousands of times successfully (`cycle_ok` in the
+  thousands) — but manual causal-chain tracing of `resnet2b`'s four
+  same-shape relu positions showed all four sit on one strict sequential
+  chain (each computed using the previous one's output), so these
+  "successes" are near-certainly fusing duplicate representations of the
+  *same* underlying value (spawned by single-pattern associativity/
+  commutativity axioms), not genuine independent-branch batching. Tried
+  hand-constructing a real fusion anyway (`NNs/reconstruct_fused_relu.py`,
+  concat+relu+split on two same-shape relus) — hit exactly this causality
+  wall directly (`KeyError` on a guid whose relu was needed as an
+  ordinary intermediate before the "fusion" could complete), confirming
+  the analysis empirically as well as by hand.
+- Searched exhaustively for a real ab-CROWN model with a genuine
+  independent parallel branch (`model_defs.py`'s full class list, a
+  direct `torch.cat`/`.cat(` grep across every model file): none exist.
+  The one architecture that would qualify (`resnet4b1`/`resnet4b2`, via
+  `BasicBlock_eth`'s stride-1 channel-changing shortcut) has no trained
+  checkpoint in this checkout.
+- Trained a small custom model instead: `InceptionMNIST`
+  (`NNs/inception_mnist_model.py`) — a stem conv followed by two parallel
+  branches (1x1 and 3x3 conv, both stride=1, same input) merged by
+  addition, specifically shaped to match `PRE_DEFINED_MULTI`'s literal
+  pattern. Trained on real MNIST (idx files already cached under
+  `alpha-beta-CROWN`'s dataset dir, parsed directly with no torchvision
+  dependency) — 85.65% test accuracy on a 1-epoch/10k-image run (the
+  full 3-epoch/60k run was killed after 30+ min with no output; the
+  shared login node was under heavy resource contention overnight, see
+  below).
+- Confirmed via the exported `.taso` file that this model's two branch
+  convs really do share one input at stride=1/padding=SAME/activation=
+  NONE — the first model all session to genuinely qualify. Running with
+  `--use_multi -t converted_multi.txt --iter_multi 15` alone still didn't
+  win under the real cost model (same story as `resnet2b`'s relu-merge
+  rule: the fused form is real ops, not free). Added a new `--favor_fusion`
+  flag (`CostModel::with_favor_fusion` in `tensat/src/optimize.rs`) that
+  deliberately discounts `Concat`/`Split`/`Enlarge`'s real measured cost
+  by 20x for deterministic greedy extraction — a knob to surface an
+  already-proven-valid equivalence for comparison, explicitly not a real
+  cost-model claim. First attempt (`--iter_multi 15`) let the search
+  explode combinatorially (2.97M nodes) and extracted a tangled,
+  redundant fusion (an 88-output-channel conv via nested Concat/Enlarge
+  chains) that wasn't worth the risk of hand-reconstructing at this hour.
+  A more conservative retry (`--n_iter 3 --iter_multi 1`) produced a
+  clean, small result: **Conv count 3→2, plus Concat/Split/Enlarge
+  appearing for the first time this session** — the genuine nontrivial
+  rewrite this whole multi-day chase was after.
+- Reconstructed it (`NNs/reconstruct_inception_fused.py`) with real
+  weights. The extracted graph turned out to be a valid but *hybrid*
+  program — it keeps one of the two original convs computed the ordinary
+  way, and additionally builds the wider fused conv whose second half
+  stands in for the other branch's contribution (confirmed algebraically
+  by hand: `conv_a(x) + (bias_a+bias_b) + conv_b(x)` still equals the
+  original `(conv_a(x)+bias_a) + (conv_b(x)+bias_b)`, just computed via a
+  different, partially-redundant path). Hit two more real, previously-
+  unexercised bugs doing this:
+  - Three of this model's weights share shape `(8,)` (stem/branchA/
+    branchB bias), breaking pure shape-based weight matching for the
+    first time — worked around by loading named weights directly from
+    the PyTorch checkpoint and mapping specific guids to specific roles
+    by hand-tracing the exported graph's structure (not a general fix,
+    documented as a known limitation in the script itself).
+  - `export_onnx()` always emits `Split`'s sizes as a node *attribute*,
+    which is invalid once opset 13 is declared (the attribute form was
+    dropped from ONNX's own `Split` spec in favor of an input tensor) —
+    `BUGS.md` #9. Worked around by exporting this one model at opset 11
+    instead of the usual 13.
+  - Also worked around a second, cosmetic issue: the hybrid graph leaves
+    one `Split` output genuinely unused, which `export_onnx()` correctly
+    (if unhelpfully) treats as an extra ONNX graph output — filtered
+    `onnx_model.graph.output` down to the one real `(1,10)`-shaped output
+    before saving.
+  - **Verified: max abs diff 1.67e-06** against the PyTorch reference —
+    numerically correct.
+- Also reconstructed the *unfused* baseline the same way
+  (`NNs/reconstruct_inception_unfused.py`, straight from
+  `NNs/inception_mnist.taso`) for a clean side-by-side pair — **verified:
+  max abs diff 2.15e-06**. Both real weights, both numerically confirmed
+  correct, ready for an eventual `alpha-beta-CROWN` verifiability
+  comparison (not yet run this stretch).
+- Infrastructure note: this stretch ran through the night while the user
+  slept, working autonomously per their instruction. Two real
+  environmental problems came up along the way, both resolved without
+  touching any user data:
+  - The GPU SLURM allocation expired partway through and was
+    auto-renewed under a new job ID at least twice — commands needed
+    re-pointing at the current `--jobid` (checked via `squeue`) each time.
+  - The host-side `taso_py` conda env's `numpy` package (and, separately,
+    the base `miniconda3` environment's own Python stdlib) turned up
+    corrupted partway through — `numpy/__init__.py` missing entirely
+    despite all its submodule directories being present, `conda` itself
+    unable to run (`Fatal Python error: init_fs_encoding`). Root cause
+    not conclusively identified (most likely an interrupted/OOM-killed
+    package operation earlier in the session, given real memory pressure
+    observed on the shared login node around the same time — `dmesg`
+    showed an actual OOM kill, of an unrelated user's process, around
+    when this started). Fixed narrowly: reinstalled just `numpy` via
+    `taso_py`'s own `pip` (`rm -rf` the broken package dir first, since
+    it had no `pip` `RECORD` file to let `pip` uninstall it cleanly) —
+    didn't touch the still-broken base `miniconda3` env, since nothing
+    in this session's pipeline actually depends on it directly.

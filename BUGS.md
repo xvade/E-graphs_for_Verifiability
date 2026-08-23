@@ -319,3 +319,76 @@ and only covers this project's own reconstruction path — any other code
 calling `export_onnx()` on a graph with a genuinely-fused Conv/Pool
 activation (e.g. one straight out of `tensat`'s optimizer, before this
 project's reconstruction step) would still hit it.
+
+---
+
+## 8. `taso`: ONNX importer's `Reshape` handler misses Constant-node shape args
+
+**Where:** `taso/python/taso/__init__.py`, `_reshape()` (~line 459).
+
+**Symptom:** Found while extending the pipeline to `resnet2b` (a real
+residual network -- the first model in this session with a genuine
+`torch.reshape`/`.view()` call, as opposed to the `Flatten`-based export
+every earlier model happened to use, which needs no shape argument at
+all). `_reshape()` only searched the ONNX graph's top-level `initializer`
+list for its shape argument. ONNX also allows a constant tensor to come
+from a `Constant` *node* elsewhere in the graph (its value living in that
+node's own `value` attribute, not in `initializer`) -- the pattern
+PyTorch's exporter actually used here. The lookup silently found nothing,
+`shape` stayed an empty list, and `graph.reshape(inputs[0], ())` produced
+a corrupt zero-dim tensor. That corruption didn't surface as an error
+until several ops later, inside a `Gemm`'s `matmul()` call, which
+segfaulted -- making the real fault site hard to find without adding
+print-based instrumentation to trace it back.
+
+**Root cause:** `_reshape()`'s only source of shape data was a linear
+scan of `initializer`:
+```python
+for data in initializer:
+    if data.name == op.input[1]:
+        ...
+```
+When the shape argument is a `Constant` node's output instead, this scan
+never matches anything, and the pre-existing bug is that there was no
+fallback at all.
+
+**Status:** Fixed -- commit `af3770a`, "Fix ONNX importer's Reshape handler
+missing Constant-node shape args." `_constant()` (the handler for
+`Constant` nodes) now additionally records each node's decoded value in a
+module-level side-channel dict keyed by output tensor name (reset at the
+start of each `load_onnx()` call); `_reshape()` falls back to that dict
+when the `initializer` scan comes up empty.
+
+---
+
+## 9. `taso`: `export_onnx()`'s `Split` node is incompatible with opset 13
+
+**Where:** `taso/python/taso/__init__.py`, `operator_attrs['Split'] =
+['axis', 'split']` (~line 855).
+
+**Symptom:** Found reconstructing a real `Split` node for the first time
+this session (from a genuine TENSAT-selected parallel-conv-fusion rewrite
+on a custom-trained `InceptionMNIST` model -- see `PROGRESS.md`). Loading
+the exported ONNX in onnxruntime failed: `INVALID_GRAPH ... Unrecognized
+attribute: split for operator Split`.
+
+**Root cause:** `export_onnx()` always emits `Split`'s output sizes as a
+node *attribute* (`operator_attrs['Split'] = ['axis', 'split']`,
+`_add_node_attribute()` sets it via `helper.make_attribute('split',
+val)`). That was ONNX's own `Split` spec through opset 12, but opset 13
+moved split sizes to an optional *second input* tensor and dropped the
+attribute form entirely -- onnxruntime (correctly) doesn't recognize a
+`split` attribute at all once the model declares opset 13, which is what
+every model in this project pins to (`onnx_model.opset_import[0].version
+= 13`, done specifically because `helper.make_model()` otherwise stamps
+whatever opset the installed `onnx` package currently defaults to, which
+can be unreleased).
+
+**Status:** Not fixed in `taso` itself -- `export_onnx()` doesn't inspect
+the target opset at all, so a real fix would need it to either always
+emit the opset-13 input form, or accept a target-opset parameter and pick
+the right form. Worked around at the call site instead: any graph
+containing a `Split` node is exported pinned to opset 11 (still fully
+supported by current onnxruntime, and no other op this project uses needs
+anything newer), rather than this project's usual opset 13. See
+`NNs/reconstruct_inception_fused.py`.
