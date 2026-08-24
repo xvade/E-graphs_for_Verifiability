@@ -1,0 +1,43 @@
+# Copy to alpha-beta-CROWN/complete_verifier/exp_configs/beta_crown/ before
+# use -- onnx_path below is relative to complete_verifier/, where abcrown.py
+# runs from. Run:
+#   cd alpha-beta-CROWN/complete_verifier && ../.venv/bin/python abcrown.py \
+#     --config exp_configs/beta_crown/abcrown_config_inception_mnist_fused_v2.yaml
+#
+# Results (PROGRESS.md's 2026-08-23 fusion-v2 entry): final verified
+# accuracy 10.0% (1/10 safe, 0 unsafe, 9 timeout). See
+# NNs/abcrown_out_inception_mnist_fused_v2.log for the full run. This is
+# the ab-CROWN-compatible fusion (see BUGS.md #11's update) -- unlike the
+# first fused model, this one actually verifies.
+model:
+  onnx_path: ../../NNs/inception_mnist_fused_v2_simplified.onnx
+data:
+  dataset: MNIST
+  mean: [0.]
+  std: [1.]
+  start: 0
+  end: 10
+specification:
+  norm: .inf
+  epsilon: 0.1
+attack:
+  # Matches inception_mnist_unfused.yaml's setting for a fair, identical
+  # methodology -- not strictly required for this model (it doesn't use
+  # the batch axis for anything), but kept consistent across the
+  # comparison.
+  pgd_order: skip
+  pgd_restarts: 50
+solver:
+  batch_size: 2048
+  beta-crown:
+    iteration: 20
+bab:
+  timeout: 60
+  branching:
+    # Default branching heuristic (kfsb, via babsr scoring) doesn't
+    # support BoundConcat layers (NotImplementedError in
+    # heuristics/babsr.py's get_babsr_biases) -- this model has a real
+    # Concat node (the channel-axis relu-merge fusion), which babsr's
+    # bias computation wasn't written to handle. random doesn't need
+    # per-layer bias scoring at all.
+    method: random

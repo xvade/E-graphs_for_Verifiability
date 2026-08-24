@@ -370,3 +370,94 @@ All ONNX-file patches applied directly to
 dimension and Reshape-shape edits) — not yet folded back into the
 `reconstruct_inception_*.py` scripts themselves, so regenerating from
 scratch would need those same patches reapplied by hand or scripted.
+
+## 2026-08-23: fusion-v2 — a TENSAT rewrite that actually clears ab-CROWN, plus a controlled comparison
+
+The above entry left the project with a real unfused verifiability
+number but no fused counterpart, since the one fusion TENSAT had picked
+used the batch axis and was structurally unverifiable (`BUGS.md` #11).
+Rather than accept that as the final word, went back into `tensat`'s
+cost model to see whether a *different*, ab-CROWN-compatible rewrite
+was reachable for the same `InceptionMNIST` graph.
+
+**The relu-merge rule has two axis variants.** `tensat`'s multi-pattern
+relu-merge rewrite (concat two branches' pre-activations, apply `Relu`
+once, split back apart) is encoded with both an axis=0 (batch) and an
+axis=1 (channel) instance in the rule set. Mathematically identical
+trick, either axis works for the network's own semantics — but only
+axis 1 is usable by `auto_LiRPA` (`assert self.axis > 0` in
+`slice_concat.py`'s `BoundConcat.bound_backward`). The original
+extraction picked axis=0 on its own.
+
+**Why axis=0 kept winning, even without `--favor_fusion`.** First tried
+making the `favor_fusion` discount axis-aware but still *neutral*
+toward axis-0 (discount axis≠0 Concat/Split and `Enlarge`, leave axis=0
+undiscounted) — re-extraction still produced the axis-0 graph. Tested
+with `--favor_fusion` removed entirely to isolate the cause: axis=0
+*still* won, on genuine cost-model merit, not a discount artifact — it
+lets the stem's `Relu` be reused directly instead of redundantly
+recomputed via the batched trick, which is a real compute saving the
+axis=1 variant doesn't get. Neutral wasn't enough; getting the axis=1
+variant out of the extractor required an active penalty. Changed
+`CostModel::get_self_cost` (`tensat/src/optimize.rs`) to multiply cost
+by `1000.0` for axis=0 `Concat`/`Concat3/4/5`/`Split` when
+`favor_fusion` is set (while still discounting axis≠0 instances and
+`Enlarge` by `0.05x`), which reliably produces the axis=1 extraction
+instead.
+
+**Reconstruction.** `NNs/reconstruct_inception_fused_v2.py` rebuilds
+this new extraction (`tensat/tmp/inception_mnist_v2_optimized.model`)
+with the real trained weights, same approach as the first fused script
+but with an unambiguous weight-role mapping (biases aren't pre-summed
+this time, so each traces directly to its own conv via the guid
+graph). Verified numerically identical to the reference PyTorch
+checkpoint (~1.4e-6 max abs diff,
+`NNs/verify_reconstruction_inception_fused_v2.py`). Simplified via
+`onnxsim` (20→12 nodes) and patched for batch-flexibility the same way
+as the unfused/first-fused models
+(`NNs/inception_mnist_fused_v2_simplified.onnx`); confirmed both
+batch=1 correctness and batch=4 consistency manually before touching
+ab-CROWN.
+
+**A second, unrelated ab-CROWN limitation surfaced immediately**:
+running this model crashed with `NotImplementedError:
+<class 'auto_LiRPA.operators.slice_concat.BoundConcat'>` — but only
+*after* bound propagation itself had already succeeded (real CROWN
+bounds computed, 8/9 specs resolved directly). The crash was in the
+default `kfsb`/`babsr` branching heuristic
+(`heuristics/babsr.py`'s `get_babsr_biases()`), which only has cases
+for standard layer types and was never written to score a `Concat`
+layer for branching. Documented as `BUGS.md` #12. Worked around with
+`bab.branching.method: random` (doesn't need per-layer scoring), the
+only branching option compatible with a graph containing `Concat`.
+
+**Controlled comparison.** Since the fused model is forced onto
+`random` branching, comparing it against the unfused baseline's
+existing `kfsb` result (`20.0%`, above) would confound the fusion
+itself with the branching-heuristic change. Reran the unfused model
+under `random` too
+(`exp_configs/beta_crown/inception_mnist_unfused_randombranch.yaml`)
+for an apples-to-apples number. Same 10 MNIST test images,
+`epsilon=0.1`, `Linf`, 60s timeout:
+
+| model | branching | verified accuracy | verified-safe indices |
+|---|---|---|---|
+| unfused | `kfsb` (default) | 20.0% (2/10) | 0, 3 |
+| unfused | `random` | 20.0% (2/10) | 0, 3 (mean 2.78s — faster, likely variance) |
+| fused_v2 | `random` | 10.0% (1/10) | 3 only |
+
+Under the *same* branching method, the fused model verifies strictly
+fewer instances than the unfused one (loses index 0) — a real,
+fusion-attributable drop in verifiability, not an artifact of a
+different search heuristic. This is the first end-to-end fused-vs-
+unfused comparison the project has, and it directly supports the
+project's core hypothesis: TENSAT's structural rewrite, despite being
+numerically exact, measurably reduced how much of the network ab-CROWN
+could verify within the same compute budget.
+
+Full logs: `NNs/abcrown_out_inception_mnist_fused_v2.log`,
+`NNs/abcrown_out_inception_mnist_unfused_randombranch.log`. Configs
+mirrored into git-tracked copies at
+`NNs/abcrown_config_inception_mnist_fused_v2.yaml` and
+`NNs/abcrown_config_inception_mnist_unfused_randombranch.yaml` (the
+`alpha-beta-CROWN/` directory itself is gitignored).

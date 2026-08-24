@@ -1,0 +1,41 @@
+# Copy to alpha-beta-CROWN/complete_verifier/exp_configs/beta_crown/ before
+# use -- onnx_path below is relative to complete_verifier/, where abcrown.py
+# runs from. Run:
+#   cd alpha-beta-CROWN/complete_verifier && ../.venv/bin/python abcrown.py \
+#     --config exp_configs/beta_crown/abcrown_config_inception_mnist_unfused_randombranch.yaml
+#
+# Controlled-comparison variant of abcrown_config_inception_mnist_unfused.yaml:
+# same model, but branching.method: random to match
+# abcrown_config_inception_mnist_fused_v2.yaml (which needs random because
+# the default kfsb/babsr heuristic doesn't support the fused model's
+# Concat layer -- see BUGS.md #12). Isolates the effect of the tensat
+# fusion itself from the effect of branching heuristic choice, which the
+# two configs would otherwise confound.
+#
+# Results: final verified accuracy 20.0% (2/10 safe, indices 0 and 3 --
+# same set as the kfsb run, just resolved faster here) -- see
+# NNs/abcrown_out_inception_mnist_unfused_randombranch.log. Compared
+# directly against fused_v2's 10.0% (1/10, index 3 only) under the SAME
+# branching method, this is the fair, controlled verifiability comparison.
+model:
+  onnx_path: ../../NNs/inception_mnist_unfused_simplified.onnx
+data:
+  dataset: MNIST
+  mean: [0.]
+  std: [1.]
+  start: 0
+  end: 10
+specification:
+  norm: .inf
+  epsilon: 0.1
+attack:
+  pgd_order: skip
+  pgd_restarts: 50
+solver:
+  batch_size: 2048
+  beta-crown:
+    iteration: 20
+bab:
+  timeout: 60
+  branching:
+    method: random

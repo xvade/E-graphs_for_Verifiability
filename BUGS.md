@@ -470,15 +470,80 @@ inference on the same file at batch=2 fails outright too
 along axis 0, which only happens to work when the *real* batch is 1,
 since the fusion trick itself doubles that axis internally).
 
-**Status:** Not a bug, not fixed -- a genuine, unavoidable structural
-fact about this specific TENSAT-selected rewrite. There is no ONNX-level
-or `auto_LiRPA`-config-level workaround: making the model batch-flexible
-elsewhere (bug in this doc, `patched` `graph.input`'s batch `dim_param`
-and the flatten `Reshape`'s shape) doesn't help here, since the conflict
-is that a *true* batch of anything other than exactly 1 collides with
-the fusion trick's *own* internal use of axis 0 for exactly 2 items.
-Verifying this specific model would require either changing which axis
-`tensat`'s fusion rule concatenates along (a change to the rule itself,
-`tensat/src/rewrites.rs`, well outside this session's scope) or picking
-a rewrite that doesn't use the batch axis at all. The unfused baseline
-has no such issue and was verified successfully (see `PROGRESS.md`).
+**Status:** Not a bug in the traditional sense -- a genuine structural
+fact about *this specific* TENSAT-selected rewrite, not about fusion via
+`Concat`/`Split` in general. There is no ONNX-level or
+`auto_LiRPA`-config-level workaround for a graph that already has an
+axis-0 `Concat`: making the model batch-flexible elsewhere (`graph.
+input`'s batch `dim_param`, the flatten `Reshape`'s shape) doesn't help,
+since the conflict is that a *true* batch of anything other than exactly
+1 collides with the fusion trick's *own* internal use of axis 0.
+
+**Update, 2026-08-23 -- found and verified a second, ab-CROWN-compatible
+fusion instead of trying to patch this one.** `tensat`'s relu-merge
+multi-pattern rule (the one that produced this axis-0 Concat) has a
+*second* variant using axis 1 (the channel axis) instead -- mathematically
+the identical trick, just concatenating along a different axis, and
+`auto_LiRPA`'s restriction is specifically `axis > 0`, so axis 1 is fine.
+The extractor didn't pick this variant on its own -- confirmed (by
+re-running extraction with `--favor_fusion` disabled entirely) that the
+axis-0 variant wins on genuine cost-model merit even *without* any
+discount, because it lets the stem's ReLU be reused instead of
+recomputed; a first attempt at merely *not discounting* axis-0
+(neutral, rather than favoring it) still produced the axis-0 extraction
+for the same reason. `tensat/src/optimize.rs`'s `--favor_fusion` was
+extended to actively *penalize*
+(1000x) axis-0 `Concat`/`Split` while still discounting axis!=0 ones and
+`Enlarge`, which reliably produces the axis-1 variant instead
+(`NNs/reconstruct_inception_fused_v2.py`, `tensat` commit history --
+`CostModel::get_self_cost`'s `axis0_concat_or_split` check).
+
+This second fusion **is** verifiable by alpha-beta-CROWN (with the
+branching-heuristic caveat in bug #12) -- verified numerically correct
+(~1e-6) and batch-flexible, and produced real bounds: final verified
+accuracy 10.0% (1/10 safe) vs. the unfused baseline's 20.0% (2/10 safe)
+under the *same* branching method, a controlled, fusion-attributable
+difference. See `PROGRESS.md`'s 2026-08-23 fusion-v2 entry for the full
+writeup and `NNs/abcrown_out_inception_mnist_fused_v2.log` /
+`NNs/abcrown_out_inception_mnist_unfused_randombranch.log` for the raw
+results. The original axis-0 finding above remains accurate for that
+*specific* extraction -- it just turned out not to be the only rewrite
+available for this model.
+
+---
+
+## 12. alpha-beta-CROWN's `babsr`/`kfsb` branching heuristic doesn't support `Concat` layers
+
+**Where:** `alpha-beta-CROWN/complete_verifier/heuristics/babsr.py`,
+`get_babsr_biases()` (not this project's code -- part of the
+`alpha-beta-CROWN` checkout itself).
+
+**Symptom:** Found running the axis-1 (channel) fused `InceptionMNIST`
+model (bug #11's update) through alpha-beta-CROWN with default settings.
+Bound propagation itself succeeded completely -- real CROWN bounds
+computed, 8/9 output-margin specs verified directly, branch-and-bound
+even got as far as computing refined intermediate bounds for the one
+remaining property -- then crashed choosing which neuron to split next:
+```
+File ".../heuristics/utils.py", line 67, in get_babsr_biases
+    raise NotImplementedError(type(input_node))
+NotImplementedError: <class 'auto_LiRPA.operators.slice_concat.BoundConcat'>
+```
+The default branching heuristic (`kfsb`, built on `babsr` scoring) tries
+to compute a "bias" term for every layer with unstable neurons when
+picking a branching candidate, and `get_babsr_biases` only has cases for
+the usual handful of layer types (`BoundLinear`, `BoundConv`, etc.) --
+`BoundConcat` was never one of them, presumably because a plain,
+unfused, non-tensat-optimized network essentially never has a `Concat`
+sitting in the middle of its unstable-neuron layers the way this
+rewrite's structure does.
+
+**Status:** Not fixed (would mean patching `alpha-beta-CROWN` itself, out
+of scope). Worked around by setting `bab.branching.method: random`
+instead of the default `kfsb` -- `random` doesn't need per-layer bias
+scoring at all, so it sidesteps `BoundConcat` entirely. Real cost:
+`random` is a much weaker heuristic than `kfsb`/`babsr` (no informed
+choice of which neuron to split), so BaB is less effective per unit
+time -- part of why the comparison in bug #11's update deliberately runs
+*both* the fused and unfused models under `random`, to keep the
+heuristic itself from confounding the fusion-vs-no-fusion comparison.
