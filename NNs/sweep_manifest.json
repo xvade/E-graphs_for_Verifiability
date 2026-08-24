@@ -1,0 +1,70 @@
+[
+  {
+    "model": "inception_mnist",
+    "method": "unfused",
+    "sample_id": "baseline",
+    "onnx_path": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/inception_mnist_unfused_simplified.onnx",
+    "base_config": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/abcrown_config_inception_mnist_unfused_randombranch.yaml",
+    "epsilons": [
+      0.02,
+      0.05,
+      0.1,
+      0.15,
+      0.2
+    ],
+    "start": 0,
+    "end": 10
+  },
+  {
+    "model": "inception_mnist",
+    "method": "fused_v2",
+    "sample_id": "handverified",
+    "onnx_path": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/inception_mnist_fused_v2_simplified.onnx",
+    "base_config": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/abcrown_config_inception_mnist_fused_v2.yaml",
+    "epsilons": [
+      0.02,
+      0.05,
+      0.1,
+      0.15,
+      0.2
+    ],
+    "start": 0,
+    "end": 10
+  },
+  {
+    "model": "inception_mnist",
+    "method": "fused_auto",
+    "sample_id": "repvar1",
+    "onnx_path": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/inception_mnist_fused_auto_repvar1_simplified.onnx",
+    "base_config": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/abcrown_config_inception_mnist_fused_v2.yaml",
+    "epsilons": [
+      0.1
+    ],
+    "start": 0,
+    "end": 10
+  },
+  {
+    "model": "mnist_cnn_a",
+    "method": "unfused",
+    "sample_id": "baseline",
+    "onnx_path": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/mnist_cnn_a_regen_simplified.onnx",
+    "base_config": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/abcrown_config_mnist_cnn_a_unfused.yaml",
+    "epsilons": [
+      0.1
+    ],
+    "start": 0,
+    "end": 10
+  },
+  {
+    "model": "resnet2b",
+    "method": "unfused",
+    "sample_id": "baseline",
+    "onnx_path": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/resnet2b_regen_simplified.onnx",
+    "base_config": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/abcrown_config_resnet2b_unfused.yaml",
+    "epsilons": [
+      0.031
+    ],
+    "start": 0,
+    "end": 10
+  }
+]

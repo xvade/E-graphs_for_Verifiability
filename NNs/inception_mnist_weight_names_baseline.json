@@ -1,0 +1,12 @@
+{
+  "101": "stem.weight",
+  "102": "stem.bias",
+  "103": "branchA.weight",
+  "104": "branchA.bias",
+  "105": "branchB.weight",
+  "106": "branchB.bias",
+  "107": "fc1.weight",
+  "108": "fc1.bias",
+  "109": "fc2.weight",
+  "110": "fc2.bias"
+}

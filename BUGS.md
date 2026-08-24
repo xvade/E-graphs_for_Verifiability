@@ -547,3 +547,85 @@ choice of which neuron to split), so BaB is less effective per unit
 time -- part of why the comparison in bug #11's update deliberately runs
 *both* the fused and unfused models under `random`, to keep the
 heuristic itself from confounding the fusion-vs-no-fusion comparison.
+
+---
+
+## 13. `taso`: `export_onnx()` exports asymmetric SAME-conv padding, disagreeing with `Conv2D`'s own (symmetric) padding semantics
+
+**Where:** `taso`'s ONNX export path (`ts.export_onnx()`, not this
+project's code) vs. `taso/src/core/conv2d.cc`'s `Conv2D::get_padding()`.
+
+**Symptom:** Found while generalizing per-model reconstruction into
+`NNs/reconstruct_generic.py` (this session's Phase 2) and regression-
+testing it against `resnet2b` for the first time -- `mnist_cnn_a` and
+`InceptionMNIST` had already passed the identical numeric check, but
+`resnet2b`'s reconstruction was off by a large margin (max abs diff
+1.34, vs. ~1e-6 elsewhere). `Conv2D::get_padding()` computes SAME
+padding as `*padH = (totalPadH + 1) / 2;` -- one value, applied
+*symmetrically* to both sides of the input (its own comment: "assert
+same padding on both sides") -- but the ONNX `Conv` node
+`ts.export_onnx()` emits instead uses an *asymmetric*, TF-style
+floor/ceil split of the same total. These two computations only
+disagree when the total required padding is odd (e.g. kernel=3,
+stride=2, input%stride==0, giving totalPad=1) -- exactly `resnet2b`'s
+stem conv and `layer1.0.conv1` (both kernel=3/stride=2 on an
+even-sized input), and exactly why `mnist_cnn_a`/`InceptionMNIST` never
+hit it (their SAME convs all landed on even totals, where floor/ceil
+and symmetric-ceil happen to coincide). Confirmed directly: the
+exported ONNX had `pads: [0, 0, 1, 1]` on those two nodes (0 before, 1
+after -- both H and W) where the correct-per-TASO's-own-semantics value
+is symmetric `[1, 1, 1, 1]`; patching just those two nodes to symmetric
+padding took the reconstruction from 1.34 off to ~8e-7 (exact, modulo
+float noise) against the real PyTorch reference output.
+
+**Status:** Not fixed in `taso` itself (out of scope -- would mean
+patching its C++ export path). Worked around in
+`NNs/reconstruct_generic.py`'s `fix_same_padding_symmetric()`: after
+`ts.export_onnx()`, walk every `Conv` node and replace any asymmetric
+`pads` attribute with the symmetric max of its begin/end values per
+dimension (a `VALID`-mode conv already has all-zero pads, so this is a
+no-op there). Since this is a genuine `taso` export bug rather than
+anything specific to one model, every future reconstruction this
+project does -- including the many samples the structural-diversity-
+vs-verifiability sweep (`PROGRESS.md`'s cost-function-design campaign)
+will generate -- goes through this same generic script, so the fix
+applies uniformly rather than needing to be rediscovered per model.
+
+---
+
+## 14. `tensat`'s axis-0-Concat safety check can't distinguish a weight-level concat from an activation-level one
+
+**Where:** `tensat/src/optimize.rs`, `CostModel::get_self_cost`'s
+`axis0_concat_or_split`/`is_favored_fusion_op` checks (added for bug
+#11's fix, i.e. predates this session's other changes).
+
+**Symptom:** Found while investigating why InceptionMNIST's `--favor_
+fusion_strength` sweep (`PROGRESS.md`'s 2026-08-24 campaign, Phase 4)
+behaved unintuitively. The conv-fusion multi-pattern rule's `Concat`
+legitimately has `axis == 0` too -- but that's the *weight* tensor's own
+output-channel axis (concatenating two conv kernels along their shared
+dim 0), never a real activation's batch axis -- yet
+`axis0_concat_or_split` flags any `Concat`/`Split` with `axis == 0` as
+unsafe purely by the numeric value, with no way to tell "this operand is
+weight-derived" from "this operand is an activation." So the
+conv-fusion rule's safe weight-level `Concat` gets the same 1000x
+penalty as the genuinely unsafe batch-axis relu-merge `Concat` bug #11
+was written to suppress.
+
+**Status:** Not fixed -- confirmed harmless rather than worth chasing.
+A weight-only `Concat`/`Split` (both operands trace only to `Weight`
+leaves) is numerically folded away entirely during Python reconstruction
+(`reconstruct_generic.py`'s dual-path dispatch: fold in numpy if
+`all(g in weight_arrays for g in src_guids)`, else emit a real graph op)
+-- it never survives to become a real ONNX `Concat`/`Split` node, so it
+can never reach `auto_LiRPA`'s axis restriction either way. The
+mislabeling only makes the cost model slightly less eager to select the
+conv-fusion pattern during extraction (an efficiency question, not a
+safety one) -- confirmed via `tensat`'s own `weight_names` provenance
+(bug -- see Phase 1's `ValTnsr.weight_names` field): a `Concat` at
+`axis=0` with a fully weight-derived `weight_names` set (e.g.
+`["branchA.weight", "branchB.weight"]`) is exactly the safe case this
+note describes. Worth fixing properly (check `weight_names`/`all_
+weights` instead of axis value alone) if a future cost function needs
+to favor the conv-fusion rule specifically and precisely, but not
+blocking for anything done so far.

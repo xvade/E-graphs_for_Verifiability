@@ -1,0 +1,53 @@
+# Copy to alpha-beta-CROWN/complete_verifier/exp_configs/beta_crown/ before
+# use -- onnx_path below is relative to complete_verifier/, where abcrown.py
+# runs from (or pass --onnx_path with an absolute path via CLI override, as
+# NNs/run_verification_sweep.py does). Run:
+#   cd alpha-beta-CROWN/complete_verifier && ../.venv/bin/python abcrown.py \
+#     --config exp_configs/beta_crown/abcrown_config_resnet2b_unfused.yaml
+#
+# First-time baseline for resnet2b -- no prior ab-CROWN run exists for this
+# model (it never showed any exploitable structural diversity under tensat
+# even with multi-pattern rules enabled -- its only same-shape relu
+# positions are causally chained, not independent branches, so multi-
+# pattern rewriting either finds nothing or explodes combinatorially
+# without ever finding a real fusion; see PROGRESS.md's 2026-08-24
+# structural-diversity-vs-verifiability campaign entry). Standalone
+# descriptive number, not a fused/unfused comparison.
+#
+# epsilon uses the CIFAR-10-appropriate range (2/255, 4/255, 8/255 are the
+# standard robustness benchmarks), NOT the MNIST-family {0.05,0.1,0.2}
+# grid used elsewhere in this sweep -- resnet2b is CIFAR-10 (3x32x32),
+# where MNIST-scale epsilon would be either trivially falsified or fully
+# saturated and uninformative.
+#
+# RISK flagged before this ever ran: `data.dataset: CIFAR` uses ab-CROWN's
+# own dataset loader (data_utils.py's load_dataset()), which downloads the
+# real CIFAR-10 test set via torchvision (download=True) if not already
+# cached under alpha-beta-CROWN/complete_verifier/datasets/ -- compute
+# nodes on this cluster may not have outbound network access. If this
+# fails, the fix is either pre-downloading CIFAR-10 from a node with
+# network access first, or switching to a raw-npy-based data loading path
+# (CIFAR_SAMPLE style) instead of the 'CIFAR' dataset name -- untested,
+# first calibration run is the actual test.
+model:
+  onnx_path: ../../NNs/resnet2b_regen_simplified.onnx
+data:
+  dataset: CIFAR
+  mean: [0., 0., 0.]
+  std: [1., 1., 1.]
+  start: 0
+  end: 10
+specification:
+  norm: .inf
+  epsilon: 0.031
+attack:
+  pgd_order: skip
+  pgd_restarts: 50
+solver:
+  batch_size: 2048
+  beta-crown:
+    iteration: 20
+bab:
+  timeout: 60
+  branching:
+    method: random

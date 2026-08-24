@@ -1,0 +1,38 @@
+# Copy to alpha-beta-CROWN/complete_verifier/exp_configs/beta_crown/ before
+# use -- onnx_path below is relative to complete_verifier/, where abcrown.py
+# runs from (or pass --onnx_path with an absolute path via CLI override, as
+# NNs/run_verification_sweep.py does). Run:
+#   cd alpha-beta-CROWN/complete_verifier && ../.venv/bin/python abcrown.py \
+#     --config exp_configs/beta_crown/abcrown_config_mnist_cnn_a_unfused.yaml
+#
+# First-time baseline for mnist_cnn_a -- no prior ab-CROWN run exists for
+# this model (it never showed any exploitable structural diversity under
+# tensat, see PROGRESS.md's 2026-08-24 structural-diversity-vs-
+# verifiability campaign entry, so there is no fused variant to compare
+# against; this is a standalone descriptive number, not a comparison).
+# branching.method: random for consistency with the InceptionMNIST configs
+# in this same sweep, even though mnist_cnn_a never produces a Concat
+# layer (so kfsb would work fine here too) -- keeps the whole sweep on one
+# branching method rather than mixing two for no comparative reason.
+model:
+  onnx_path: ../../NNs/mnist_cnn_a_regen_simplified.onnx
+data:
+  dataset: MNIST
+  mean: [0.]
+  std: [1.]
+  start: 0
+  end: 10
+specification:
+  norm: .inf
+  epsilon: 0.1
+attack:
+  pgd_order: skip
+  pgd_restarts: 50
+solver:
+  batch_size: 2048
+  beta-crown:
+    iteration: 20
+bab:
+  timeout: 60
+  branching:
+    method: random

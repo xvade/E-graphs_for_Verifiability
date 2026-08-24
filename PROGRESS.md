@@ -461,3 +461,176 @@ mirrored into git-tracked copies at
 `NNs/abcrown_config_inception_mnist_fused_v2.yaml` and
 `NNs/abcrown_config_inception_mnist_unfused_randombranch.yaml` (the
 `alpha-beta-CROWN/` directory itself is gitignored).
+
+## 2026-08-24: structural-diversity-vs-verifiability campaign (Phases 1-7)
+
+Goal: move past comparing exactly two hand-picked structures for one
+model, toward real data on how graph *structure* (not just "fused vs.
+not") relates to ab-CROWN verifiability, to inform a future custom
+`tensat` cost function. Built as a 7-phase pipeline with pause points;
+each phase is summarized below, ending with the actual sweep results.
+
+**Phase 1 -- automatic weight-provenance tracking in `tensat`.** The
+biggest blocker to sampling many extractions (rather than hand-tracing
+one) was that TASO's `.model` export assigns fresh, meaningless guids on
+every extraction and never stores real weight names at all (confirmed:
+TASO's ONNX loader discards initializer names before calling
+`graph.new_weight()`, whose binding takes no name argument; the `.model`
+format itself has no name field). Fixed by extending `tensat/src/
+model.rs`'s `ValTnsr` with a `weight_names: BTreeSet<String>` field,
+propagated bottom-up through every `TensorAnalysis::make()` arm (mirrors
+the existing `all_weights: bool` pattern -- union of children instead of
+AND, singleton at `Weight` leaves) and reconciled in `merge()`. Real
+names are seeded once per model at baseline parse time
+(`tensat/src/parse.rs`'s new `parse_model_with_names`, `tensat/src/
+input.rs`'s new `new_weight_named`, driven by a new `--weight_names_json`
+CLI flag) from a `guid -> name` sidecar
+(`NNs/<model>_weight_names_baseline.json` -- for InceptionMNIST this is
+just the existing hand-derived `GUID_ROLES` dict moved to JSON; for
+mnist_cnn_a/resnet2b, a new `NNs/derive_weight_names_baseline.py` derives
+it automatically by shape-then-position matching against the ONNX
+initializers, correctly handling resnet2b's real shape collisions -- 3x
+`(16,16,3,3)` conv kernels, 5x `(16,)` biases -- and one genuine orphaned
+Constant-derived node). At export time, `save_model_with_provenance`
+(`tensat/src/main.rs`) walks the replayed egraph and writes a
+`<file>.weight_names.json` sidecar (guid -> contributing names) for
+*any* weight-derived eclass, not just literal `Weight` leaves. Verified:
+zero behavior change without the new flag; with it, reproduces the
+known-good InceptionMNIST mapping exactly.
+
+**Phase 2 -- generalized reconstruction + a real TASO bug found.**
+`NNs/reconstruct_generic.py` replaces the per-extraction hand-written
+`reconstruct_*.py` scripts, resolving weight identity via the Phase 1
+sidecar instead of a hardcoded dict; its output-selection logic
+generalizes to correctly find the real final output even when a
+fused/sampled extraction leaves an orphaned Split half in the graph.
+Regression-testing it against all 3 baseline models plus the known-good
+fusion surfaced a real, previously undocumented `taso` bug (**BUGS.md
+#13**): `ts.export_onnx()` emits *asymmetric* TF-style SAME-padding for
+a stride>1 conv with odd total padding, but TASO's own `Conv2D::
+get_padding()` pads *symmetrically* when actually executing the op --
+these disagree exactly on `resnet2b`'s stem conv and `layer1.0.conv1`
+(both kernel=3/stride=2), producing a max abs diff of 1.34 against the
+real reference output until patched (now fixed generically in
+`reconstruct_generic.py`'s `fix_same_padding_symmetric()`, ~8e-7 after).
+All 3 baselines plus a fresh fusion sample now pass regression at
+~1e-6.
+
+**Phase 3 -- two new extraction modes in `tensat`.** `--random_mode
+{jitter,uniform}` on the existing `--n_random` (new `uniform`:
+`UniformRandomCost`, i.i.d. cost per enode independent of the real cost
+model, documented small-tree bias). `--n_diverse N` (new `DiverseCost`):
+samples in sequence, penalizing re-use of any enode a previous sample
+already used, to push toward structurally distinct regions of the
+egraph. Both smoke-tested successfully.
+
+**Phase 4 -- pre-flight diversity check, and a real methodological
+discovery.** Running both new modes (15 samples each) on all 3
+candidate models initially showed *zero* structural diversity anywhere
+-- including InceptionMNIST, which has a known fusion. Investigating
+why (rather than accepting "no diversity") found: (a) `mnist_cnn_a` and
+`resnet2b` genuinely never produce a `Concat`/`Split` under any setting,
+confirmed twice each (`--n_diverse`/`--random_mode uniform`, and a
+direct `--use_multi` check) -- `mnist_cnn_a` has no parallel branches at
+all, and `resnet2b`'s only same-shape relu positions are causally
+chained, not independent (matches this project's earlier finding); (b)
+InceptionMNIST's fused/unfused real-cost gap, even after
+`--favor_fusion`'s discount, is *marginal* rather than decisive --
+deterministic extraction with the same settings sometimes finds the
+fusion and sometimes doesn't, from ordinary run-to-run noise in TASO's
+own GPU cost measurement (confirmed: identical repeated invocations gave
+"Best cost" 0.221 once and ~0.112 four times out of five). Made
+`favor_fusion` continuous (`CostModel::favor_fusion_strength: f32`,
+1.0=neutral, replacing the old bool) so this can be dialed deliberately
+rather than hoping jitter stumbles into it -- validated the mechanism
+works (saturates around strength=0.05, since the *wider conv's own*
+undiscounted real cost, not the discount target, becomes the limiting
+factor beyond that). Even so, across 60 repeated deterministic
+extractions at strength=0.05, the safe fusion won only ~3% of the time
+(2/60) -- confirming InceptionMNIST has a small, *finite* set of
+genuinely distinct structural types (unfused; the one safe channel-axis
+fusion; the one unsafe batch-axis fusion already characterized in
+`BUGS.md` #11) rather than a large continuous space, an intrinsic
+property of this small hand-built model. Also found (not a safety bug,
+documented for completeness): the axis-based safety check in
+`get_self_cost` can't distinguish a *weight*-level axis-0 `Concat` (the
+conv-fusion rule's safe output-channel concat, which numerically folds
+away entirely during Python reconstruction and never reaches ONNX) from
+an *activation*-level axis-0 `Concat` (the unsafe batch-axis one) --
+doesn't affect final verifiability since the former never survives to a
+real ONNX node either way. Both automated (`--n_diverse`) *and* manual
+`--favor_fusion_strength` samples of the safe fusion always landed on
+the same axis (`axis=1` on both `Concat` and `Split`), confirming the
+axis-0 penalty correctly excludes the unsafe variant even under
+sampling. Net result: `mnist_cnn_a`/`resnet2b` excluded from the sweep;
+InceptionMNIST included with 3 structural types instead of a large
+sample space -- which changed Phase 5's scope from "15 novel samples"
+to "thorough epsilon coverage of the ~3 structures that actually
+exist," and, since that shrank the sample count dramatically, let the
+image count go back up to the full established 10 (not the originally
+planned 4-image reduction, which only existed to control cost under a
+much larger assumed sample count).
+
+**Phase 5-6 -- batch driver and the sweep itself.**
+`NNs/run_verification_sweep.py` runs alpha-beta-CROWN via CLI overrides
+(`--onnx_path`, `--epsilon`, `--start`/`--end`) on one base YAML per
+model (confirmed working, including passing `--onnx_path` as an absolute
+path), capturing full untruncated stdout per run and parsing per-image
+verdicts plus the summary block into a resumable
+`NNs/sweep_results.jsonl`. Calibration (2 images each) confirmed real
+per-image time can exceed the nominal `bab.timeout=60` by up to ~100s
+(pre-BaB overhead not counted against the timeout -- consistent with
+prior runs, e.g. fused_v2's previously-recorded 94s max at the same
+60s setting) and each subprocess pays a fixed ~176-190s library-init
+cost regardless of image count; revised worst-case budget ~5h, well
+under the ~8-12h approved. All 13 planned runs (5-point MNIST-family
+epsilon grid `{0.02,0.05,0.1,0.15,0.2}` x 10 images for InceptionMNIST
+unfused and the hand-verified `fused_v2`; 1 epsilon x 10 images for a
+freshly automated-pipeline-discovered fusion sample `fused_auto`
+(`repvar1`) as a consistency check; 1 epsilon x 10 images each for
+first-time `mnist_cnn_a`/`resnet2b` baselines, CIFAR-10 already cached
+locally so no network-access risk materialized) completed successfully.
+
+**Phase 7 -- results.** `NNs/aggregate_sweep_results.py` joins
+`sweep_results.jsonl` with cheap structural features computed directly
+from each sample's `.model` file (`NNs/structural_signature.py`,
+factored out of the reconstruction scripts' duplicated parsing loop) --
+full table in `NNs/sweep_summary.md`. The headline finding, now backed
+by 5 epsilon points instead of 1:
+
+| epsilon | unfused verified% | fused_v2 verified% |
+|---|---|---|
+| 0.02 | 90.0 | 90.0 |
+| 0.05 | 70.0 | 50.0 |
+| 0.1 | 20.0 | 10.0 |
+| 0.15 | 10.0 | 0.0 |
+| 0.2 | 0.0 | 0.0 |
+
+At every epsilon, the fused structure is never *more* verifiable than
+unfused, and is strictly worse at 3 of 5 points -- the two ties are
+floor/ceiling saturation (both near-100% at the smallest epsilon, both
+0% at the largest), not evidence the effect vanishes. `fused_auto`
+(the automated-pipeline sample, structurally identical to `fused_v2` --
+same op counts, same `axis=1` `Concat`/`Split`) reproduces `fused_v2`'s
+exact result at their shared epsilon (10.0% each), a real consistency
+check that the new automated pipeline (Phases 1-2) gives the same
+answer as the original hand-traced reconstruction. `mnist_cnn_a`
+verifies very well at its default epsilon (100%, 10/10, and fast --
+mean 1.23s/image); `resnet2b` verifies poorly at the standard CIFAR
+epsilon (0%, 10/10 timeout) -- both first-time numbers, descriptive
+only (no fused counterpart exists to compare against).
+
+This is now a real, epsilon-resolved, structure-attributable
+verifiability effect -- exactly the kind of data the next step (a
+custom `tensat` cost function that steers extraction toward more-
+verifiable structures) needs as a starting signal: this one data point
+says "prefer NOT introducing this channel-axis relu-merge fusion,"
+though a single fusion pattern on one model is not yet enough to
+generalize a cost function from -- the natural next step, not done in
+this campaign, is applying the same Phase 1-4 pipeline to more models
+with genuinely different fusable structures once found.
+
+All raw results: `NNs/sweep_results.jsonl`, `NNs/sweep_summary.md`,
+per-run logs under `NNs/sweep_logs/`. Manifest/driver:
+`NNs/sweep_manifest.json` (generated by `NNs/build_sweep_manifest.py`),
+`NNs/run_verification_sweep.py`.

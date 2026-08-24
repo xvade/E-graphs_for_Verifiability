@@ -1,0 +1,1290 @@
+$ /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/bin/python abcrown.py --config exp_configs/beta_crown/abcrown_config_inception_mnist_unfused_randombranch.yaml --onnx_path /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/inception_mnist_unfused_simplified.onnx --epsilon 0.02 --start 0 --end 10
+(cwd=/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/complete_verifier)
+
+=== STDOUT ===
+INFO     14:22:47     [tensor_storage.py:70] Hugepage enabled for branch-and-bound domains.
+Configurations:
+
+general:
+  device: cuda
+  seed: 100
+  conv_mode: patches
+  deterministic: false
+  double_fp: false
+  loss_reduction_func: sum
+  sparse_alpha: true
+  sparse_interm: true
+  save_adv_example: false
+  verify_onnxruntime_output: false
+  eval_adv_example: false
+  onnx_adv_example: false
+  show_adv_example: false
+  precompile_jit: false
+  reset_seed_after_precompile: false
+  prepare_only: false
+  complete_verifier: bab
+  enable_incomplete_verification: true
+  csv_name: null
+  results_file: out.txt
+  root_path: ''
+  deterministic_opt: false
+  graph_optimizer: 'Customized("custom_graph_optimizer", "default_optimizer")'
+  buffer_has_batchdim: false
+  save_output: false
+  output_file: out.pkl
+  return_optimized_model: false
+  store_all_specs_on_cpu: false
+  adhoc_tuning: null
+model:
+  name: null
+  path: null
+  onnx_path: /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/inception_mnist_unfused_simplified.onnx
+  onnx_path_prefix: ''
+  cache_onnx_conversion: false
+  debug_onnx: false
+  onnx_quirks: null
+  input_shape: null
+  onnx_loader: default_onnx_and_vnnlib_loader
+  onnx_optimization_flags: []
+  onnx_vnnlib_joint_optimization_flags: none
+  check_optimized: false
+  flatten_final_output: false
+  optimize_graph: null
+  with_jacobian: false
+  bound_opts: null
+data:
+  start: 0
+  end: 10
+  select_instance: null
+  num_outputs: 10
+  mean: [0.0]
+  std: [1.0]
+  pkl_path: null
+  dataset: MNIST
+  data_filter_path: null
+  data_idx_file: null
+specification:
+  type: lp
+  robustness_type: verified-acc
+  norm: .inf
+  epsilon: 0.02
+  epsilon_min: 0.0
+  vnnlib_path: null
+  vnnlib_path_prefix: ''
+  shrink_eps: null
+  rhs_offset: null
+solver:
+  batch_size: 2048
+  auto_enlarge_batch_size: true
+  batched_crown_auto_enlarge_max_vram_ratio: 0.9
+  min_batch_size_ratio: 0.1
+  use_float64_in_last_iteration: false
+  early_stop_patience: 10
+  start_save_best: 0.5
+  bound_prop_method: alpha-crown
+  init_bound_prop_method: same
+  prune_after_crown: true
+  optimize_disjuncts_separately: false
+  build_batch_size: 1000000
+  skip_with_refined_bound: true
+  forward_before_compute_bounds: false
+  crown:
+    batch_size: 1000000000
+    max_crown_size: 1000000000
+    activation_bound_option: adaptive
+    compare_crown_with_ibp: false
+  alpha-crown:
+    alpha: true
+    lr_alpha: 0.1
+    iteration: 100
+    share_alphas: false
+    lr_decay: 0.98
+    full_conv_alpha: true
+    max_coeff_mul: .inf
+    matmul_share_alphas: false
+    disable_optimization: []
+    max_time: 1.0
+    alpha_dtype: float16
+    input_split_alpha_iteration: 5
+    input_split_lr_alpha: 0.05
+  invprop:
+    apply_output_constraints_to: []
+    tighten_input_bounds: false
+    best_of_oc_and_no_oc: false
+    directly_optimize: []
+    oc_lr: 0.1
+    share_gammas: false
+  beta-crown:
+    lr_alpha: 0.01
+    lr_beta: 0.05
+    lr_decay: 0.98
+    optimizer: adam
+    iteration: 20
+    beta: true
+    beta_warmup: true
+    enable_opt_interm_bounds: false
+    all_node_split_LP: false
+  forward:
+    refine: false
+    max_dim: 10000
+    reset_threshold: 1.0
+  mip:
+    unstable_neuron_threshold: 0
+    parallel_solvers: null
+    solver_threads: 1
+    refine_neuron_timeout: 15
+    refine_neuron_time_percentage: 0.8
+    early_stop: true
+    adv_warmup: true
+    mip_solver: gurobi
+    skip_unsafe: false
+    topk_filter: 1.0
+    sliding_window: -1
+    extra_constraint: false
+    refine_neuron_timeout_increasement: 0
+    timeout_neuron_percentage: 0.3
+    remaining_timeout_threshold: 1
+    remove_unstable_neurons: false
+    formulation: mip
+    output_cut: false
+bab:
+  max_domains: .inf
+  decision_thresh: 0
+  timeout: 60
+  timeout_scale: 1
+  max_iterations: -1
+  override_timeout: null
+  get_upper_bound: false
+  pruning_in_iteration: true
+  pruning_in_iteration_ratio: 0.2
+  sort_targets: false
+  batched_domain_list: true
+  optimized_interm: ''
+  interm_transfer: true
+  recompute_interm: false
+  sort_domain_interval: -1
+  tree_traversal: depth_first
+  hugetensor_allocator: true
+  cut:
+    enabled: false
+    cuts_path: null
+    bab_cut: false
+    lp_cut: false
+    lr: 0.01
+    lr_decay: 1.0
+    iteration: 100
+    bab_iteration: -1
+    early_stop_patience: -1
+    lr_beta: 0.02
+    number_cuts: 50
+    topk_cuts_in_filter: 1000
+    batch_size_primal: 100
+    max_num: 1000000000
+    patches_cut: false
+    cplex_cuts: false
+    cplex_cuts_wait: 0
+    cplex_cuts_revpickup: true
+    cut_reference_bounds: true
+    fix_intermediate_bounds: false
+    manual_cuts: null
+    record_cplex_cut_to: null
+    read_cplex_cut_from: null
+    biccos:
+      enabled: false
+      auto_param: true
+      constraint_strengthening: true
+      drop_ratio: 0.5
+      max_infer_iter: 20
+      max_domain: 10000.0
+      heuristic: neuron_influence_score
+      save_cuts: false
+      multi_tree_branching:
+        enabled: false
+        restore_best_tree: true
+        keep_n_best_domains: 50
+        target_batch_size: 200
+        iterations: 3
+  clip_n_verify:
+    rearrange_constraints: false
+    alpha_crown: false
+    prune: false
+    final_layer: false
+    clip_input_domain:
+      enabled: false
+      clip_type: relaxed
+      clip_neuron_selection_type: ratio
+      clip_neuron_selection_value: -1.0
+      clip_iterations: 1
+      clip_calculate_volume_metrics: false
+    clip_interm_domain:
+      enabled: false
+      with_input: false
+      clip_in_alpha_crown: false
+      topk_objective: 20
+  branching:
+    method: random
+    candidates: 3
+    reduceop: min
+    enable_intermediate_bound_opt: false
+    branching_input_and_activation: false
+    branching_input_and_activation_order: [input, relu]
+    branching_input_iterations: 30
+    branching_relu_iterations: 50
+    save_visited_domains_to: ''
+    nonlinear_split:
+      method: bbps
+      disable: false
+      branching_point_method: uniform
+      num_branches: 2
+      filter: false
+      filter_beta: false
+      filter_clamp: false
+      filter_batch_size: 10000
+      filter_iterations: 25
+      relu_only: false
+      loose_tanh_threshold: null
+      branching_point:
+        db_path: branching_points.pt
+        num_iterations: 1000
+        batch_size: 1000000
+        range_l: -5.0
+        range_u: 5.0
+        log_interval: 100
+        step_size_1d: 0.01
+        step_size: 0.2
+    input_split:
+      split_hint: null
+      enable: false
+      reorder_bab: false
+      input_dim_threshold: 20
+      adv_check: 0
+      split_partitions: 2
+      sb_margin_weight: 1.0
+      sb_sum: false
+      sb_primary_spec: null
+      bf_backup_thresh: -1
+      bf_rhs_offset: 0
+      bf_iters: 1000000000.0
+      bf_batch_size: 100000
+      bf_zero_crossing_score: false
+      touch_zero_score: 0
+      ibp_enhancement: true
+      compare_with_old_bounds: true
+      update_rhs_with_attack: false
+      sb_coeff_thresh: 0.001
+      sort_index: null
+      sort_descending: true
+      show_progress: false
+      presplit_domains: null
+      skip_getting_worst_domain: false
+  branching_decision_precompute:
+    enable: true
+  attack:
+    enabled: false
+    beam_candidates: 8
+    beam_depth: 7
+    max_dive_fix_ratio: 0.8
+    min_local_free_ratio: 0.2
+    mip_start_iteration: 5
+    mip_timeout: 30.0
+    adv_pool_threshold: null
+    refined_mip_attacker: false
+    refined_batch_size: null
+attack:
+  general_attack: true
+  pgd_order: skip
+  pgd_steps: 100
+  pgd_restarts: 50
+  pgd_batch_size: 100000000
+  pgd_early_stop: true
+  pgd_lr_decay: 0.99
+  pgd_alpha: auto
+  pgd_alpha_scale: false
+  pgd_loss_mode: null
+  pgd_restart_when_stuck: false
+  enable_mip_attack: false
+  adv_saver: default_adv_saver
+  adv_verifier: default_adv_verifier
+  early_stop_condition: default_early_stop_condition
+  adv_example_finalizer: default_adv_example_finalizer
+  pgd_loss: default_pgd_loss
+  cex_path: ./test_cex.txt
+  attack_mode: PGD
+  attack_tolerance: 0.0
+  attack_func: attack_with_general_specs
+  gama_lambda: 10.0
+  gama_decay: 0.9
+  input_split:
+    pgd_steps: 100
+    pgd_restarts: 30
+    pgd_alpha: auto
+  input_split_check_adv:
+    enabled: auto
+    pgd_steps: 5
+    pgd_restarts: 5
+    pgd_alpha: auto
+    max_num_domains: 10
+debug:
+  view_model: false
+  lp_test: null
+  rescale_vnnlib_ptb: null
+  test_optimized_bounds: false
+  test_optimized_bounds_after_n_iterations: 0
+  print_verbose_decisions: false
+  biccos_mip_sanity_check: false
+  sanity_check: 0
+  z_split_enabled: false
+  save_minimal_config: null
+  save_minimal_config_omit_keys: []
+solving:
+  solving_mode: false
+  obj_index: 0
+
+Experiments at Mon Aug 24 14:22:51 2026 on g3104
+Loading onnx /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/inception_mnist_unfused_simplified.onnx with quirks {}
+Finished onnx model loading in 1.7096 seconds
+ConvertModel(
+  (Conv_Conv112_fwd0): Conv2d(1, 8, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+  (Relu_Relu119_fwd0): ReLU()
+  (Conv_Conv120_fwd0): Conv2d(8, 8, kernel_size=(1, 1), stride=(1, 1))
+  (Conv_Conv121_fwd0): Conv2d(8, 8, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+  (Add_Add124_fwd0): Add()
+  (Relu_Relu125_fwd0): ReLU()
+  (Reshape_Reshape126_fwd0): Reshape(shape=[  -1 6272])
+  (Gemm_Add128_fwd0): Linear(in_features=64, out_features=6272, bias=True)
+  (Relu_Relu129_fwd0): ReLU()
+  (Gemm_Add131_fwd0): Linear(in_features=10, out_features=64, bias=True)
+)
+Parameters:
+  Conv_Conv112_fwd0.weight: shape torch.Size([8, 1, 3, 3])
+  Conv_Conv112_fwd0.bias: shape torch.Size([8])
+  Conv_Conv120_fwd0.weight: shape torch.Size([8, 8, 1, 1])
+  Conv_Conv120_fwd0.bias: shape torch.Size([8])
+  Conv_Conv121_fwd0.weight: shape torch.Size([8, 8, 3, 3])
+  Conv_Conv121_fwd0.bias: shape torch.Size([8])
+  Gemm_Add128_fwd0.weight: shape torch.Size([64, 6272])
+  Gemm_Add128_fwd0.bias: shape torch.Size([64])
+  Gemm_Add131_fwd0.weight: shape torch.Size([10, 64])
+  Gemm_Add131_fwd0.bias: shape torch.Size([10])
+Trying generic MNIST/CIFAR data loader.
+Internal results will be saved to out.txt.
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 0, vnnlib ID: 0 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Finished vnnlib processing in 2.391108 seconds
+Model: BoundedModule(
+  (/input-1): BoundInput(name=/input-1, inputs=[], perturbed=True)
+  (/shape): BoundBuffers(name=/shape, inputs=[], perturbed=False)
+  (/12): BoundParams(name=/12, inputs=[], perturbed=False)
+  (/13): BoundParams(name=/13, inputs=[], perturbed=False)
+  (/14): BoundParams(name=/14, inputs=[], perturbed=False)
+  (/15): BoundParams(name=/15, inputs=[], perturbed=False)
+  (/16): BoundParams(name=/16, inputs=[], perturbed=False)
+  (/17): BoundParams(name=/17, inputs=[], perturbed=False)
+  (/18): BoundParams(name=/18, inputs=[], perturbed=False)
+  (/19): BoundParams(name=/19, inputs=[], perturbed=False)
+  (/20): BoundParams(name=/20, inputs=[], perturbed=False)
+  (/21): BoundParams(name=/21, inputs=[], perturbed=False)
+  (/input): BoundConv(name=/input, inputs=[/input-1, /12, /13], perturbed=True)
+  (/input-4): BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+  (/24): BoundConv(name=/24, inputs=[/input-4, /14, /15], perturbed=True)
+  (/25): BoundConv(name=/25, inputs=[/input-4, /16, /17], perturbed=True)
+  (/26): BoundAdd(name=/26, inputs=[/24, /25], perturbed=True)
+  (/27): BoundRelu(name=/27, inputs=[/26], perturbed=True)
+  (/28): BoundSplit(name=/28, inputs=[/shape], perturbed=False)
+  (/29): BoundSplit(name=/29, inputs=[/shape], perturbed=False)
+  (/30): BoundConstant(name=/30, value=tensor([0], device='cuda:0'))
+  (/31): BoundSqueeze(name=/31, inputs=[/28, /30], perturbed=False)
+  (/32): BoundConstant(name=/32, value=tensor([0], device='cuda:0'))
+  (/33): BoundSqueeze(name=/33, inputs=[/29, /32], perturbed=False)
+  (/34): BoundConstant(name=/34, value=tensor([0], device='cuda:0'))
+  (/35): BoundUnsqueeze(name=/35, inputs=[/31, /34], perturbed=False)
+  (/36): BoundConstant(name=/36, value=tensor([0], device='cuda:0'))
+  (/37): BoundUnsqueeze(name=/37, inputs=[/33, /36], perturbed=False)
+  (/38): BoundConcat(name=/38, inputs=[/35, /37], perturbed=False)
+  (/39): BoundReshape(name=/39, inputs=[/27, /38], perturbed=True)
+  (/input-8): BoundLinear(name=/input-8, inputs=[/39, /18, /19], perturbed=True)
+  (/41): BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+  (/42): BoundLinear(name=/42, inputs=[/41, /20, /21], perturbed=True)
+)
+Original output in the first batch: tensor([[-0.76652658, -4.76439333, -1.13183987,  3.39865637,  2.01651239,
+          1.17886996, -5.99450588, 11.60163975, -0.22413747,  5.41739273]],
+       device='cuda:0')
+Split layers:
+Nonlinear functions:
+   BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+   BoundRelu(name=/27, inputs=[/26], perturbed=True)
+   BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+build batch [1/1]
+layer /input-4 using sparse-features alpha with shape [612]; unstable size 612; total size 6272 ([1, 8, 28, 28])
+layer /input-4 start_node /26 using sparse-spec alpha [2, 6, 1, 612] with unstable size 5 total_size 8 output_shape 8
+layer /input-4 start_node /input-8 using sparse-spec alpha [2, 6, 1, 612] with unstable size 5 total_size 64 output_shape torch.Size([64])
+layer /input-4 start_node /42 using full alpha [2, 9, 1, 612] with unstable size None total_size 9 output_shape 9
+layer /27 using sparse-features alpha with shape [1799]; unstable size 1799; total size 6272 ([1, 8, 28, 28])
+layer /27 start_node /input-8 using sparse-spec alpha [2, 6, 1, 1799] with unstable size 5 total_size 64 output_shape torch.Size([64])
+layer /27 start_node /42 using full alpha [2, 9, 1, 1799] with unstable size None total_size 9 output_shape 9
+layer /41 using sparse-features alpha with shape [5]; unstable size 5; total size 64 ([1, 64])
+layer /41 start_node /42 using full alpha [2, 9, 1, 5] with unstable size None total_size 9 output_shape 9
+Optimizable variables initialized.
+initial CROWN bounds (first 10 items): [11.637651443481445, 15.60318374633789, 11.904372215270996, 7.509948253631592, 9.038152694702148, 9.7772855758667, 16.68291664123535, 11.14764404296875, 5.699756622314453]
+Verified with initial CROWN!
+verified with init bound!
+Result: safe-incomplete in 17.1815 seconds
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 1, vnnlib ID: 1 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Finished vnnlib processing in 0.001444 seconds
+Model: BoundedModule(
+  (/input-1): BoundInput(name=/input-1, inputs=[], perturbed=True)
+  (/shape): BoundBuffers(name=/shape, inputs=[], perturbed=False)
+  (/12): BoundParams(name=/12, inputs=[], perturbed=False)
+  (/13): BoundParams(name=/13, inputs=[], perturbed=False)
+  (/14): BoundParams(name=/14, inputs=[], perturbed=False)
+  (/15): BoundParams(name=/15, inputs=[], perturbed=False)
+  (/16): BoundParams(name=/16, inputs=[], perturbed=False)
+  (/17): BoundParams(name=/17, inputs=[], perturbed=False)
+  (/18): BoundParams(name=/18, inputs=[], perturbed=False)
+  (/19): BoundParams(name=/19, inputs=[], perturbed=False)
+  (/20): BoundParams(name=/20, inputs=[], perturbed=False)
+  (/21): BoundParams(name=/21, inputs=[], perturbed=False)
+  (/input): BoundConv(name=/input, inputs=[/input-1, /12, /13], perturbed=True)
+  (/input-4): BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+  (/24): BoundConv(name=/24, inputs=[/input-4, /14, /15], perturbed=True)
+  (/25): BoundConv(name=/25, inputs=[/input-4, /16, /17], perturbed=True)
+  (/26): BoundAdd(name=/26, inputs=[/24, /25], perturbed=True)
+  (/27): BoundRelu(name=/27, inputs=[/26], perturbed=True)
+  (/28): BoundSplit(name=/28, inputs=[/shape], perturbed=False)
+  (/29): BoundSplit(name=/29, inputs=[/shape], perturbed=False)
+  (/30): BoundConstant(name=/30, value=tensor([0], device='cuda:0'))
+  (/31): BoundSqueeze(name=/31, inputs=[/28, /30], perturbed=False)
+  (/32): BoundConstant(name=/32, value=tensor([0], device='cuda:0'))
+  (/33): BoundSqueeze(name=/33, inputs=[/29, /32], perturbed=False)
+  (/34): BoundConstant(name=/34, value=tensor([0], device='cuda:0'))
+  (/35): BoundUnsqueeze(name=/35, inputs=[/31, /34], perturbed=False)
+  (/36): BoundConstant(name=/36, value=tensor([0], device='cuda:0'))
+  (/37): BoundUnsqueeze(name=/37, inputs=[/33, /36], perturbed=False)
+  (/38): BoundConcat(name=/38, inputs=[/35, /37], perturbed=False)
+  (/39): BoundReshape(name=/39, inputs=[/27, /38], perturbed=True)
+  (/input-8): BoundLinear(name=/input-8, inputs=[/39, /18, /19], perturbed=True)
+  (/41): BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+  (/42): BoundLinear(name=/42, inputs=[/41, /20, /21], perturbed=True)
+)
+Original output in the first batch: tensor([[ 2.32919455, -3.11645603,  8.25044060,  0.85135460, -4.72039175,
+          2.90513802,  4.18794584, -7.05990124,  1.47871816, -7.07513905]],
+       device='cuda:0')
+Split layers:
+Nonlinear functions:
+   BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+   BoundRelu(name=/27, inputs=[/26], perturbed=True)
+   BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+build batch [1/1]
+layer /input-4 using sparse-features alpha with shape [546]; unstable size 546; total size 6272 ([1, 8, 28, 28])
+layer /input-4 start_node /26 using sparse-spec alpha [2, 6, 1, 546] with unstable size 5 total_size 8 output_shape 8
+layer /input-4 start_node /input-8 using sparse-spec alpha [2, 1, 1, 546] with unstable size 0 total_size 64 output_shape torch.Size([64])
+layer /input-4 start_node /42 using full alpha [2, 9, 1, 546] with unstable size None total_size 9 output_shape 9
+layer /27 using sparse-features alpha with shape [1453]; unstable size 1453; total size 6272 ([1, 8, 28, 28])
+layer /27 start_node /input-8 using sparse-spec alpha [2, 1, 1, 1453] with unstable size 0 total_size 64 output_shape torch.Size([64])
+layer /27 start_node /42 using full alpha [2, 9, 1, 1453] with unstable size None total_size 9 output_shape 9
+layer /41 using sparse-features alpha with shape [0]; unstable size 0; total size 64 ([1, 64])
+layer /41 start_node /42 using full alpha [2, 9, 1, 0] with unstable size None total_size 9 output_shape 9
+Optimizable variables initialized.
+initial CROWN bounds (first 10 items): [5.1776933670043945, 10.507969856262207, 6.666829586029053, 12.260613441467285, 4.547024250030518, 3.3688230514526367, 14.511344909667969, 5.947328567504883, 14.528571128845215]
+Verified with initial CROWN!
+verified with init bound!
+Result: safe-incomplete in 0.1822 seconds
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 2, vnnlib ID: 2 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Finished vnnlib processing in 0.001292 seconds
+Model: BoundedModule(
+  (/input-1): BoundInput(name=/input-1, inputs=[], perturbed=True)
+  (/shape): BoundBuffers(name=/shape, inputs=[], perturbed=False)
+  (/12): BoundParams(name=/12, inputs=[], perturbed=False)
+  (/13): BoundParams(name=/13, inputs=[], perturbed=False)
+  (/14): BoundParams(name=/14, inputs=[], perturbed=False)
+  (/15): BoundParams(name=/15, inputs=[], perturbed=False)
+  (/16): BoundParams(name=/16, inputs=[], perturbed=False)
+  (/17): BoundParams(name=/17, inputs=[], perturbed=False)
+  (/18): BoundParams(name=/18, inputs=[], perturbed=False)
+  (/19): BoundParams(name=/19, inputs=[], perturbed=False)
+  (/20): BoundParams(name=/20, inputs=[], perturbed=False)
+  (/21): BoundParams(name=/21, inputs=[], perturbed=False)
+  (/input): BoundConv(name=/input, inputs=[/input-1, /12, /13], perturbed=True)
+  (/input-4): BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+  (/24): BoundConv(name=/24, inputs=[/input-4, /14, /15], perturbed=True)
+  (/25): BoundConv(name=/25, inputs=[/input-4, /16, /17], perturbed=True)
+  (/26): BoundAdd(name=/26, inputs=[/24, /25], perturbed=True)
+  (/27): BoundRelu(name=/27, inputs=[/26], perturbed=True)
+  (/28): BoundSplit(name=/28, inputs=[/shape], perturbed=False)
+  (/29): BoundSplit(name=/29, inputs=[/shape], perturbed=False)
+  (/30): BoundConstant(name=/30, value=tensor([0], device='cuda:0'))
+  (/31): BoundSqueeze(name=/31, inputs=[/28, /30], perturbed=False)
+  (/32): BoundConstant(name=/32, value=tensor([0], device='cuda:0'))
+  (/33): BoundSqueeze(name=/33, inputs=[/29, /32], perturbed=False)
+  (/34): BoundConstant(name=/34, value=tensor([0], device='cuda:0'))
+  (/35): BoundUnsqueeze(name=/35, inputs=[/31, /34], perturbed=False)
+  (/36): BoundConstant(name=/36, value=tensor([0], device='cuda:0'))
+  (/37): BoundUnsqueeze(name=/37, inputs=[/33, /36], perturbed=False)
+  (/38): BoundConcat(name=/38, inputs=[/35, /37], perturbed=False)
+  (/39): BoundReshape(name=/39, inputs=[/27, /38], perturbed=True)
+  (/input-8): BoundLinear(name=/input-8, inputs=[/39, /18, /19], perturbed=True)
+  (/41): BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+  (/42): BoundLinear(name=/42, inputs=[/41, /20, /21], perturbed=True)
+)
+Original output in the first batch: tensor([[-4.31819630,  5.08851480,  0.26118600, -1.15326965, -1.50815737,
+         -0.73849767,  0.31677079, -1.31958616, -0.42340282, -3.10495472]],
+       device='cuda:0')
+Split layers:
+Nonlinear functions:
+   BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+   BoundRelu(name=/27, inputs=[/26], perturbed=True)
+   BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+build batch [1/1]
+layer /input-4 using sparse-features alpha with shape [665]; unstable size 665; total size 6272 ([1, 8, 28, 28])
+layer /input-4 start_node /26 using sparse-spec alpha [2, 6, 1, 665] with unstable size 5 total_size 8 output_shape 8
+layer /input-4 start_node /input-8 using sparse-spec alpha [2, 6, 1, 665] with unstable size 5 total_size 64 output_shape torch.Size([64])
+layer /input-4 start_node /42 using full alpha [2, 9, 1, 665] with unstable size None total_size 9 output_shape 9
+layer /27 using sparse-features alpha with shape [2101]; unstable size 2101; total size 6272 ([1, 8, 28, 28])
+layer /27 start_node /input-8 using sparse-spec alpha [2, 6, 1, 2101] with unstable size 5 total_size 64 output_shape torch.Size([64])
+layer /27 start_node /42 using full alpha [2, 9, 1, 2101] with unstable size None total_size 9 output_shape 9
+layer /41 using sparse-features alpha with shape [5]; unstable size 5; total size 64 ([1, 64])
+layer /41 start_node /42 using full alpha [2, 9, 1, 5] with unstable size None total_size 9 output_shape 9
+Optimizable variables initialized.
+initial CROWN bounds (first 10 items): [8.615084648132324, 4.147954940795898, 5.474945068359375, 6.046765327453613, 5.353610038757324, 4.009029388427734, 5.651908874511719, 5.034890174865723, 7.449954986572266]
+Verified with initial CROWN!
+verified with init bound!
+Result: safe-incomplete in 0.2100 seconds
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 3, vnnlib ID: 3 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Finished vnnlib processing in 0.001260 seconds
+Model: BoundedModule(
+  (/input-1): BoundInput(name=/input-1, inputs=[], perturbed=True)
+  (/shape): BoundBuffers(name=/shape, inputs=[], perturbed=False)
+  (/12): BoundParams(name=/12, inputs=[], perturbed=False)
+  (/13): BoundParams(name=/13, inputs=[], perturbed=False)
+  (/14): BoundParams(name=/14, inputs=[], perturbed=False)
+  (/15): BoundParams(name=/15, inputs=[], perturbed=False)
+  (/16): BoundParams(name=/16, inputs=[], perturbed=False)
+  (/17): BoundParams(name=/17, inputs=[], perturbed=False)
+  (/18): BoundParams(name=/18, inputs=[], perturbed=False)
+  (/19): BoundParams(name=/19, inputs=[], perturbed=False)
+  (/20): BoundParams(name=/20, inputs=[], perturbed=False)
+  (/21): BoundParams(name=/21, inputs=[], perturbed=False)
+  (/input): BoundConv(name=/input, inputs=[/input-1, /12, /13], perturbed=True)
+  (/input-4): BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+  (/24): BoundConv(name=/24, inputs=[/input-4, /14, /15], perturbed=True)
+  (/25): BoundConv(name=/25, inputs=[/input-4, /16, /17], perturbed=True)
+  (/26): BoundAdd(name=/26, inputs=[/24, /25], perturbed=True)
+  (/27): BoundRelu(name=/27, inputs=[/26], perturbed=True)
+  (/28): BoundSplit(name=/28, inputs=[/shape], perturbed=False)
+  (/29): BoundSplit(name=/29, inputs=[/shape], perturbed=False)
+  (/30): BoundConstant(name=/30, value=tensor([0], device='cuda:0'))
+  (/31): BoundSqueeze(name=/31, inputs=[/28, /30], perturbed=False)
+  (/32): BoundConstant(name=/32, value=tensor([0], device='cuda:0'))
+  (/33): BoundSqueeze(name=/33, inputs=[/29, /32], perturbed=False)
+  (/34): BoundConstant(name=/34, value=tensor([0], device='cuda:0'))
+  (/35): BoundUnsqueeze(name=/35, inputs=[/31, /34], perturbed=False)
+  (/36): BoundConstant(name=/36, value=tensor([0], device='cuda:0'))
+  (/37): BoundUnsqueeze(name=/37, inputs=[/33, /36], perturbed=False)
+  (/38): BoundConcat(name=/38, inputs=[/35, /37], perturbed=False)
+  (/39): BoundReshape(name=/39, inputs=[/27, /38], perturbed=True)
+  (/input-8): BoundLinear(name=/input-8, inputs=[/39, /18, /19], perturbed=True)
+  (/41): BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+  (/42): BoundLinear(name=/42, inputs=[/41, /20, /21], perturbed=True)
+)
+Original output in the first batch: tensor([[ 14.00800228, -13.74370575,   1.57292283,   1.60898781,  -1.67121673,
+           5.60676241,   5.51157522,   2.01027846,   1.34461200,   0.98161864]],
+       device='cuda:0')
+Split layers:
+Nonlinear functions:
+   BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+   BoundRelu(name=/27, inputs=[/26], perturbed=True)
+   BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+build batch [1/1]
+layer /input-4 using sparse-features alpha with shape [535]; unstable size 535; total size 6272 ([1, 8, 28, 28])
+layer /input-4 start_node /26 using sparse-spec alpha [2, 6, 1, 535] with unstable size 5 total_size 8 output_shape 8
+layer /input-4 start_node /input-8 using sparse-spec alpha [2, 1, 1, 535] with unstable size 0 total_size 64 output_shape torch.Size([64])
+layer /input-4 start_node /42 using full alpha [2, 9, 1, 535] with unstable size None total_size 9 output_shape 9
+layer /27 using sparse-features alpha with shape [1368]; unstable size 1368; total size 6272 ([1, 8, 28, 28])
+layer /27 start_node /input-8 using sparse-spec alpha [2, 1, 1, 1368] with unstable size 0 total_size 64 output_shape torch.Size([64])
+layer /27 start_node /42 using full alpha [2, 9, 1, 1368] with unstable size None total_size 9 output_shape 9
+layer /41 using sparse-features alpha with shape [0]; unstable size 0; total size 64 ([1, 64])
+layer /41 start_node /42 using full alpha [2, 9, 1, 0] with unstable size None total_size 9 output_shape 9
+Optimizable variables initialized.
+initial CROWN bounds (first 10 items): [26.615493774414062, 11.430120468139648, 11.367074012756348, 14.67696762084961, 7.73723030090332, 7.658173084259033, 10.845301628112793, 11.929797172546387, 12.015409469604492]
+Verified with initial CROWN!
+verified with init bound!
+Result: safe-incomplete in 0.0691 seconds
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 4, vnnlib ID: 4 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Finished vnnlib processing in 0.001232 seconds
+Model: BoundedModule(
+  (/input-1): BoundInput(name=/input-1, inputs=[], perturbed=True)
+  (/shape): BoundBuffers(name=/shape, inputs=[], perturbed=False)
+  (/12): BoundParams(name=/12, inputs=[], perturbed=False)
+  (/13): BoundParams(name=/13, inputs=[], perturbed=False)
+  (/14): BoundParams(name=/14, inputs=[], perturbed=False)
+  (/15): BoundParams(name=/15, inputs=[], perturbed=False)
+  (/16): BoundParams(name=/16, inputs=[], perturbed=False)
+  (/17): BoundParams(name=/17, inputs=[], perturbed=False)
+  (/18): BoundParams(name=/18, inputs=[], perturbed=False)
+  (/19): BoundParams(name=/19, inputs=[], perturbed=False)
+  (/20): BoundParams(name=/20, inputs=[], perturbed=False)
+  (/21): BoundParams(name=/21, inputs=[], perturbed=False)
+  (/input): BoundConv(name=/input, inputs=[/input-1, /12, /13], perturbed=True)
+  (/input-4): BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+  (/24): BoundConv(name=/24, inputs=[/input-4, /14, /15], perturbed=True)
+  (/25): BoundConv(name=/25, inputs=[/input-4, /16, /17], perturbed=True)
+  (/26): BoundAdd(name=/26, inputs=[/24, /25], perturbed=True)
+  (/27): BoundRelu(name=/27, inputs=[/26], perturbed=True)
+  (/28): BoundSplit(name=/28, inputs=[/shape], perturbed=False)
+  (/29): BoundSplit(name=/29, inputs=[/shape], perturbed=False)
+  (/30): BoundConstant(name=/30, value=tensor([0], device='cuda:0'))
+  (/31): BoundSqueeze(name=/31, inputs=[/28, /30], perturbed=False)
+  (/32): BoundConstant(name=/32, value=tensor([0], device='cuda:0'))
+  (/33): BoundSqueeze(name=/33, inputs=[/29, /32], perturbed=False)
+  (/34): BoundConstant(name=/34, value=tensor([0], device='cuda:0'))
+  (/35): BoundUnsqueeze(name=/35, inputs=[/31, /34], perturbed=False)
+  (/36): BoundConstant(name=/36, value=tensor([0], device='cuda:0'))
+  (/37): BoundUnsqueeze(name=/37, inputs=[/33, /36], perturbed=False)
+  (/38): BoundConcat(name=/38, inputs=[/35, /37], perturbed=False)
+  (/39): BoundReshape(name=/39, inputs=[/27, /38], perturbed=True)
+  (/input-8): BoundLinear(name=/input-8, inputs=[/39, /18, /19], perturbed=True)
+  (/41): BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+  (/42): BoundLinear(name=/42, inputs=[/41, /20, /21], perturbed=True)
+)
+Original output in the first batch: tensor([[-0.81583089, -5.24372244,  1.96625674, -1.56642485,  7.64439821,
+          0.69162720, -1.06819177,  3.43435383,  1.30092692,  3.67738128]],
+       device='cuda:0')
+Split layers:
+Nonlinear functions:
+   BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+   BoundRelu(name=/27, inputs=[/26], perturbed=True)
+   BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+build batch [1/1]
+layer /input-4 using sparse-features alpha with shape [604]; unstable size 604; total size 6272 ([1, 8, 28, 28])
+layer /input-4 start_node /26 using sparse-spec alpha [2, 6, 1, 604] with unstable size 5 total_size 8 output_shape 8
+layer /input-4 start_node /input-8 using sparse-spec alpha [2, 1, 1, 604] with unstable size 0 total_size 64 output_shape torch.Size([64])
+layer /input-4 start_node /42 using full alpha [2, 9, 1, 604] with unstable size None total_size 9 output_shape 9
+layer /27 using sparse-features alpha with shape [1632]; unstable size 1632; total size 6272 ([1, 8, 28, 28])
+layer /27 start_node /input-8 using sparse-spec alpha [2, 1, 1, 1632] with unstable size 0 total_size 64 output_shape torch.Size([64])
+layer /27 start_node /42 using full alpha [2, 9, 1, 1632] with unstable size None total_size 9 output_shape 9
+layer /41 using sparse-features alpha with shape [0]; unstable size 0; total size 64 ([1, 64])
+layer /41 start_node /42 using full alpha [2, 9, 1, 0] with unstable size None total_size 9 output_shape 9
+Optimizable variables initialized.
+initial CROWN bounds (first 10 items): [7.670239448547363, 12.068684577941895, 4.769783973693848, 8.204809188842773, 6.158493995666504, 7.747685432434082, 3.4841065406799316, 5.547723770141602, 3.418024778366089]
+Verified with initial CROWN!
+verified with init bound!
+Result: safe-incomplete in 0.0679 seconds
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 5, vnnlib ID: 5 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Finished vnnlib processing in 0.001259 seconds
+Model: BoundedModule(
+  (/input-1): BoundInput(name=/input-1, inputs=[], perturbed=True)
+  (/shape): BoundBuffers(name=/shape, inputs=[], perturbed=False)
+  (/12): BoundParams(name=/12, inputs=[], perturbed=False)
+  (/13): BoundParams(name=/13, inputs=[], perturbed=False)
+  (/14): BoundParams(name=/14, inputs=[], perturbed=False)
+  (/15): BoundParams(name=/15, inputs=[], perturbed=False)
+  (/16): BoundParams(name=/16, inputs=[], perturbed=False)
+  (/17): BoundParams(name=/17, inputs=[], perturbed=False)
+  (/18): BoundParams(name=/18, inputs=[], perturbed=False)
+  (/19): BoundParams(name=/19, inputs=[], perturbed=False)
+  (/20): BoundParams(name=/20, inputs=[], perturbed=False)
+  (/21): BoundParams(name=/21, inputs=[], perturbed=False)
+  (/input): BoundConv(name=/input, inputs=[/input-1, /12, /13], perturbed=True)
+  (/input-4): BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+  (/24): BoundConv(name=/24, inputs=[/input-4, /14, /15], perturbed=True)
+  (/25): BoundConv(name=/25, inputs=[/input-4, /16, /17], perturbed=True)
+  (/26): BoundAdd(name=/26, inputs=[/24, /25], perturbed=True)
+  (/27): BoundRelu(name=/27, inputs=[/26], perturbed=True)
+  (/28): BoundSplit(name=/28, inputs=[/shape], perturbed=False)
+  (/29): BoundSplit(name=/29, inputs=[/shape], perturbed=False)
+  (/30): BoundConstant(name=/30, value=tensor([0], device='cuda:0'))
+  (/31): BoundSqueeze(name=/31, inputs=[/28, /30], perturbed=False)
+  (/32): BoundConstant(name=/32, value=tensor([0], device='cuda:0'))
+  (/33): BoundSqueeze(name=/33, inputs=[/29, /32], perturbed=False)
+  (/34): BoundConstant(name=/34, value=tensor([0], device='cuda:0'))
+  (/35): BoundUnsqueeze(name=/35, inputs=[/31, /34], perturbed=False)
+  (/36): BoundConstant(name=/36, value=tensor([0], device='cuda:0'))
+  (/37): BoundUnsqueeze(name=/37, inputs=[/33, /36], perturbed=False)
+  (/38): BoundConcat(name=/38, inputs=[/35, /37], perturbed=False)
+  (/39): BoundReshape(name=/39, inputs=[/27, /38], perturbed=True)
+  (/input-8): BoundLinear(name=/input-8, inputs=[/39, /18, /19], perturbed=True)
+  (/41): BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+  (/42): BoundLinear(name=/42, inputs=[/41, /20, /21], perturbed=True)
+)
+Original output in the first batch: tensor([[-5.22288942,  5.81655741,  0.14628541, -0.00738670, -1.46803772,
+         -1.29068518, -1.52073503, -0.47719747,  0.26612136, -2.61565590]],
+       device='cuda:0')
+Split layers:
+Nonlinear functions:
+   BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+   BoundRelu(name=/27, inputs=[/26], perturbed=True)
+   BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+build batch [1/1]
+layer /input-4 using sparse-features alpha with shape [641]; unstable size 641; total size 6272 ([1, 8, 28, 28])
+layer /input-4 start_node /26 using sparse-spec alpha [2, 6, 1, 641] with unstable size 5 total_size 8 output_shape 8
+layer /input-4 start_node /input-8 using sparse-spec alpha [2, 5, 1, 641] with unstable size 4 total_size 64 output_shape torch.Size([64])
+layer /input-4 start_node /42 using full alpha [2, 9, 1, 641] with unstable size None total_size 9 output_shape 9
+layer /27 using sparse-features alpha with shape [2041]; unstable size 2041; total size 6272 ([1, 8, 28, 28])
+layer /27 start_node /input-8 using sparse-spec alpha [2, 5, 1, 2041] with unstable size 4 total_size 64 output_shape torch.Size([64])
+layer /27 start_node /42 using full alpha [2, 9, 1, 2041] with unstable size None total_size 9 output_shape 9
+layer /41 using sparse-features alpha with shape [4]; unstable size 4; total size 64 ([1, 64])
+layer /41 start_node /42 using full alpha [2, 9, 1, 4] with unstable size None total_size 9 output_shape 9
+Optimizable variables initialized.
+initial CROWN bounds (first 10 items): [10.405303001403809, 5.148050308227539, 5.116879940032959, 6.7692461013793945, 6.672058582305908, 6.761495590209961, 5.520009517669678, 5.120275497436523, 7.715450286865234]
+Verified with initial CROWN!
+verified with init bound!
+Result: safe-incomplete in 0.0772 seconds
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 6, vnnlib ID: 6 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Finished vnnlib processing in 0.001243 seconds
+Model: BoundedModule(
+  (/input-1): BoundInput(name=/input-1, inputs=[], perturbed=True)
+  (/shape): BoundBuffers(name=/shape, inputs=[], perturbed=False)
+  (/12): BoundParams(name=/12, inputs=[], perturbed=False)
+  (/13): BoundParams(name=/13, inputs=[], perturbed=False)
+  (/14): BoundParams(name=/14, inputs=[], perturbed=False)
+  (/15): BoundParams(name=/15, inputs=[], perturbed=False)
+  (/16): BoundParams(name=/16, inputs=[], perturbed=False)
+  (/17): BoundParams(name=/17, inputs=[], perturbed=False)
+  (/18): BoundParams(name=/18, inputs=[], perturbed=False)
+  (/19): BoundParams(name=/19, inputs=[], perturbed=False)
+  (/20): BoundParams(name=/20, inputs=[], perturbed=False)
+  (/21): BoundParams(name=/21, inputs=[], perturbed=False)
+  (/input): BoundConv(name=/input, inputs=[/input-1, /12, /13], perturbed=True)
+  (/input-4): BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+  (/24): BoundConv(name=/24, inputs=[/input-4, /14, /15], perturbed=True)
+  (/25): BoundConv(name=/25, inputs=[/input-4, /16, /17], perturbed=True)
+  (/26): BoundAdd(name=/26, inputs=[/24, /25], perturbed=True)
+  (/27): BoundRelu(name=/27, inputs=[/26], perturbed=True)
+  (/28): BoundSplit(name=/28, inputs=[/shape], perturbed=False)
+  (/29): BoundSplit(name=/29, inputs=[/shape], perturbed=False)
+  (/30): BoundConstant(name=/30, value=tensor([0], device='cuda:0'))
+  (/31): BoundSqueeze(name=/31, inputs=[/28, /30], perturbed=False)
+  (/32): BoundConstant(name=/32, value=tensor([0], device='cuda:0'))
+  (/33): BoundSqueeze(name=/33, inputs=[/29, /32], perturbed=False)
+  (/34): BoundConstant(name=/34, value=tensor([0], device='cuda:0'))
+  (/35): BoundUnsqueeze(name=/35, inputs=[/31, /34], perturbed=False)
+  (/36): BoundConstant(name=/36, value=tensor([0], device='cuda:0'))
+  (/37): BoundUnsqueeze(name=/37, inputs=[/33, /36], perturbed=False)
+  (/38): BoundConcat(name=/38, inputs=[/35, /37], perturbed=False)
+  (/39): BoundReshape(name=/39, inputs=[/27, /38], perturbed=True)
+  (/input-8): BoundLinear(name=/input-8, inputs=[/39, /18, /19], perturbed=True)
+  (/41): BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+  (/42): BoundLinear(name=/42, inputs=[/41, /20, /21], perturbed=True)
+)
+Original output in the first batch: tensor([[-2.76123977, -1.85043645, -2.18273616,  1.91222036,  7.76166153,
+          3.96431231, -4.00238609,  4.96507168,  4.11806965,  4.53293991]],
+       device='cuda:0')
+Split layers:
+Nonlinear functions:
+   BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+   BoundRelu(name=/27, inputs=[/26], perturbed=True)
+   BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+build batch [1/1]
+layer /input-4 using sparse-features alpha with shape [607]; unstable size 607; total size 6272 ([1, 8, 28, 28])
+layer /input-4 start_node /26 using sparse-spec alpha [2, 6, 1, 607] with unstable size 5 total_size 8 output_shape 8
+layer /input-4 start_node /input-8 using sparse-spec alpha [2, 4, 1, 607] with unstable size 3 total_size 64 output_shape torch.Size([64])
+layer /input-4 start_node /42 using full alpha [2, 9, 1, 607] with unstable size None total_size 9 output_shape 9
+layer /27 using sparse-features alpha with shape [1589]; unstable size 1589; total size 6272 ([1, 8, 28, 28])
+layer /27 start_node /input-8 using sparse-spec alpha [2, 4, 1, 1589] with unstable size 3 total_size 64 output_shape torch.Size([64])
+layer /27 start_node /42 using full alpha [2, 9, 1, 1589] with unstable size None total_size 9 output_shape 9
+layer /41 using sparse-features alpha with shape [3]; unstable size 3; total size 64 ([1, 64])
+layer /41 start_node /42 using full alpha [2, 9, 1, 3] with unstable size None total_size 9 output_shape 9
+Optimizable variables initialized.
+initial CROWN bounds (first 10 items): [9.744251251220703, 8.814053535461426, 9.112564086914062, 4.865246772766113, 2.9767861366271973, 10.839667320251465, 2.153001546859741, 2.849641799926758, 2.7009737491607666]
+Verified with initial CROWN!
+verified with init bound!
+Result: safe-incomplete in 0.0739 seconds
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 7, vnnlib ID: 7 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Finished vnnlib processing in 0.001252 seconds
+Model: BoundedModule(
+  (/input-1): BoundInput(name=/input-1, inputs=[], perturbed=True)
+  (/shape): BoundBuffers(name=/shape, inputs=[], perturbed=False)
+  (/12): BoundParams(name=/12, inputs=[], perturbed=False)
+  (/13): BoundParams(name=/13, inputs=[], perturbed=False)
+  (/14): BoundParams(name=/14, inputs=[], perturbed=False)
+  (/15): BoundParams(name=/15, inputs=[], perturbed=False)
+  (/16): BoundParams(name=/16, inputs=[], perturbed=False)
+  (/17): BoundParams(name=/17, inputs=[], perturbed=False)
+  (/18): BoundParams(name=/18, inputs=[], perturbed=False)
+  (/19): BoundParams(name=/19, inputs=[], perturbed=False)
+  (/20): BoundParams(name=/20, inputs=[], perturbed=False)
+  (/21): BoundParams(name=/21, inputs=[], perturbed=False)
+  (/input): BoundConv(name=/input, inputs=[/input-1, /12, /13], perturbed=True)
+  (/input-4): BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+  (/24): BoundConv(name=/24, inputs=[/input-4, /14, /15], perturbed=True)
+  (/25): BoundConv(name=/25, inputs=[/input-4, /16, /17], perturbed=True)
+  (/26): BoundAdd(name=/26, inputs=[/24, /25], perturbed=True)
+  (/27): BoundRelu(name=/27, inputs=[/26], perturbed=True)
+  (/28): BoundSplit(name=/28, inputs=[/shape], perturbed=False)
+  (/29): BoundSplit(name=/29, inputs=[/shape], perturbed=False)
+  (/30): BoundConstant(name=/30, value=tensor([0], device='cuda:0'))
+  (/31): BoundSqueeze(name=/31, inputs=[/28, /30], perturbed=False)
+  (/32): BoundConstant(name=/32, value=tensor([0], device='cuda:0'))
+  (/33): BoundSqueeze(name=/33, inputs=[/29, /32], perturbed=False)
+  (/34): BoundConstant(name=/34, value=tensor([0], device='cuda:0'))
+  (/35): BoundUnsqueeze(name=/35, inputs=[/31, /34], perturbed=False)
+  (/36): BoundConstant(name=/36, value=tensor([0], device='cuda:0'))
+  (/37): BoundUnsqueeze(name=/37, inputs=[/33, /36], perturbed=False)
+  (/38): BoundConcat(name=/38, inputs=[/35, /37], perturbed=False)
+  (/39): BoundReshape(name=/39, inputs=[/27, /38], perturbed=True)
+  (/input-8): BoundLinear(name=/input-8, inputs=[/39, /18, /19], perturbed=True)
+  (/41): BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+  (/42): BoundLinear(name=/42, inputs=[/41, /20, /21], perturbed=True)
+)
+Original output in the first batch: tensor([[-3.75409532, -1.75716066, -1.45616472, -0.30352306,  4.08406591,
+          1.35182679, -0.07300938,  0.04225962,  2.05020785,  5.01532412]],
+       device='cuda:0')
+Split layers:
+Nonlinear functions:
+   BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+   BoundRelu(name=/27, inputs=[/26], perturbed=True)
+   BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+build batch [1/1]
+layer /input-4 using sparse-features alpha with shape [613]; unstable size 613; total size 6272 ([1, 8, 28, 28])
+layer /input-4 start_node /26 using sparse-spec alpha [2, 6, 1, 613] with unstable size 5 total_size 8 output_shape 8
+layer /input-4 start_node /input-8 using sparse-spec alpha [2, 5, 1, 613] with unstable size 4 total_size 64 output_shape torch.Size([64])
+layer /input-4 start_node /42 using full alpha [2, 9, 1, 613] with unstable size None total_size 9 output_shape 9
+layer /27 using sparse-features alpha with shape [1781]; unstable size 1781; total size 6272 ([1, 8, 28, 28])
+layer /27 start_node /input-8 using sparse-spec alpha [2, 5, 1, 1781] with unstable size 4 total_size 64 output_shape torch.Size([64])
+layer /27 start_node /42 using full alpha [2, 9, 1, 1781] with unstable size None total_size 9 output_shape 9
+layer /41 using sparse-features alpha with shape [4]; unstable size 4; total size 64 ([1, 64])
+layer /41 start_node /42 using full alpha [2, 9, 1, 4] with unstable size None total_size 9 output_shape 9
+Optimizable variables initialized.
+initial CROWN bounds (first 10 items): [7.966989994049072, 5.754218101501465, 5.471656322479248, 4.37853479385376, 0.3806955814361572, 2.8407580852508545, 4.005694389343262, 4.300626754760742, 2.285515546798706]
+Verified with initial CROWN!
+verified with init bound!
+Result: safe-incomplete in 0.0704 seconds
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 8, vnnlib ID: 8 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Finished vnnlib processing in 0.001280 seconds
+Model: BoundedModule(
+  (/input-1): BoundInput(name=/input-1, inputs=[], perturbed=True)
+  (/shape): BoundBuffers(name=/shape, inputs=[], perturbed=False)
+  (/12): BoundParams(name=/12, inputs=[], perturbed=False)
+  (/13): BoundParams(name=/13, inputs=[], perturbed=False)
+  (/14): BoundParams(name=/14, inputs=[], perturbed=False)
+  (/15): BoundParams(name=/15, inputs=[], perturbed=False)
+  (/16): BoundParams(name=/16, inputs=[], perturbed=False)
+  (/17): BoundParams(name=/17, inputs=[], perturbed=False)
+  (/18): BoundParams(name=/18, inputs=[], perturbed=False)
+  (/19): BoundParams(name=/19, inputs=[], perturbed=False)
+  (/20): BoundParams(name=/20, inputs=[], perturbed=False)
+  (/21): BoundParams(name=/21, inputs=[], perturbed=False)
+  (/input): BoundConv(name=/input, inputs=[/input-1, /12, /13], perturbed=True)
+  (/input-4): BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+  (/24): BoundConv(name=/24, inputs=[/input-4, /14, /15], perturbed=True)
+  (/25): BoundConv(name=/25, inputs=[/input-4, /16, /17], perturbed=True)
+  (/26): BoundAdd(name=/26, inputs=[/24, /25], perturbed=True)
+  (/27): BoundRelu(name=/27, inputs=[/26], perturbed=True)
+  (/28): BoundSplit(name=/28, inputs=[/shape], perturbed=False)
+  (/29): BoundSplit(name=/29, inputs=[/shape], perturbed=False)
+  (/30): BoundConstant(name=/30, value=tensor([0], device='cuda:0'))
+  (/31): BoundSqueeze(name=/31, inputs=[/28, /30], perturbed=False)
+  (/32): BoundConstant(name=/32, value=tensor([0], device='cuda:0'))
+  (/33): BoundSqueeze(name=/33, inputs=[/29, /32], perturbed=False)
+  (/34): BoundConstant(name=/34, value=tensor([0], device='cuda:0'))
+  (/35): BoundUnsqueeze(name=/35, inputs=[/31, /34], perturbed=False)
+  (/36): BoundConstant(name=/36, value=tensor([0], device='cuda:0'))
+  (/37): BoundUnsqueeze(name=/37, inputs=[/33, /36], perturbed=False)
+  (/38): BoundConcat(name=/38, inputs=[/35, /37], perturbed=False)
+  (/39): BoundReshape(name=/39, inputs=[/27, /38], perturbed=True)
+  (/input-8): BoundLinear(name=/input-8, inputs=[/39, /18, /19], perturbed=True)
+  (/41): BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+  (/42): BoundLinear(name=/42, inputs=[/41, /20, /21], perturbed=True)
+)
+Original output in the first batch: tensor([[ 3.46604347, -3.93290901,  2.56891012, -7.23245430,  3.43434215,
+          5.06779385,  5.87667036, -3.90389180,  1.65338337, -2.78249669]],
+       device='cuda:0')
+Split layers:
+Nonlinear functions:
+   BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+   BoundRelu(name=/27, inputs=[/26], perturbed=True)
+   BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+build batch [1/1]
+layer /input-4 using sparse-features alpha with shape [559]; unstable size 559; total size 6272 ([1, 8, 28, 28])
+layer /input-4 start_node /26 using sparse-spec alpha [2, 6, 1, 559] with unstable size 5 total_size 8 output_shape 8
+layer /input-4 start_node /input-8 using sparse-spec alpha [2, 1, 1, 559] with unstable size 0 total_size 64 output_shape torch.Size([64])
+layer /input-4 start_node /42 using full alpha [2, 9, 1, 559] with unstable size None total_size 9 output_shape 9
+layer /27 using sparse-features alpha with shape [1428]; unstable size 1428; total size 6272 ([1, 8, 28, 28])
+layer /27 start_node /input-8 using sparse-spec alpha [2, 1, 1, 1428] with unstable size 0 total_size 64 output_shape torch.Size([64])
+layer /27 start_node /42 using full alpha [2, 9, 1, 1428] with unstable size None total_size 9 output_shape 9
+layer /41 using sparse-features alpha with shape [0]; unstable size 0; total size 64 ([1, 64])
+layer /41 start_node /42 using full alpha [2, 9, 1, 0] with unstable size None total_size 9 output_shape 9
+Optimizable variables initialized.
+initial CROWN bounds (first 10 items): [0.9713155031204224, 8.167916297912598, 1.4908194541931152, 11.442582130432129, 0.7918466329574585, -1.7829891443252563, 7.99652624130249, 2.7538905143737793, 6.925884246826172]
+prune_after_crown optimization in use
+  original spec size = torch.Size([1, 9])
+  pruned spec size = torch.Size([1, 1])
+Using alpha-CROWN to initialize bounds.
+Early stop at 38th iter due to 10 iterations no improvement!
+best_l after optimization: -1.7735466957092285
+alpha/beta optimization time: 31.47229290008545
+initial alpha-crown bounds (first 10 items): [-1.7735466957092285]
+Global lower bound: -1.7735466957092285
+8 / 9 OR specs are verified.
+Verified OR indices (first 10 items): [0, 1, 2, 3, 4, 6, 7, 8]
+Verified OR lbs (first 10 items): [[inf], [inf], [inf], [inf], [inf], [inf], [inf], [inf]]
+Unverified OR indices (first 10 items): [5]
+Unverified OR lbs (first 10 items): [[-1.7735466957092285]]
+###### Verifying property Instance 8 ######
+Batch size: 1
+First 10 spec matrices
+C: tensor([[[ 0.,  0.,  0.,  0.,  0.,  1., -1.,  0.,  0.,  0.]]], device='cuda:0')
+RHS: tensor([[0.]], device='cuda:0')
+OR spec sizes: tensor([1], device='cuda:0', dtype=torch.int32)
+Remaining timeout: 28.207969188690186
+Model prediction is: tensor([ 3.46604347, -3.93290901,  2.56891012, -7.23245430,  3.43434215,
+         5.06779385,  5.87667036, -3.90389180,  1.65338337, -2.78249669],
+       device='cuda:0')
+Activation BaB batch 1/1 
+build_with_refined_bounds batch [1/1]
+Optimizable variables initialized.
+all alpha initialized
+directly get lb and ub from refined bounds
+c shape: torch.Size([1, 1, 10])
+lA shapes: [torch.Size([1, 1, 8, 28, 28]), torch.Size([1, 1, 8, 28, 28]), torch.Size([1, 1, 64])]
+(alpha-)CROWN with fixed intermediate bounds: tensor([[-1.77354670]], device='cuda:0') tensor([[inf]], device='cuda:0')
+Intermediate layers: /input,/26,/input-8
+Keeping alphas for these layers: ['/42']
+Node /input-4 input 0: size torch.Size([8, 28, 28]) unstable 559
+Node /27 input 0: size torch.Size([8, 28, 28]) unstable 1428
+Node /41 input 0: size torch.Size([64]) unstable 0
+-----------------
+# of unstable neurons: 1987
+-----------------
+
+BaB round 1
+batch: 1
+splitting decisions: 
+split level 0: [/26, 5934] 
+split level 1: [/input, 5013] 
+split level 2: [/input, 5452] 
+split level 3: [/26, 3136] 
+split level 4: [/26, 6218] 
+split level 5: [/input, 5313] 
+split level 6: [/26, 3190] 
+best_l after optimization: -226.6854248046875
+beta sum per layer: [21.11741828918457, 30.169349670410156, 0.0]
+alpha/beta optimization time: 1.1063051223754883
+pruning_in_iteration open status: False
+ratio of positive domain = 0 / 128 = 0.0
+pruning-in-iteration extra time: 5.173683166503906e-05
+Time: pickout 0.0010    branching_decision 0.0001    decision 0.0001    set_bounds 0.0089    prepare 0.1522    transfer 0.0001    finalize 0.0062    func 1.2698    
+Accumulated time: bab_iteration 0.0000    pickout 0.0010    decision 0.0001    branching_decision 0.0001    set_bounds 0.0089    solve 0.0000    func 1.2698    prepare 0.1522    transfer 0.0001    finalize 0.0062    
+max lb -1.7685775756835938 min lb -1.7735190391540527
+Number of Verified Splits: 0 of 128
+Current worst splitting domains lb-rhs (depth):
+-1.77352 (7), -1.77352 (7), -1.77351 (7), -1.77351 (7), -1.77350 (7), -1.77350 (7), -1.77349 (7), -1.77349 (7), -1.77324 (7), -1.77324 (7), -1.77324 (7), -1.77323 (7), -1.77322 (7), -1.77322 (7), -1.77322 (7), -1.77321 (7), -1.77291 (7), -1.77291 (7), -1.77291 (7), -1.77291 (7), 
+Current (lb-rhs): -1.7735190391540527
+128 domains visited
+Length of domains: 128
+Cumulative time: 1.880293846130371
+
+BaB round 2
+batch: 128
+splitting decisions: 
+split level 0: [/input, 5431] [/26, 1924] [/26, 749] [/26, 3186] [/26, 2318] [/input, 5318] [/input, 5401] [/26, 673] [/26, 2102] [/26, 622] 
+best_l after optimization: -452.9437255859375
+beta sum per layer: [59.199623107910156, 79.9246826171875, 0.0]
+alpha/beta optimization time: 0.33934521675109863
+pruning_in_iteration open status: False
+ratio of positive domain = 0 / 256 = 0.0
+pruning-in-iteration extra time: 5.3882598876953125e-05
+Time: pickout 0.0120    branching_decision 0.0001    decision 0.0001    set_bounds 0.0060    prepare 0.0058    transfer 0.0000    finalize 0.0107    func 0.3611    solve 1.2699    add 0.2818    bab_iteration 1.5619    
+Accumulated time: bab_iteration 1.5619    pickout 0.0130    decision 0.0002    branching_decision 0.0002    set_bounds 0.0149    solve 1.2699    func 1.6309    prepare 0.1580    transfer 0.0001    finalize 0.0169    add 0.2818    
+max lb -1.7533588409423828 min lb -1.7735190391540527
+Number of Verified Splits: 0 of 256
+Current worst splitting domains lb-rhs (depth):
+-1.77352 (8), -1.77351 (8), -1.77351 (8), -1.77350 (8), -1.77350 (8), -1.77349 (8), -1.77342 (8), -1.77336 (8), -1.77334 (8), -1.77327 (8), -1.77324 (8), -1.77322 (8), -1.77322 (8), -1.77322 (8), -1.77321 (8), -1.77320 (8), -1.77316 (8), -1.77316 (8), -1.77307 (8), -1.77298 (8), 
+Current (lb-rhs): -1.7735190391540527
+384 domains visited
+Length of domains: 256
+Cumulative time: 2.2612719535827637
+
+BaB round 3
+batch: 256
+splitting decisions: 
+split level 0: [/26, 5938] [/26, 2132] [/26, 3220] [/26, 6124] [/26, 88] [/26, 1897] [/26, 5961] [/input, 5210] [/26, 2265] [/26, 5790] 
+best_l after optimization: -904.9859008789062
+beta sum per layer: [145.93972778320312, 239.060302734375, 0.0]
+alpha/beta optimization time: 0.14055919647216797
+pruning_in_iteration open status: False
+ratio of positive domain = 0 / 512 = 0.0
+pruning-in-iteration extra time: 5.435943603515625e-05
+Time: pickout 0.0219    branching_decision 0.0001    decision 0.0002    set_bounds 0.0113    prepare 0.0111    transfer 0.0000    finalize 0.0200    func 0.1803    solve 0.3611    add 0.0015    bab_iteration 0.3810    
+Accumulated time: bab_iteration 1.9429    pickout 0.0349    decision 0.0004    branching_decision 0.0003    set_bounds 0.0263    solve 1.6310    func 1.8112    prepare 0.1691    transfer 0.0001    finalize 0.0369    add 0.2833    
+max lb -1.7437653541564941 min lb -1.7735190391540527
+Number of Verified Splits: 0 of 512
+Current worst splitting domains lb-rhs (depth):
+-1.77352 (9), -1.77351 (9), -1.77351 (9), -1.77350 (9), -1.77349 (9), -1.77347 (9), -1.77341 (9), -1.77333 (9), -1.77324 (9), -1.77324 (9), -1.77322 (9), -1.77322 (9), -1.77322 (9), -1.77322 (9), -1.77320 (9), -1.77320 (9), -1.77319 (9), -1.77319 (9), -1.77318 (9), -1.77318 (9), 
+Current (lb-rhs): -1.7735190391540527
+896 domains visited
+Length of domains: 512
+Cumulative time: 2.478559732437134
+
+BaB round 4
+batch: 512
+splitting decisions: 
+split level 0: [/26, 32] [/input, 4740] [/input, 5099] [/26, 6226] [/26, 2274] [/input, 5011] [/26, 3525] [/input, 5037] [/26, 1712] [/26, 6124] 
+best_l after optimization: -1807.990966796875
+beta sum per layer: [354.94879150390625, 679.533935546875, 0.0]
+alpha/beta optimization time: 0.235382080078125
+pruning_in_iteration open status: False
+ratio of positive domain = 0 / 1024 = 0.0
+pruning-in-iteration extra time: 5.459785461425781e-05
+Time: pickout 0.0414    branching_decision 0.0002    decision 0.0002    set_bounds 0.0231    prepare 0.0220    transfer 0.0000    finalize 0.0410    func 0.3084    solve 0.1803    add 0.0034    bab_iteration 0.2173    
+Accumulated time: bab_iteration 2.1602    pickout 0.0763    decision 0.0006    branching_decision 0.0005    set_bounds 0.0494    solve 1.8113    func 2.1196    prepare 0.1911    transfer 0.0002    finalize 0.0779    add 0.2867    
+max lb -1.7229399681091309 min lb -1.7735190391540527
+Number of Verified Splits: 0 of 1024
+Current worst splitting domains lb-rhs (depth):
+-1.77352 (10), -1.77350 (10), -1.77347 (10), -1.77347 (10), -1.77346 (10), -1.77345 (10), -1.77341 (10), -1.77332 (10), -1.77324 (10), -1.77322 (10), -1.77322 (10), -1.77320 (10), -1.77319 (10), -1.77319 (10), -1.77319 (10), -1.77318 (10), -1.77318 (10), -1.77317 (10), -1.77317 (10), -1.77317 (10), 
+Current (lb-rhs): -1.7735190391540527
+1920 domains visited
+Length of domains: 1024
+Cumulative time: 2.8572587966918945
+
+BaB round 5
+batch: 1024
+splitting decisions: 
+split level 0: [/26, 3218] [/26, 115] [/input, 5207] [/26, 354] [/26, 6199] [/26, 3701] [/26, 3225] [/26, 2293] [/26, 68] [/input, 5030] 
+best_l after optimization: -3611.689697265625
+beta sum per layer: [849.88818359375, 1796.543701171875, 0.0]
+alpha/beta optimization time: 0.34233903884887695
+pruning_in_iteration open status: False
+ratio of positive domain = 0 / 2048 = 0.0
+pruning-in-iteration extra time: 5.340576171875e-05
+Time: pickout 0.0816    branching_decision 0.0003    decision 0.0004    set_bounds 0.0457    prepare 0.0440    transfer 0.0000    finalize 0.0933    func 0.4965    solve 0.3085    add 0.0052    bab_iteration 0.3787    
+Accumulated time: bab_iteration 2.5389    pickout 0.1579    decision 0.0010    branching_decision 0.0009    set_bounds 0.0951    solve 2.1198    func 2.6161    prepare 0.2351    transfer 0.0002    finalize 0.1712    add 0.2919    
+max lb -1.713956356048584 min lb -1.7735190391540527
+Number of Verified Splits: 0 of 2048
+Current worst splitting domains lb-rhs (depth):
+-1.77352 (11), -1.77350 (11), -1.77347 (11), -1.77347 (11), -1.77345 (11), -1.77343 (11), -1.77341 (11), -1.77336 (11), -1.77335 (11), -1.77333 (11), -1.77332 (11), -1.77324 (11), -1.77324 (11), -1.77322 (11), -1.77322 (11), -1.77322 (11), -1.77318 (11), -1.77318 (11), -1.77317 (11), -1.77317 (11), 
+Current (lb-rhs): -1.7735190391540527
+3968 domains visited
+Length of domains: 2048
+Cumulative time: 3.492755889892578
+
+BaB round 6
+batch: 2048
+splitting decisions: 
+split level 0: [/26, 3185] [/26, 380] [/26, 51] [/input, 5445] [/26, 5634] [/26, 5602] [/26, 2100] [/26, 3440] [/26, 2249] [/input, 4853] 
+best_l after optimization: -7214.25830078125
+beta sum per layer: [2010.56103515625, 4610.5927734375, 0.0]
+alpha/beta optimization time: 0.6722493171691895
+pruning_in_iteration open status: False
+ratio of positive domain = 0 / 4096 = 0.0
+pruning-in-iteration extra time: 5.7220458984375e-05
+Time: pickout 0.1648    branching_decision 0.0006    decision 0.0006    set_bounds 0.0940    prepare 0.0890    transfer 0.0001    finalize 0.3004    func 1.0937    solve 0.4966    add 0.0108    bab_iteration 0.6355    
+Accumulated time: bab_iteration 3.1744    pickout 0.3227    decision 0.0016    branching_decision 0.0014    set_bounds 0.1890    solve 2.6163    func 3.7098    prepare 0.3241    transfer 0.0003    finalize 0.4715    add 0.3028    
+max lb -1.6909914016723633 min lb -1.773472547531128
+Number of Verified Splits: 0 of 4096
+Current worst splitting domains lb-rhs (depth):
+-1.77347 (12), -1.77346 (12), -1.77345 (12), -1.77344 (12), -1.77344 (12), -1.77343 (12), -1.77340 (12), -1.77334 (12), -1.77334 (12), -1.77332 (12), -1.77332 (12), -1.77329 (12), -1.77324 (12), -1.77324 (12), -1.77324 (12), -1.77322 (12), -1.77319 (12), -1.77319 (12), -1.77318 (12), -1.77318 (12), 
+Current (lb-rhs): -1.773472547531128
+8064 domains visited
+Length of domains: 4096
+current_vram/total_varm: 6.5GB/47.7GB, batch_size increase to 4096
+Cumulative time: 4.864394187927246
+
+BaB round 7
+batch: 4096
+splitting decisions: 
+split level 0: [/26, 3440] [/26, 5811] [/26, 3780] [/26, 388] [/26, 347] [/26, 5848] [/26, 564] [/26, 3196] [/26, 376] [/26, 3883] 
+best_l after optimization: -14410.11328125
+beta sum per layer: [4749.458984375, 11420.806640625, 0.0]
+alpha/beta optimization time: 1.3382303714752197
+pruning_in_iteration open status: False
+ratio of positive domain = 0 / 8192 = 0.0
+pruning-in-iteration extra time: 0.00011014938354492188
+Time: pickout 0.3238    branching_decision 0.0011    decision 0.0011    set_bounds 0.1810    prepare 0.1783    transfer 0.0001    finalize 0.4632    func 2.0435    solve 1.0937    add 0.0173    bab_iteration 1.3716    
+Accumulated time: bab_iteration 4.5460    pickout 0.6465    decision 0.0026    branching_decision 0.0025    set_bounds 0.3700    solve 3.7101    func 5.7532    prepare 0.5024    transfer 0.0004    finalize 0.9347    add 0.3201    
+max lb -1.6788862943649292 min lb -1.773472547531128
+Number of Verified Splits: 0 of 8192
+Current worst splitting domains lb-rhs (depth):
+-1.77347 (13), -1.77345 (13), -1.77345 (13), -1.77345 (13), -1.77344 (13), -1.77344 (13), -1.77341 (13), -1.77340 (13), -1.77340 (13), -1.77339 (13), -1.77335 (13), -1.77334 (13), -1.77333 (13), -1.77332 (13), -1.77332 (13), -1.77328 (13), -1.77324 (13), -1.77324 (13), -1.77322 (13), -1.77322 (13), 
+Current (lb-rhs): -1.773472547531128
+16256 domains visited
+Length of domains: 8192
+current_vram/total_varm: 13.1GB/47.7GB, batch_size increase to 8192
+Cumulative time: 7.44896125793457
+
+BaB round 8
+batch: 8192
+splitting decisions: 
+split level 0: [/26, 69] [/26, 6240] [/26, 3844] [/26, 6186] [/26, 501] [/input, 5202] [/26, 385] [/26, 2095] [/26, 3721] [/26, 1632] 
+best_l after optimization: -28781.115234375
+beta sum per layer: [11059.08203125, 27680.7578125, 0.0]
+alpha/beta optimization time: 2.652331590652466
+pruning_in_iteration open status: False
+ratio of positive domain = 0 / 16384 = 0.0
+pruning-in-iteration extra time: 6.079673767089844e-05
+Time: pickout 0.8350    branching_decision 0.0021    decision 0.0021    set_bounds 0.3666    prepare 0.3612    transfer 0.0001    finalize 0.7948    func 3.9272    solve 2.0435    add 0.0330    bab_iteration 2.5846    
+Accumulated time: bab_iteration 7.1306    pickout 1.4815    decision 0.0047    branching_decision 0.0046    set_bounds 0.7366    solve 5.7536    func 9.6805    prepare 0.8636    transfer 0.0005    finalize 1.7296    add 0.3531    
+max lb -1.661672592163086 min lb -1.773472547531128
+Number of Verified Splits: 0 of 16384
+Current worst splitting domains lb-rhs (depth):
+-1.77347 (14), -1.77345 (14), -1.77345 (14), -1.77344 (14), -1.77343 (14), -1.77342 (14), -1.77340 (14), -1.77339 (14), -1.77338 (14), -1.77335 (14), -1.77334 (14), -1.77332 (14), -1.77332 (14), -1.77332 (14), -1.77332 (14), -1.77328 (14), -1.77327 (14), -1.77327 (14), -1.77324 (14), -1.77324 (14), 
+Current (lb-rhs): -1.773472547531128
+32640 domains visited
+Length of domains: 16384
+Cumulative time: 12.643249988555908
+
+BaB round 9
+batch: 8192
+splitting decisions: 
+split level 0: [/26, 299] [/26, 3446] [/26, 32] [/input, 5434] [/input, 5088] [/26, 94] [/26, 1658] [/26, 2018] [/input, 5431] [/input, 4718] 
+best_l after optimization: -28742.359375
+beta sum per layer: [11990.6953125, 33200.578125, 0.0]
+alpha/beta optimization time: 2.653306007385254
+pruning_in_iteration open status: False
+ratio of positive domain = 0 / 16384 = 0.0
+pruning-in-iteration extra time: 8.606910705566406e-05
+Time: pickout 0.8667    branching_decision 0.0024    decision 0.0024    set_bounds 0.3636    prepare 0.3634    transfer 0.0001    finalize 0.6467    func 3.9911    solve 3.9273    add 0.0598    bab_iteration 5.1943    
+Accumulated time: bab_iteration 12.3248    pickout 2.3482    decision 0.0071    branching_decision 0.0070    set_bounds 1.1002    solve 9.6809    func 13.6716    prepare 1.2270    transfer 0.0006    finalize 2.3762    add 0.4129    
+max lb -1.6499370336532593 min lb -1.773468255996704
+Number of Verified Splits: 0 of 16384
+Current worst splitting domains lb-rhs (depth):
+-1.77347 (15), -1.77345 (14), -1.77344 (15), -1.77344 (14), -1.77343 (15), -1.77340 (14), -1.77338 (15), -1.77337 (15), -1.77336 (15), -1.77335 (15), -1.77334 (14), -1.77332 (15), -1.77332 (14), -1.77332 (14), -1.77331 (15), -1.77328 (14), -1.77327 (14), -1.77327 (14), -1.77325 (15), -1.77324 (15), 
+Current (lb-rhs): -1.773468255996704
+49024 domains visited
+Length of domains: 24576
+Cumulative time: 17.940998554229736
+
+BaB round 10
+batch: 8192
+splitting decisions: 
+split level 0: [/26, 143] [/input, 4795] [/26, 5557] [/26, 1658] [/26, 2610] [/26, 3784] [/input, 4755] [/26, 2280] [/26, 584] [/26, 2180] 
+best_l after optimization: -28703.97265625
+beta sum per layer: [12855.2822265625, 39085.859375, 0.0]
+alpha/beta optimization time: 2.6541504859924316
+pruning_in_iteration open status: False
+ratio of positive domain = 0 / 16384 = 0.0
+pruning-in-iteration extra time: 6.127357482910156e-05
+Time: pickout 0.9027    branching_decision 0.0020    decision 0.0020    set_bounds 0.3644    prepare 0.3697    transfer 0.0001    finalize 0.8608    func 4.0016    solve 3.9911    add 0.0697    bab_iteration 5.2977    
+Accumulated time: bab_iteration 17.6226    pickout 3.2509    decision 0.0091    branching_decision 0.0090    set_bounds 1.4646    solve 13.6720    func 17.6731    prepare 1.5967    transfer 0.0007    finalize 3.2370    add 0.4826    
+max lb -1.6334609985351562 min lb -1.7734349966049194
+Number of Verified Splits: 0 of 16384
+Current worst splitting domains lb-rhs (depth):
+-1.77347 (15), -1.77345 (14), -1.77344 (14), -1.77343 (16), -1.77343 (16), -1.77342 (16), -1.77340 (14), -1.77338 (15), -1.77337 (15), -1.77336 (15), -1.77335 (16), -1.77334 (14), -1.77332 (15), -1.77332 (14), -1.77332 (14), -1.77328 (14), -1.77328 (16), -1.77327 (14), -1.77327 (14), -1.77325 (15), 
+Current (lb-rhs): -1.773468255996704
+65408 domains visited
+Length of domains: 32768
+Cumulative time: 23.277804613113403
+
+BaB round 11
+batch: 8192
+splitting decisions: 
+split level 0: [/26, 5687] [/input, 4716] [/26, 6231] [/26, 3883] [/26, 568] [/26, 383] [/26, 330] [/input, 4765] [/26, 6226] [/input, 5424] 
+best_l after optimization: -28663.2890625
+beta sum per layer: [13820.32421875, 45474.35546875, 0.0]
+alpha/beta optimization time: 2.6539626121520996
+pruning_in_iteration open status: False
+ratio of positive domain = 0 / 16384 = 0.0
+pruning-in-iteration extra time: 8.749961853027344e-05
+Time: pickout 0.6916    branching_decision 0.0019    decision 0.0020    set_bounds 0.5959    prepare 0.3634    transfer 0.0001    finalize 0.6403    func 3.7736    solve 4.0016    add 0.0613    bab_iteration 5.3368    
+Accumulated time: bab_iteration 22.9594    pickout 3.9425    decision 0.0111    branching_decision 0.0109    set_bounds 2.0605    solve 17.6736    func 21.4467    prepare 1.9601    transfer 0.0008    finalize 3.8773    add 0.5438    
+max lb -1.6166852712631226 min lb -1.7734349966049194
+Number of Verified Splits: 0 of 16384
+Current worst splitting domains lb-rhs (depth):
+-1.77347 (15), -1.77345 (14), -1.77344 (14), -1.77343 (17), -1.77343 (16), -1.77342 (17), -1.77340 (14), -1.77338 (15), -1.77337 (15), -1.77336 (15), -1.77334 (14), -1.77333 (17), -1.77332 (15), -1.77332 (14), -1.77332 (14), -1.77328 (14), -1.77328 (16), -1.77327 (14), -1.77327 (14), -1.77325 (15), 
+Current (lb-rhs): -1.773468255996704
+81792 domains visited
+Length of domains: 40960
+Time out!!!!!!!!
+Result: unknown in 60.3627 seconds
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 9, vnnlib ID: 9 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Finished vnnlib processing in 0.001607 seconds
+Model: BoundedModule(
+  (/input-1): BoundInput(name=/input-1, inputs=[], perturbed=True)
+  (/shape): BoundBuffers(name=/shape, inputs=[], perturbed=False)
+  (/12): BoundParams(name=/12, inputs=[], perturbed=False)
+  (/13): BoundParams(name=/13, inputs=[], perturbed=False)
+  (/14): BoundParams(name=/14, inputs=[], perturbed=False)
+  (/15): BoundParams(name=/15, inputs=[], perturbed=False)
+  (/16): BoundParams(name=/16, inputs=[], perturbed=False)
+  (/17): BoundParams(name=/17, inputs=[], perturbed=False)
+  (/18): BoundParams(name=/18, inputs=[], perturbed=False)
+  (/19): BoundParams(name=/19, inputs=[], perturbed=False)
+  (/20): BoundParams(name=/20, inputs=[], perturbed=False)
+  (/21): BoundParams(name=/21, inputs=[], perturbed=False)
+  (/input): BoundConv(name=/input, inputs=[/input-1, /12, /13], perturbed=True)
+  (/input-4): BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+  (/24): BoundConv(name=/24, inputs=[/input-4, /14, /15], perturbed=True)
+  (/25): BoundConv(name=/25, inputs=[/input-4, /16, /17], perturbed=True)
+  (/26): BoundAdd(name=/26, inputs=[/24, /25], perturbed=True)
+  (/27): BoundRelu(name=/27, inputs=[/26], perturbed=True)
+  (/28): BoundSplit(name=/28, inputs=[/shape], perturbed=False)
+  (/29): BoundSplit(name=/29, inputs=[/shape], perturbed=False)
+  (/30): BoundConstant(name=/30, value=tensor([0], device='cuda:0'))
+  (/31): BoundSqueeze(name=/31, inputs=[/28, /30], perturbed=False)
+  (/32): BoundConstant(name=/32, value=tensor([0], device='cuda:0'))
+  (/33): BoundSqueeze(name=/33, inputs=[/29, /32], perturbed=False)
+  (/34): BoundConstant(name=/34, value=tensor([0], device='cuda:0'))
+  (/35): BoundUnsqueeze(name=/35, inputs=[/31, /34], perturbed=False)
+  (/36): BoundConstant(name=/36, value=tensor([0], device='cuda:0'))
+  (/37): BoundUnsqueeze(name=/37, inputs=[/33, /36], perturbed=False)
+  (/38): BoundConcat(name=/38, inputs=[/35, /37], perturbed=False)
+  (/39): BoundReshape(name=/39, inputs=[/27, /38], perturbed=True)
+  (/input-8): BoundLinear(name=/input-8, inputs=[/39, /18, /19], perturbed=True)
+  (/41): BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+  (/42): BoundLinear(name=/42, inputs=[/41, /20, /21], perturbed=True)
+)
+Original output in the first batch: tensor([[ 0.91238815, -7.41684818, -4.13906336, -0.88793588,  7.25879860,
+          0.72615618, -3.34039116,  9.29047012,  2.64967585, 10.53876877]],
+       device='cuda:0')
+Split layers:
+Nonlinear functions:
+   BoundRelu(name=/input-4, inputs=[/input], perturbed=True)
+   BoundRelu(name=/27, inputs=[/26], perturbed=True)
+   BoundRelu(name=/41, inputs=[/input-8], perturbed=True)
+build batch [1/1]
+layer /input-4 using sparse-features alpha with shape [561]; unstable size 561; total size 6272 ([1, 8, 28, 28])
+layer /input-4 start_node /26 using sparse-spec alpha [2, 6, 1, 561] with unstable size 5 total_size 8 output_shape 8
+layer /input-4 start_node /input-8 using sparse-spec alpha [2, 2, 1, 561] with unstable size 1 total_size 64 output_shape torch.Size([64])
+layer /input-4 start_node /42 using full alpha [2, 9, 1, 561] with unstable size None total_size 9 output_shape 9
+layer /27 using sparse-features alpha with shape [1544]; unstable size 1544; total size 6272 ([1, 8, 28, 28])
+layer /27 start_node /input-8 using sparse-spec alpha [2, 2, 1, 1544] with unstable size 1 total_size 64 output_shape torch.Size([64])
+layer /27 start_node /42 using full alpha [2, 9, 1, 1544] with unstable size None total_size 9 output_shape 9
+layer /41 using sparse-features alpha with shape [1]; unstable size 1; total size 64 ([1, 64])
+layer /41 start_node /42 using full alpha [2, 9, 1, 1] with unstable size None total_size 9 output_shape 9
+Optimizable variables initialized.
+initial CROWN bounds (first 10 items): [8.827675819396973, 16.87269401550293, 13.743341445922852, 10.585494995117188, 2.6602225303649902, 8.957921028137207, 12.758278846740723, 0.6227822303771973, 7.119296550750732]
+Verified with initial CROWN!
+verified with init bound!
+Result: safe-incomplete in 0.2720 seconds
+############# Summary #############
+Final verified acc: 90.0% (total 10 examples)
+Problem instances count: 10 , total verified (safe/unsat): 9 , total falsified (unsafe/sat): 0 , timeout: 1
+mean time for ALL instances (total 10):7.856681977912749, max time: 60.3626708984375
+mean time for verified SAFE instances(total 9): 2.022691938612196, max time: 17.181496143341064
+mean time for verified SAFE + TIMEOUT instances (total 10): 7.856689834594727, max time: 60.3626708984375 
+safe-incomplete (total 9), index: [0, 1, 2, 3, 4, 5, 6, 7, 9]
+unknown (total 1), index: [8]
+
+=== STDERR ===
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/torch/jit/_script.py:1488: DeprecationWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/convert/layer.py:31: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  layer.bias.data = torch.from_numpy(numpy_helper.to_array(bias))
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/convert/model.py:151: UserWarning: Using experimental implementation that allows 'batch_size > 1'.Batchnorm layers could potentially produce false outputs.
+  warnings.warn(
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/complete_verifier/specifications.py:342: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at /pytorch/torch/csrc/utils/tensor_new.cpp:253.)
+  x_range_list = torch.Tensor(x_range_list).to(dtype=dtype, device=device).view(input_shape + [2])
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/utils.py:21: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  return value.ndim == 0 or value.shape == torch.Size([1])
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/operations/add.py:34: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  elif all(x == 1 for x in input[0].shape):
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/operations/reshape.py:36: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if shape[0] == 1 and len(shape) in [2, 3, 4, 5] and self.quirks.get("fix_batch_size") is True:
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/operations/reshape.py:54: TracerWarning: torch.tensor results are registered as constants in the trace. You can safely ignore this warning if you use this function to create tensors out of constant variables that would be the same every time you call this function. In any other case, this might cause the trace to be incorrect.
+  if (torch.prod(torch.tensor(input.shape)) != torch.prod(shape) and len(input.size()) == len(shape) + 1
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/operations/reshape.py:54: TracerWarning: Using len to get tensor shape might cause the trace to be incorrect. Recommended usage would be tensor.shape[0]. Passing a tensor of different shape might lead to errors or silently give incorrect results.
+  if (torch.prod(torch.tensor(input.shape)) != torch.prod(shape) and len(input.size()) == len(shape) + 1
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/operations/reshape.py:58: TracerWarning: Iterating over a tensor might cause the trace to be incorrect. Passing a tensor of different shape won't change the number of iterations executed (and might lead to errors or silently give incorrect results).
+  shape = [x if x != 0 else input.size(i) for i, x in enumerate(shape)]
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/complete_verifier/auto_LiRPA/operators/leaf.py:93: UserWarning: The "has_batchdim" option for BoundBuffers is deprecated. It may be removed from the next release.
+  warnings.warn('The "has_batchdim" option for BoundBuffers is deprecated.'
+

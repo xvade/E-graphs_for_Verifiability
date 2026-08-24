@@ -1,0 +1,18 @@
+{
+  "101": "conv1.weight",
+  "102": "conv1.bias",
+  "103": "layer1.0.conv1.weight",
+  "104": "layer1.0.conv1.bias",
+  "105": "layer1.0.conv2.weight",
+  "106": "layer1.0.conv2.bias",
+  "107": "layer1.0.shortcut.0.weight",
+  "108": "layer1.0.shortcut.0.bias",
+  "109": "layer1.1.conv1.weight",
+  "110": "layer1.1.conv1.bias",
+  "111": "layer1.1.conv2.weight",
+  "112": "layer1.1.conv2.bias",
+  "113": "linear1.weight",
+  "114": "linear1.bias",
+  "115": "linear2.weight",
+  "116": "linear2.bias"
+}
