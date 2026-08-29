@@ -1,0 +1,5 @@
+===== RUN tll (timeout 600) =====
+tll exit=0 -> Result: timeout
+===== RUN cgan (timeout 900) =====
+cgan exit=0 -> Result: timeout
+EXOTIC_DONE

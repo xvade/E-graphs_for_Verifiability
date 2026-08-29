@@ -1,0 +1,8 @@
+# Exotic 2023 benchmarks (tll min/max, cgan ConvTranspose, vit attention).
+# matrix conv_mode as the safe general fallback for unusual ops.
+general:
+  conv_mode: matrix
+solver:
+  batch_size: 2048
+attack:
+  pgd_order: skip
