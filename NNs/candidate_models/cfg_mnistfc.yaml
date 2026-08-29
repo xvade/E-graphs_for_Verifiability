@@ -1,0 +1,15 @@
+# VNN-COMP 2021 mnistfc settings, simplified (no MIP/bab-refine) for a first
+# baseline; input reshaped from [1,784] to [-1,1,28,28].
+model:
+  input_shape: [-1, 1, 28, 28]
+solver:
+  batch_size: 4096
+  beta-crown:
+    iteration: 20
+    lr_beta: 0.03
+attack:
+  pgd_order: skip
+bab:
+  branching:
+    candidates: 5
+    reduceop: max

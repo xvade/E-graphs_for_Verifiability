@@ -1,0 +1,10 @@
+# VNN-COMP 2021 cifar10_resnet settings (onnx_path/vnnlib_path/timeout via CLI)
+solver:
+  batch_size: 2000
+  beta-crown:
+    lr_beta: 0.01
+attack:
+  pgd_order: skip
+bab:
+  branching:
+    reduceop: max

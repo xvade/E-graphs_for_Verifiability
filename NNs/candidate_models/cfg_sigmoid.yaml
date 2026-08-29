@@ -1,0 +1,5 @@
+# eran ffnnSIGMOID: default solver settings (non-ReLU activation).
+solver:
+  batch_size: 2048
+attack:
+  pgd_order: skip
