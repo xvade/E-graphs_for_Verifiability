@@ -739,3 +739,68 @@ Artifacts: `NNs/build_inception_convfused.py`,
 `NNs/abcrown_out_inception_unfused_smart_matrix.log`,
 `NNs/multi_rule_match_probe.sh`, `NNs/matchprobe_logs/`.
 
+## 2026-08-29 (cont.): more models, ArchDiverseCost, and the rewrite-verify reach limit
+
+Three threads, all pointing at the same conclusion about where the method
+can operate.
+
+**More models + a verifier-hostility matrix.** Scouted VNN-COMP for models
+that ship WITH verification specs (no synthesized tasks) and span diverse
+op-types, dropping the earlier fusability filter (un-fusing/splitting needs
+no parallel branches, so all architectures are in scope). Baseline-verified
+7 models unmodified at their real specs (`NNs/run_vnncomp_baselines.py`,
+`NNs/baselines_results.jsonl`, logs under `NNs/baseline_logs/`). The
+hostility picture:
+- *Not hostile* (verify fast): ffnnSIGMOID (sigmoid MLP, 3/3), mnist-net_256x2
+  (pure FC, 3/3), resnet_4b (residual CNN, 3/3), resnet_2b (2/3, one hard
+  instance).
+- *Bound-hostile* (full-timeout): **tll** (min/max lattice, 600s) and
+  **cgan** (ConvTranspose generative, 900s) -- loose bounds BaB can't close.
+- *Pipeline-hostile* (won't load without special handling, but bounds fine
+  once loaded): **vit** (transformer). Default pipeline fails on the
+  onnx->pytorch trace (`tensor size mismatch`); ab-CROWN's official
+  transformer settings fix it (`NNs/candidate_models/cfg_vit.yaml`:
+  `softmax:'complex'`, the `customized_vit_tuning` hook, forward-before-
+  bounds) -- then it verifies (unsat) in 34s. So attention's difficulty here
+  is setup, not looseness. cgan and vit needed git-LFS pulls from the 2023
+  benchmark repo (`NNs/candidate_models/exotic2023/`).
+
+**ArchDiverseCost (committed in tensat `c20ba5d`).** Fixes DiverseCost's
+term-not-structure failure by tracking per-enode rewrite provenance
+(`RewriteWitness`: which multi-pattern rule created each enode) and
+*rewarding* a target rule's witnesses so the fused representative wins its
+e-class, rotating the target across samples. On InceptionMNIST: 3 distinct
+structures (unfused + two conv-weight fusion variants) vs DiverseCost's 1;
+targeting the conv-weight rule reliably produces FUSED at lower cost.
+Non-fusable models report 0 witness families and fall back to baseline.
+
+**Rewrite-and-verify test on the scouted models: blocked, on all 7.** The
+actual deliverable came back a clean negative that bounds the method's reach.
+A two-part barrier:
+1. *TASO's ONNX importer is narrow and CNN-oriented.* It ingests Conv-based
+   nets (resnet_2b came through clean after `NNs/normalize_for_taso.py`
+   handled Flatten -- 6 Conv/6 Relu/2 Matmul, numerically identical), but
+   SKIPS bare `MatMul` (wants `Gemm`), trips its reorder-assert on `Flatten`,
+   and produces degenerate weights-only graphs for pure-FC nets (tll ->
+   1 Input + 29 Weight, zero compute). `ConvTranspose` (cgan) and `Softmax`
+   (vit) are hard-blocked. Painfully, tll -- the one bound-hostile model
+   that's theoretically rewriteable (ReLU-composition min/max) -- is a
+   TASO-ingestion casualty.
+2. *The models that DO ingest have no rewriteable structure.* resnet_2b
+   saturates (e-graph 50->183 nodes) but fires 0 fusion rules and extracts a
+   graph with an op histogram byte-identical to the input -- residual nets
+   don't restructure (relus causally chained). Verifying it would verify the
+   same graph twice; skipped per the structural gate.
+
+Net: TENSAT rewriting needs Conv-based models WITH parallel branches sharing
+an input. Found VNN-COMP benchmarks essentially never have this (all
+sequential/residual), and the non-conv ones TASO can't ingest -- so the only
+model in this project that ever produced a genuine structural rewrite remains
+the hand-built InceptionMNIST. Running rewrite-vs-verify at scale needs
+either hand-built parallel-branch conv models (losing the bundled-spec
+property) or a real extension of TASO's importer to FC/Gemm graphs.
+
+Artifacts: `NNs/run_vnncomp_baselines.py`, `NNs/normalize_for_taso.py`,
+`NNs/candidate_models/` (staged models, specs, configs, normalized+.taso),
+`NNs/baseline_logs/`, `NNs/baselines_results.jsonl`.
+
