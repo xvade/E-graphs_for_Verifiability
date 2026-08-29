@@ -1,0 +1,32 @@
+Running mode is: optimize
+Number of canonicalized 7
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[3] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (relu ?i_0)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[5] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[6] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[3] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 0, 0) running_total=(3, 3, 0, 0)
+DEBUG multi-pattern rule[4] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(4, 3, 0, 0)
+DEBUG multi-pattern rule[5] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(5, 3, 0, 0)
+DEBUG multi-pattern rule[6] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 0 (relu (concat 0 2 ?input_1 ?input_2)))) dst2=(split_1 (split 0 (relu (concat 0 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 0, 0) running_total=(8, 6, 0, 0)
+DEBUG multi-pattern rule[7] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 1 (relu (concat 1 4 ?input_7 ?input_8)))) dst2=(split_1 (split 1 (relu (concat 1 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 0, 0) running_total=(11, 9, 0, 0)
+DEBUG multi-pattern rule[10] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 0 (relu (concat 0 4 ?input_7 ?input_8)))) dst2=(split_1 (split 0 (relu (concat 0 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 0, 0) running_total=(14, 12, 0, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (14, 12, 0, 0)
+Done one
+Number of nodes added: 0
+Runner complete!
+  Nodes: 41
+  Classes: 41
+  Stopped: Saturated
+  Time taken: 3.21112ms
+  Number of iterations: 1
+  Average nodes per class: 1
+  Number of edges: 50
+  Number of programs: 0
+Extractor complete!
+  Time taken: 255.544µs
+  Best cost: 0.111849
+Skipping full graph runtime evaluation (--no_runtime_report)

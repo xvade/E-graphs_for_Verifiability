@@ -1,0 +1,155 @@
+Running mode is: optimize
+Number of canonicalized 7
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[3] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[5] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[6] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern rule[3] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(15, 15, 0, 0)
+DEBUG multi-pattern rule[4] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(16, 15, 0, 0)
+DEBUG multi-pattern rule[5] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(17, 15, 0, 0)
+DEBUG multi-pattern rule[6] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 0 (relu (concat 0 2 ?input_1 ?input_2)))) dst2=(split_1 (split 0 (relu (concat 0 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(32, 30, 0, 0)
+DEBUG multi-pattern rule[7] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 1 (relu (concat 1 4 ?input_7 ?input_8)))) dst2=(split_1 (split 1 (relu (concat 1 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(47, 45, 6, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_8 ?input_10) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(50, 45, 6, 0)
+DEBUG multi-pattern rule[10] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 0 (relu (concat 0 4 ?input_7 ?input_8)))) dst2=(split_1 (split 0 (relu (concat 0 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(65, 60, 12, 0)
+DEBUG multi-pattern rule[11] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_7 ?input_11) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(68, 60, 12, 0)
+DEBUG multi-pattern rule[13] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(74, 60, 12, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (74, 60, 12, 0)
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[3] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[5] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[6] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern rule[3] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(15, 15, 0, 0)
+DEBUG multi-pattern rule[4] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(16, 15, 0, 0)
+DEBUG multi-pattern rule[5] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(17, 15, 0, 0)
+DEBUG multi-pattern rule[6] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 0 (relu (concat 0 2 ?input_1 ?input_2)))) dst2=(split_1 (split 0 (relu (concat 0 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(32, 30, 0, 0)
+DEBUG multi-pattern rule[7] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 1 (relu (concat 1 4 ?input_7 ?input_8)))) dst2=(split_1 (split 1 (relu (concat 1 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(47, 45, 6, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_8 ?input_10) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(50, 45, 6, 0)
+DEBUG multi-pattern rule[10] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 0 (relu (concat 0 4 ?input_7 ?input_8)))) dst2=(split_1 (split 0 (relu (concat 0 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(65, 60, 12, 0)
+DEBUG multi-pattern rule[11] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_7 ?input_11) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(68, 60, 12, 0)
+DEBUG multi-pattern rule[13] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(74, 60, 12, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (74, 60, 12, 0)
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[3] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[5] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[6] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern rule[3] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(15, 15, 0, 0)
+DEBUG multi-pattern rule[4] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(16, 15, 0, 0)
+DEBUG multi-pattern rule[5] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(17, 15, 0, 0)
+DEBUG multi-pattern rule[6] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 0 (relu (concat 0 2 ?input_1 ?input_2)))) dst2=(split_1 (split 0 (relu (concat 0 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(32, 30, 0, 0)
+DEBUG multi-pattern rule[7] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 1 (relu (concat 1 4 ?input_7 ?input_8)))) dst2=(split_1 (split 1 (relu (concat 1 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(47, 45, 6, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_8 ?input_10) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(50, 45, 6, 0)
+DEBUG multi-pattern rule[10] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 0 (relu (concat 0 4 ?input_7 ?input_8)))) dst2=(split_1 (split 0 (relu (concat 0 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(65, 60, 12, 0)
+DEBUG multi-pattern rule[11] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_7 ?input_11) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(68, 60, 12, 0)
+DEBUG multi-pattern rule[13] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(74, 60, 12, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (74, 60, 12, 0)
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[3] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[5] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[6] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern rule[3] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(15, 15, 0, 0)
+DEBUG multi-pattern rule[4] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(16, 15, 0, 0)
+DEBUG multi-pattern rule[5] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(17, 15, 0, 0)
+DEBUG multi-pattern rule[6] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 0 (relu (concat 0 2 ?input_1 ?input_2)))) dst2=(split_1 (split 0 (relu (concat 0 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(32, 30, 0, 0)
+DEBUG multi-pattern rule[7] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 1 (relu (concat 1 4 ?input_7 ?input_8)))) dst2=(split_1 (split 1 (relu (concat 1 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(47, 45, 6, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_8 ?input_10) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(50, 45, 6, 0)
+DEBUG multi-pattern rule[10] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 0 (relu (concat 0 4 ?input_7 ?input_8)))) dst2=(split_1 (split 0 (relu (concat 0 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(65, 60, 12, 0)
+DEBUG multi-pattern rule[11] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_7 ?input_11) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(68, 60, 12, 0)
+DEBUG multi-pattern rule[13] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(74, 60, 12, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (74, 60, 12, 0)
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[3] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[5] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[6] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern rule[3] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(15, 15, 0, 0)
+DEBUG multi-pattern rule[4] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(16, 15, 0, 0)
+DEBUG multi-pattern rule[5] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(17, 15, 0, 0)
+DEBUG multi-pattern rule[6] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 0 (relu (concat 0 2 ?input_1 ?input_2)))) dst2=(split_1 (split 0 (relu (concat 0 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(32, 30, 0, 0)
+DEBUG multi-pattern rule[7] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 1 (relu (concat 1 4 ?input_7 ?input_8)))) dst2=(split_1 (split 1 (relu (concat 1 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(47, 45, 6, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_8 ?input_10) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(50, 45, 6, 0)
+DEBUG multi-pattern rule[10] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 0 (relu (concat 0 4 ?input_7 ?input_8)))) dst2=(split_1 (split 0 (relu (concat 0 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(65, 60, 12, 0)
+DEBUG multi-pattern rule[11] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_7 ?input_11) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(68, 60, 12, 0)
+DEBUG multi-pattern rule[13] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(74, 60, 12, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (74, 60, 12, 0)
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[3] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[5] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[6] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern rule[3] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(15, 15, 0, 0)
+DEBUG multi-pattern rule[4] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(16, 15, 0, 0)
+DEBUG multi-pattern rule[5] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(17, 15, 0, 0)
+DEBUG multi-pattern rule[6] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 0 (relu (concat 0 2 ?input_1 ?input_2)))) dst2=(split_1 (split 0 (relu (concat 0 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(32, 30, 0, 0)
+DEBUG multi-pattern rule[7] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 1 (relu (concat 1 4 ?input_7 ?input_8)))) dst2=(split_1 (split 1 (relu (concat 1 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(47, 45, 6, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_8 ?input_10) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(50, 45, 6, 0)
+DEBUG multi-pattern rule[10] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 0 (relu (concat 0 4 ?input_7 ?input_8)))) dst2=(split_1 (split 0 (relu (concat 0 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(65, 60, 12, 0)
+DEBUG multi-pattern rule[11] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_7 ?input_11) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(68, 60, 12, 0)
+DEBUG multi-pattern rule[13] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(74, 60, 12, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (74, 60, 12, 0)
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[3] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[5] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[6] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern rule[3] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(15, 15, 0, 0)
+DEBUG multi-pattern rule[4] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(16, 15, 0, 0)
+DEBUG multi-pattern rule[5] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(17, 15, 0, 0)
+DEBUG multi-pattern rule[6] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 0 (relu (concat 0 2 ?input_1 ?input_2)))) dst2=(split_1 (split 0 (relu (concat 0 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(32, 30, 0, 0)
+DEBUG multi-pattern rule[7] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 1 (relu (concat 1 4 ?input_7 ?input_8)))) dst2=(split_1 (split 1 (relu (concat 1 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(47, 45, 6, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_8 ?input_10) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(50, 45, 6, 0)
+DEBUG multi-pattern rule[10] src1=(relu ?input_7) src2=(relu ?input_8) dst1=(split_0 (split 0 (relu (concat 0 4 ?input_7 ?input_8)))) dst2=(split_1 (split 0 (relu (concat 0 4 ?input_7 ?input_8))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 0) running_total=(65, 60, 12, 0)
+DEBUG multi-pattern rule[11] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_7 ?input_11) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(68, 60, 12, 0)
+DEBUG multi-pattern rule[13] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(74, 60, 12, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (74, 60, 12, 0)
+Done one
+Number of nodes added: 0
+Runner complete!
+  Nodes: 183
+  Classes: 112
+  Stopped: Saturated
+  Time taken: 51.310652ms
+  Number of iterations: 7
+  Average nodes per class: 1.6339285
+  Number of edges: 323
+  Number of programs: 16.04029
+Extractor complete!
+  Time taken: 1.091538ms
+  Best cost: 0.28781697
+Skipping full graph runtime evaluation (--no_runtime_report)

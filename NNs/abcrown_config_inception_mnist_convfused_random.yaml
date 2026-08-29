@@ -1,0 +1,29 @@
+# Conv-weight-fused InceptionMNIST, RANDOM branching -- directly comparable
+# to the sweep's unfused-random (20%, 2/10) and fused_v2-random relu-merge
+# (10%, 1/10) at eps=0.1, all under the same branching method. Model is
+# numerically identical to unfused (3.6e-07), same ReLU neurons, so a fair
+# same-branching comparison isolates any structural effect of the Split.
+#
+# Run from alpha-beta-CROWN/complete_verifier/ (onnx_path relative to there).
+model:
+  onnx_path: ../../NNs/inception_mnist_convfused.onnx
+data:
+  dataset: MNIST
+  mean: [0.]
+  std: [1.]
+  start: 0
+  end: 10
+specification:
+  norm: .inf
+  epsilon: 0.1
+attack:
+  pgd_order: skip
+  pgd_restarts: 50
+solver:
+  batch_size: 2048
+  beta-crown:
+    iteration: 20
+bab:
+  timeout: 60
+  branching:
+    method: random

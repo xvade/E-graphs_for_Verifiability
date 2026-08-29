@@ -1,0 +1,36 @@
+# Conv-weight-fused InceptionMNIST, SMART (default kfsb/babsr) branching.
+# This tests the key question: does the activation Split introduced by the
+# conv-weight fusion trip the smart branching heuristic (as the relu-merge's
+# Concat did, forcing random -- BUGS #11/#12), or does babsr handle it? If
+# this run succeeds with smart branching, weight-side fusion dodges the
+# penalty that the relu-merge incurred. Model is numerically identical to
+# unfused (verified 3.6e-07), so any difference is purely verifier behavior.
+#
+# Run from alpha-beta-CROWN/complete_verifier/ (onnx_path relative to there).
+model:
+  onnx_path: ../../NNs/inception_mnist_unfused_simplified.onnx
+data:
+  dataset: MNIST
+  mean: [0.]
+  std: [1.]
+  start: 0
+  end: 10
+specification:
+  norm: .inf
+  epsilon: 0.1
+attack:
+  pgd_order: skip
+  pgd_restarts: 50
+general:
+  # matrix conv_mode: the activation Split's bound_backward doesn't support
+  # auto_LiRPA's default Patches representation (crashes in torch.cat on a
+  # Patches object, slice_concat.py:311). Matrix mode is slower but gives
+  # mathematically identical bounds, so verified COUNTS are comparable to the
+  # patches-mode unfused runs; only time differs.
+  conv_mode: matrix
+solver:
+  batch_size: 2048
+  beta-crown:
+    iteration: 20
+bab:
+  timeout: 60
