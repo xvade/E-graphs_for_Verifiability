@@ -166,9 +166,22 @@ parse, trailing-newline rule parse, CheckApply todo!()). Depth-4 pricing on the 
 node: runs (not OOM) but 174M+ graphs / ~52GB / 19+ min and climbing -- decisively
 confirms depth is super-exponential; depth 3 is the operating point.
 
-**Remaining (next block):** the pb->egg rule converter (note: the generator's xflow
-shim enum has EW_MAX=27 while TASO/tensat use 33 -- the converter must map xflow-ints
-to op names), a realistic single-input min/max model for a full numeric+verification
-loop (the synthetic 3-input test hit a TASO multi-input export merge), and Z3
-verification (z3-solver + real ITE semantics for relu/max/min/sub -- random-numeric
-testing can pass false PWL equivalences, the bidir-soundness class).
+**pb->egg converter -- DONE.** `NNs/pb2egg.py` (Z3-free) reads graph_subst.pb and
+emits tensat egg rules, using the XFLOW enum the generator writes (+ SUB/MAX/MIN
+26/27/28). Filters multi-output, non-clean-op, and unbound-RHS-var rules. Depth-3
+min/max pb: 1301 -> 790 valid egg rules (359 min/max). tensat loads+applies all 790 on
+a max-tree model (no panic). `rules_pb2.py` regenerated from rules.proto.
+
+**Z3 verification -- DONE.** `NNs/z3_verify_egg.py` gives relu/max/min/sub REAL
+if-then-else semantics over Reals (matmul/smul uninterpreted; elementwise -> scalar
+validity implies the tensor identity) -- unlike the stock TASO verifier, which leaves
+relu uninterpreted and CANNOT prove the max=a+relu(b-a) bridge. On the 790 converted
+rules: **621 VERIFIED (329 min/max), 169 REJECTED as provably-NOT-equivalences (21%
+random-test false positives), 0 unknown.** The verified set loads+applies in tensat.
+z3-solver at `toolchain-tensat/z3pkg`. Full sound pipeline now closed:
+extended generator -> pb -> pb2egg -> z3_verify_egg -> tensat -> reconstruct(->relu).
+
+**Remaining:** a realistic single-input min/max model whose reassociation actually
+changes the ReLU relaxation (the synthetic max-tree fires rules but is verifiability-
+flat; the 3-input test hit a TASO multi-input export merge), to turn the working sound
+pipeline into a measured verifiability delta on a real verification instance.
