@@ -629,3 +629,25 @@ note describes. Worth fixing properly (check `weight_names`/`all_
 weights` instead of axis value alone) if a future cost function needs
 to favor the conv-fusion rule specifically and precisely, but not
 blocking for anything done so far.
+
+---
+
+## TASO ONNX importer: `MatMul` (capital) silently skipped (2026-08-30)
+
+`taso/python/taso/__init__.py` registered the ONNX->TASO handler under the key
+`xf_operators['Matmul']` (lowercase 'm'), but ONNX's standard op name is **`MatMul`**
+(capital M). The load loop dispatches on `op.op_type` verbatim (`if op.op_type in
+xf_operators`), so every `MatMul` node fell through to "Found unsupported ONNX operator:
+MatMul (Skipped)". In a pure FC/MatMul graph (e.g. the VNN-COMP **tll** net) this skips
+ALL compute: downstream Add/Relu then can't find their input tensors and are skipped too,
+leaving a degenerate graph of just inputs + weights (the long-standing "tll -> 1 Input +
+29 Weight, zero compute" mystery). Fix: `xf_operators['MatMul'] = _matmul` alias. This
+was THE barrier to ingesting MatMul-based FC nets; with it, tll ingests and the
+[[tll semantic lift]] round-trips.
+
+Residual (separate, pre-known): even after ingestion, taso's SGEMM COST MEASUREMENT
+(`src/cudnn/matmul_kernel.cu:165`, `cublasSgemm`) aborts with "parameter number 10 had an
+illegal value" on small-N matmuls (tll's width-1/2/4 output layers). The vector trick
+(pad widths >= 8) sidesteps it; a real fix would guard/clamp the leading dims (or skip
+cost measurement) for small N, since the measured runtime is irrelevant to the tensat
+pipeline. Blocks mechanical import of scalar-output FC nets until fixed.

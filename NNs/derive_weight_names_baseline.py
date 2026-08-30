@@ -46,7 +46,7 @@ def parse_weight_guids(taso_path):
         guid = int(lines[i]); i += 1
         op = int(lines[i]); i += 1
         i += 1  # deps, unused here
-        params = [int(p) for p in lines[i].split(",")]; i += 1
+        params = [int(p) for p in lines[i].split(",") if p.strip()]; i += 1
         if op == 1:  # OP_WEIGHT
             weights.append((guid, tuple(params)))
     return weights

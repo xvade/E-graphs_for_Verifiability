@@ -930,3 +930,30 @@ xfers, the generator AC-blindness (#4), and the speed-only public API.
 `pwl_rules_ac.txt`, `ac_rules_raw.txt`, `ac_rules_verified.txt`, `pwl_rules_plus_assoc.txt`
 (superseded), `ac_{maxout,lattice}_verif.onnx`, `lat_{union,assoc}_verif.onnx`,
 `TASO_SPEED_ASSUMPTIONS.md`, `EGRAPH_BREADTH_LIMITATION.md`, updated `VERIF_COST_RESULT.md`.
+
+## 2026-08-30 (cont.) — tll: first real-world (VNN-COMP) verifiability win via semantic lift
+
+Turned the AC-closure result loose on a real model. The VNN-COMP **tll** (Two-Level
+Lattice) ONNX is TLL-compiled to a sequential MatMul/Add/Relu MLP — min/max baked into
+weights, no ops — so a mechanical importer would leave it inert (my initial "rules
+transfer directly" claim was wrong; caught before building). Instead **semantically
+lifted** it: read the 16 local affine fns (linearLayer), the one-hot selection (16 groups
+× 16 members), and the min/max banks; rebuilt the explicit **max_g min_k (W_k·x+b_k)**
+lattice with tll's real weights (`NNs/build_tll_lattice.py`, numeric-gated 4.8e-7).
+
+Pipeline: build_tll_lattice → taso ingest → tensat (`pwl_rules_ac.txt`) n_diverse →
+reconstruct(→relu) → α-CROWN, box x0=0/eps=1.0. **Baseline (original compiled tll) cert_ub
+19.59 (628/1020 unstable) vs best lifted+reassociated 8.26 (89/904) = +11.33, 58% tighter
+on the same function.** Honest decomposition: the LIFT does ~48% (compiled TLL relu-gadgets
+are far less stable than an explicit lattice — 628 vs ~90 unstable), and REASSOCIATION (the
+general tensat/AC-closure contribution) refines ~10.06→8.26 (~18%); both lattice levels are
+reassociable here so the ewmin AC rules are load-bearing for the first time.
+
+Fixed the *actual* tll ingestion barrier: **taso's `MatMul`-casing bug** — the importer
+registered only lowercase `'Matmul'`, so standard-ONNX `MatMul` nodes were all skipped,
+degenerating pure-FC graphs to inputs+weights (the long-standing "tll degenerate" mystery;
+BUGS.md). Residual, separate: taso's SGEMM cost-measurement aborts on small-N matmuls
+(tll's width-1 output) — the vector trick sidesteps it; documented. Artifacts:
+`taso/python/taso/__init__.py` (MatMul alias), `NNs/build_tll_lattice.py`,
+`NNs/derive_weight_names_baseline.py` (empty-param guard), `NNs/reassoc_results/TLL_RESULT.md`,
+tll_lattice/recon onnx + sidecars.
