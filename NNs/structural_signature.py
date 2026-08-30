@@ -59,7 +59,7 @@ def parse_model_file(path):
         guid = int(lines[i]); i += 1
         op = int(lines[i]); i += 1
         deps = [tuple(int(x) for x in d.split(":")) for d in lines[i].split(",")]; i += 1
-        params = [int(p) for p in lines[i].split(",")]; i += 1
+        params = [int(p) for p in lines[i].split(",") if p.strip() != ""]; i += 1
         nodes[guid] = {"op": op, "deps": deps, "params": params}
     return nodes
 

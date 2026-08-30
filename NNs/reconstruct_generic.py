@@ -99,8 +99,8 @@ def parse_and_build(model_path, named_weights, weight_names_map):
     while i < len(lines):
         guid = int(lines[i]); i += 1
         op = int(lines[i]); i += 1
-        deps = [tuple(int(x) for x in d.split(":")) for d in lines[i].split(",")]; i += 1
-        params = [int(p) for p in lines[i].split(",")]; i += 1
+        deps = [tuple(int(x) for x in d.split(":")) for d in lines[i].split(",") if d.strip() != ""]; i += 1
+        params = [int(p) for p in lines[i].split(",") if p.strip() != ""]; i += 1
         consumed.update(deps)
 
         optype = ts.op_table[op]
@@ -194,6 +194,21 @@ def parse_and_build(model_path, named_weights, weight_names_map):
             node = [add_larger_first(graph, nodes[deps[0][0]][deps[0][1]], nodes[deps[1][0]][deps[1][1]])]
         elif optype == "Relu":
             node = [graph.relu(nodes[deps[0][0]][deps[0][1]])]
+        elif optype == "Sub":
+            # linear; ab-CROWN bounds Sub exactly. Emit native.
+            a = nodes[deps[0][0]][deps[0][1]]; b = nodes[deps[1][0]][deps[1][1]]
+            node = [graph.sub(x=a, y=b)]
+        elif optype == "Max":
+            # LOWER max(a,b) = a + relu(b-a) to the ReLU form, NOT native ONNX Max:
+            # ab-CROWN's BoundMax relaxation is not the ReLU topology the reassociation
+            # result was measured on. This makes min/max rewrites visible to the
+            # verifier as the ReLU structure they actually change.
+            a = nodes[deps[0][0]][deps[0][1]]; b = nodes[deps[1][0]][deps[1][1]]
+            node = [graph.add(a, graph.relu(graph.sub(x=b, y=a)))]
+        elif optype == "Min":
+            # min(a,b) = a - relu(a-b), same rationale as Max.
+            a = nodes[deps[0][0]][deps[0][1]]; b = nodes[deps[1][0]][deps[1][1]]
+            node = [graph.sub(x=a, y=graph.relu(graph.sub(x=a, y=b)))]
         elif optype == "MaxPool":
             # Param layout per taso/examples/load_model.py (the authoritative
             # reference dispatch this whole family of scripts mirrors):
