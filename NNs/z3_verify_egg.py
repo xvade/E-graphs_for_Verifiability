@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""Formally verify egg rules (LHS=>RHS) with Z3, keeping only proven equivalences.
+
+The generator's rules pass only random-numeric testing, and piecewise-linear min/max
+is exactly where random testing admits false positives (e.g. a rule whose LHS secretly
+depends on a matmul the RHS drops). This proves each rule or rejects it with a
+counterexample.
+
+Semantics (the point -- the stock TASO verifier leaves relu UNINTERPRETED, so the
+max=a+relu(b-a) bridge is unprovable there):
+  every ?input_N and every matmul/smul subterm -> a Real; ops interpreted exactly:
+    ewadd=+  ewsub=-  ewmul=*  ewmax=If(a>=b,a,b)  ewmin=If(a<=b,a,b)  relu=If(x>=0,x,0)
+    matmul(act,a,b), smul(a,b) -> uninterpreted Real functions of their args.
+All these ops are ELEMENTWISE (matmul/smul opaque), so scalar validity over Reals
+implies the tensor identity. Treating matmul/smul as arbitrary functions is SOUND and
+conservative: a rule proved for all interpretations holds for the real op; a rule that
+needs the specific op semantics is (safely) rejected.
+
+Usage: z3_verify_egg.py <in_rules.txt> <out_verified.txt> [--timeout_ms N]
+"""
+import sys, re
+import z3
+
+def tokenize(s):
+    return s.replace("(", " ( ").replace(")", " ) ").split()
+
+def parse(tokens, pos):
+    """Return (node, next_pos). node is ('var',name) | ('app',op,[args])."""
+    tok = tokens[pos]
+    if tok == "(":
+        op = tokens[pos + 1]
+        pos += 2
+        args = []
+        while tokens[pos] != ")":
+            node, pos = parse(tokens, pos)
+            args.append(node)
+        return ("app", op, args), pos + 1
+    else:
+        return ("atom", tok), pos + 1
+
+class Builder:
+    def __init__(self):
+        self.vars = {}
+        self.matmul = z3.Function("matmul", z3.IntSort(), z3.RealSort(), z3.RealSort(), z3.RealSort())
+        self.smul = z3.Function("smul", z3.RealSort(), z3.RealSort(), z3.RealSort())
+
+    def var(self, name):
+        if name not in self.vars:
+            self.vars[name] = z3.Real(name.replace("?", ""))
+        return self.vars[name]
+
+    def build(self, node):
+        kind = node[0]
+        if kind == "atom":
+            t = node[1]
+            if t.startswith("?input_"):
+                return self.var(t)
+            # a bare integer parameter (e.g. matmul activation) -> Int constant
+            return z3.IntVal(int(t))
+        op, args = node[1], node[2]
+        if op == "ewadd":  return self.build(args[0]) + self.build(args[1])
+        if op == "ewsub":  return self.build(args[0]) - self.build(args[1])
+        if op == "ewmul":  return self.build(args[0]) * self.build(args[1])
+        if op == "ewmax":
+            a, b = self.build(args[0]), self.build(args[1]); return z3.If(a >= b, a, b)
+        if op == "ewmin":
+            a, b = self.build(args[0]), self.build(args[1]); return z3.If(a <= b, a, b)
+        if op == "relu":
+            a = self.build(args[0]); return z3.If(a >= 0, a, z3.RealVal(0))
+        if op == "matmul":
+            act = self.build(args[0]); return self.matmul(act, self.build(args[1]), self.build(args[2]))
+        if op == "smul":
+            return self.smul(self.build(args[0]), self.build(args[1]))
+        raise ValueError("unhandled op: " + op)
+
+def verify_rule(line, timeout_ms):
+    lhs_s, rhs_s = line.split("=>", 1)
+    b = Builder()
+    lhs = b.build(parse(tokenize(lhs_s), 0)[0])
+    rhs = b.build(parse(tokenize(rhs_s), 0)[0])
+    s = z3.Solver()
+    s.set("timeout", timeout_ms)
+    s.add(lhs != rhs)          # look for a counterexample to LHS == RHS
+    r = s.check()
+    if r == z3.unsat:   return "VERIFIED"
+    if r == z3.sat:     return "REJECTED"
+    return "UNKNOWN"
+
+def main():
+    inp, outp = sys.argv[1], sys.argv[2]
+    timeout_ms = 10000
+    if "--timeout_ms" in sys.argv:
+        timeout_ms = int(sys.argv[sys.argv.index("--timeout_ms") + 1])
+    verified, rejected, unknown, errored = [], 0, 0, 0
+    lines = [l.strip() for l in open(inp) if l.strip() and "=>" in l]
+    for i, line in enumerate(lines):
+        try:
+            res = verify_rule(line, timeout_ms)
+        except Exception as e:
+            errored += 1; continue
+        if res == "VERIFIED":   verified.append(line)
+        elif res == "REJECTED": rejected += 1
+        else:                   unknown += 1
+        if (i + 1) % 100 == 0:
+            print(f"  ...{i+1}/{len(lines)} (verified {len(verified)}, rej {rejected}, unk {unknown})")
+    with open(outp, "w") as f:
+        f.write("\n".join(verified))
+    mm = sum(1 for l in verified if "ewmax" in l or "ewmin" in l)
+    print(f"total rules:   {len(lines)}")
+    print(f"VERIFIED:      {len(verified)}  (min/max: {mm})")
+    print(f"REJECTED:      {rejected}   (provably NOT equivalences -- random-test false positives)")
+    print(f"UNKNOWN:       {unknown}   (z3 timeout/incomplete)")
+    print(f"parse-errored: {errored}")
+
+if __name__ == "__main__":
+    main()
