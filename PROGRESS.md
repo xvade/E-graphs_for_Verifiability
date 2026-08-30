@@ -839,16 +839,32 @@ sequential/residual nets -- confirming the barrier, not breaking it. The 660 is 
 pre-`f2109cc` dialect (matmul arity, context-dependent concat NDIM, changed enlarge
 sig) too costly to faithfully migrate; used a direction-unbiased **bidirectional-119
 (232-rule)** set instead (`tensat/rules_full_bidir.txt`, `bidir_rules.py`) and ran
-arch-diverse extraction. Empirical result (structural_signature dedup over 8
-extractions/config): **InceptionMNIST curated(119-fwd) -> 3 distinct structures**
-(unfused-like x6 + two fusion levels), **bidir(232) -> 4 distinct** (removing the
-direction bias adds one more fusion arrangement, nothing qualitatively new);
-**resnet_2b -> 1, mnist_tiny -> 1** (isomorphic to input -- barrier confirmed even
-with the un-biased ruleset). Exactly the corpus-analysis prediction: arch diversity
-appears only where parallelism pre-exists (InceptionMNIST's branches); sequential/
-residual nets stay isomorphic because no rule creates parallelism from a monolithic op.
-Verification of the InceptionMNIST fusion variants is verifiability-NEUTRAL (prior
-result: conv-fusion 30%=30%, see convfused). Fixed two real tensat bugs found doing
-this: rule-file trailing-newline parse panic, and a multi-pattern cycle-check panic
-(`descendents.get(id).unwrap()`) on expanded rule sets (tensat ddd6352). Artifacts:
-`tensat/converted_full.txt`, `tensat/rules_full_bidir.txt`, `tensat/bidir_rules.py`.
+arch-diverse extraction. **VALIDATED result** (structural_signature dedup over 8
+extractions, each reconstructed to ONNX and numerically checked vs the reference):
+**InceptionMNIST curated(119-fwd) -> 3 distinct structures**, all semantically
+correct (max|ref-recon| = 7e-7): the unfused-like form (x6) + two conv-weight fusion
+levels (the 4 hardcoded PRE_DEFINED_MULTI conv-splitters firing on the 1x1 branch).
+**resnet_2b -> 1, mnist_tiny -> 1** (isomorphic to input -- barrier). Exactly the
+corpus-analysis prediction: arch diversity appears only where parallelism pre-exists
+(InceptionMNIST's branches); sequential/residual nets stay isomorphic because no rule
+creates parallelism from a monolithic op.
+
+**The direction-unbiased (bidirectional) experiment failed a soundness check --
+RETRACTED.** Naive LHS<->RHS reversal of TASO's learned rules is UNSOUND in tensat's
+untyped egg language: bidir(232) extractions reconstruct but are numerically WRONG
+(max|ref-recon| = 9.83 vs 7e-7 for curated), i.e. a reversed rule unions
+non-equivalent e-classes. So the "un-speed-biased corpus" could not be validly run by
+reversal; the validated heavy result is the curated arch-diverse extraction above.
+This does NOT change the headline: the corpus analysis (a static fact) already showed
+even the full un-curated corpus contains no structure-creating-from-scratch rule, so a
+valid un-biased run would still not rewrite sequential/residual nets.
+
+Verifiability of the InceptionMNIST fusion variants: prior measurements are neutral
+(weight-path conv-fusion, 30%=30%, convfused) to WORSE (activation-path concat/split,
+strictly worse at 3/5 eps, sweep-headline). Not re-verified here (predicted range
+already established; resnet_4b and inception-convfused not rerun -- same family /
+hand-built variant of the same net, prior probes already isomorphic/neutral).
+Fixed two real tensat bugs: rule-file trailing-newline parse panic, and a
+multi-pattern cycle-check panic (`descendents.get(id).unwrap()`) on expanded rule sets
+(tensat ddd6352, blacklist-flag corrected). Artifacts: `tensat/converted_full.txt`,
+`tensat/rules_full_bidir.txt`, `tensat/bidir_rules.py`.

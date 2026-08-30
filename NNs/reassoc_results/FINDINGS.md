@@ -113,8 +113,13 @@ Conv/Matmul models), not a scale-up of these rules.
     - N32 eps0.1: 4 chain / 1 balanced (15 ties), mean delta +0.019, unstable 2.15 vs 5.20
     - N16 eps0.5: 17 chain / 3 balanced, mean delta +0.97, unstable 8.15 vs 12.70 (headline)
     - N8 eps1.0: 10 chain / 10 balanced, mean delta +0.225 (chain ahead on average)
-  Reading: at small eps few ReLUs are unstable -> mostly ties, chain weakly ahead; the
-  effect is largest in a mid-eps regime; at large eps everything is unstable so wins
-  split but chain stays ahead on average. So "chain-ify" never hurts on average, and
-  helps most when a nontrivial-but-not-saturating fraction of ReLUs is unstable.
-- G=2,K=8 lattice (longer within-group chains than G4K4): [appended when it lands].
+    - N32 eps1.0: 19 chain / 1 balanced, mean delta +4.51, unstable 24.2 vs 30.35
+  Reading: the effect scales with chain DEPTH (N). At N=8 it is weak (few relus /
+  shallow); at N=16 decisive (17/20); at N=32 very strong (19/20 even at eps=1.0,
+  mean +4.51). Magnitude also grows with eps until relus saturate. "Chain-ify" never
+  hurts on average, and helps more the deeper the reduction.
+- **G=2,K=8 lattice (mechanism confirmation).** The G4K4 lattice was a wash (8/20,
+  mean -0.04). With LONGER within-group chains (K=8 vs K=4) the effect RETURNS:
+  chain 14/20, mean +0.30, unstable 10.30 vs 12.70. This confirms Result 2's depth
+  explanation is not post-hoc: the lattice effect is diluted only because shallow
+  groups cap chain depth; lengthen the chains and it comes back.
