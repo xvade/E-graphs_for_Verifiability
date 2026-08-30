@@ -123,3 +123,38 @@ Conv/Matmul models), not a scale-up of these rules.
   chain 14/20, mean +0.30, unstable 10.30 vs 12.70. This confirms Result 2's depth
   explanation is not post-hoc: the lattice effect is diluted only because shallow
   groups cap chain depth; lengthen the chains and it comes back.
+
+## Extending TASO's generator with min/max/sub (heavy follow-on)
+
+**Result: TASO's generator CAN produce the verifiability-relevant PWL rewrite family
+once given min/max/subtraction — the op-set gap was the only barrier.**
+
+- min/max/sub are already in TASO's core enum (`ops.h`, with ONNX refs). The generator
+  (`src/generator/generator.cc`) is a standalone g++ tool (no cuDNN/GPU; its own
+  random-numeric equivalence testing). Adding them = ~4 edits to `ElementTemp` (sub as
+  ordered pairs since non-commutative; max/min commutative) + recovering a minimal
+  `xflow/ops.h` (the original, git 34d0138, pulled in cuDNN/TensorRT/MKL; the generator
+  needs only the enums + SplitInfo). Build recipe: `src/generator/compile_pwl.sh`
+  (regenerate protobuf against the container's protoc, then g++). `#ifdef PWL_FOCUS`
+  trims to the PWL op set.
+- **Depth-3 focused run generated the target rules** (`pwl_generator_transfers.txt`,
+  `pwl_graph_subst.pb`): min/max **re-association** `max(max(a,b),max(a,c))=max(a,max(b,c))`,
+  the **bridge** `max(a,b)=(a+b)-min(a,b)`, and relu<->max/sub identities
+  (`max(x,relu(x))=relu(x)`; `(x-y)-relu(x-y)`=min-form). These are exactly the family
+  the light PoC showed moves verifiability, and were previously unrepresentable.
+
+**Depth question:** the limit is one line (`if (depth >= GEN_MAX_DEPTH) return;`, now a
+compile define). Depth 10 is intractable: the generator materializes every enumerated
+graph in an in-memory hashmap, so cost is ~b^depth (b in the hundreds) in BOTH time and
+RAM -- TASO's own published run was ~4 ops/hours; depth 10 is ~10^20 graphs, impossible.
+We don't need it: the PWL reassociation rules are depth<=3. **Depth-4 pricing
+(measured, focused op set):** ~12 GB RAM after 42 s and still climbing (98% CPU),
+vs depth-3 = trivial (seconds, tiny) -- a ~1000x blowup from one level. Depth 4 is
+already at the edge for the trimmed 9-op set; the full op set is far worse; depth 5+
+is intractable and depth 10 impossible. Killed before it exhausted the shared node.
+
+**Not yet done (separate checkpoint):** tensat integration -- add Ewmax/Ewmin/Ewsub to
+the egg language + parser + cost + ONNX reconstruction (decision to record: lower
+min/max to the relu form, NOT native ONNX Min/Max, so ab-CROWN sees the ReLU topology
+the PoC measured), plus keeping Z3 verification (needs z3-solver + real ITE semantics
+for relu/max/min/sub, since random-numeric testing can pass false PWL equivalences).
