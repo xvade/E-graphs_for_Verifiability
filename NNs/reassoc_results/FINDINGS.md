@@ -36,15 +36,16 @@ N=16, d=8, eps=0.5, 20 reps, alpha-CROWN:
 | mean unstable ReLUs (of 15) | **8.35** | 12.70 |
 
 - Mean bound advantage of chain: **0.89** (lower = tighter = more verifiable).
-- **Under *vanilla* CROWN the two are byte-identical** (0/3 at N=8, CPU; the
-  N=16x20 confirmation is pending in the gating batch — this line will be updated
-  with the real number when `vanilla_max_N16.log` lands). The unoptimized
-  relaxation appears to telescope to a topology-independent bound; the divergence
-  shows up only under the *optimized* (alpha) bounding.
+- **The effect is not an alpha-optimization artifact.** Vanilla CROWN at the same
+  N=16x20 also shows chain tighter (**14/20**, mean delta 0.68, unstable ReLUs
+  9.45 vs 12.70) — the same direction and mechanism as alpha-CROWN. (A small
+  N=8/eps=0.3 3-rep CPU probe gave *byte-identical* bounds, but that is a
+  small-perturbation regime where too few ReLUs are unstable for topology to
+  matter; it does not generalize — corrected after the N=16x20 gating run.)
 
-So: same function, same ReLU count, but reassociation moves the certified bound.
-**The effect the whole project needed — a semantics-preserving rewrite that changes
-verifiability — exists.**
+So: same function, same ReLU count, but reassociation moves the certified bound
+under standard CROWN bounding. **The effect the whole project needed — a
+semantics-preserving rewrite that changes verifiability — exists.**
 
 ## Mechanism — confirmed: reassociation changes ReLU *stability*
 
