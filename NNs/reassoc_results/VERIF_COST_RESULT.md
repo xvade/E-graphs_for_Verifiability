@@ -33,3 +33,29 @@ extraction that beats them" ON PURE-MAX structure (+2.37). On min-dominated stru
 it hits the documented additive-cost limit -- the empirical case for the next lever, a
 per-ReLU SENSITIVITY WEIGHT (one backward-CROWN pass on a reference form) so the cost
 targets critical-path ReLUs, not all ReLUs equally. (Not built yet, per scope.)
+
+## Sensitivity-weighted VerifCost (--sensitivity_file) -- tried, does NOT unlock lattice
+Weights each ReLU's gap-area by its backward-CROWN sensitivity |lambda| (gen_sensitivity.py:
+top-down CROWN-lite pass on a reference form; min-ReLU=1.0 decaying to 0.03; keyed by
+weight-name set). Result:
+- **maxout: 9.6519 (5/120) = unweighted -- NEUTRAL** (single max-reduction has near-uniform
+  sensitivity [0.118,1.0]; no regression -- the mechanism is sound).
+- **lattice: 8.5019 (14/120) = unweighted -- NO IMPROVEMENT.**
+
+Why it fails on the lattice (two compounding reasons, both informative):
+1. The lattice's critical-path ReLU is the OUTER MIN, which is STRUCTURALLY FIXED
+   (min(maxA,maxB) -- 2 groups, no reassociation freedom). No rewrite reduces its gap, so
+   up-weighting it changes nothing. The bound gain (envelope chain 7.80) needs reassociating
+   the INNER max-groups -- which sensitivity DOWN-weights (they're behind the min). Their
+   benefit is a SECOND-ORDER effect (tighter group intervals -> tighter min inputs -> tighter
+   output) that first-order |lambda|-gap-area does not see.
+2. REACHABILITY: every tensat form (40 sampled + unweighted-verif + weighted-verif) plateaus
+   at exactly 8.5019. The hand-built chain (7.80) is a DIFFERENT realization that tensat's
+   rules + caps apparently don't generate. So no extraction cost could reach it -- the limit
+   is partly the e-graph, not just the cost.
+
+Net: the verifiability-aware cost is a real win on pure-max (maxout +2.37, deterministic).
+The min-of-max lattice resists BOTH the local cost (min unmovable, second-order gains) AND
+tensat's reachable rewrite set. The next lever is NOT more cost engineering: it's either
+rules that create the tight lattice form (reachability) or a genuinely global/second-order
+objective -- both bigger than a per-enode weight.
