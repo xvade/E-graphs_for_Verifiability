@@ -1,0 +1,3 @@
+(ewmax (ewmax ?input_1 ?input_2) ?input_3)=>(ewmax ?input_1 (ewmax ?input_2 ?input_3))
+(ewmax ?input_1 (ewmax ?input_2 ?input_3))=>(ewmax (ewmax ?input_1 ?input_2) ?input_3)
+(ewmax ?input_1 ?input_2)=>(ewmax ?input_2 ?input_1)

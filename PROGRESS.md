@@ -868,3 +868,65 @@ Fixed two real tensat bugs: rule-file trailing-newline parse panic, and a
 multi-pattern cycle-check panic (`descendents.get(id).unwrap()`) on expanded rule sets
 (tensat ddd6352, blacklist-flag corrected). Artifacts: `tensat/converted_full.txt`,
 `tensat/rules_full_bidir.txt`, `tensat/bidir_rules.py`.
+
+## 2026-08-30 — AC-closure rules: lattice's first verifiability win + TASO speed-assumption audit
+
+**Context.** Prior sessions established that verifiability-aware extraction (VerifCost)
+improves the maxout net (+20%) but the min-of-max lattice stayed pinned at the input
+bound (8.50) under every approach. Today we found *why*, fixed it, and audited the
+root-cause class in TASO.
+
+**Chain-query diagnostic (`tensat --query_chain`, new in `src/main.rs`).** Added a
+non-mutating `egraph.lookup` probe that, after saturation, asks whether the tight
+left-deep *chain* association of the lattice is materialized — order-independently (a
+per-group subset-closure over all leaf permutations), plus natural-order break-depth,
+cycle-blacklist membership, and root-equivalence. On the lattice with the 621 rules the
+chain is **absent**; the natural-order spine breaks at depth 2/7.
+
+**A wrong turn, corrected.** First reading was "saturation budget / breadth-first
+starvation" (it hit the 120s TimeLimit). A 10× budget re-run (1200s, 224k nodes) still
+produced no chain — but the frontier *didn't move at all*, which crowding can't explain.
+The advisor flagged the tell: `max(max(g0,g1),g2)` is **one** associativity step from the
+input, so its absence isn't a budget story. A grep settled it: **the 621 rule set contains
+no pure associativity and no commutativity for *any* commutative-associative op**
+(ewmax/ewmin/ewadd/ewmul all 0) — only the *idempotent* shared-operand max rule. Confirmed
+by swap-in: lattice + a 4-rule file with pure assoc+comm → `Saturated` at 612 classes,
+full depth-7 chain present, root-equivalent. So it was a **rule-set gap**, vindicating the
+original "missing rewrite rules" intuition; the breadth-first note was demoted to an
+untested hypothesis (`EGRAPH_BREADTH_LIMITATION.md`).
+
+**Root cause — TASO's generator is AC-blind (`taso-generator-is-AC-blind`).** Traced the
+gap to the generator itself (absent pre-Z3 too). `generator.cc`'s `variable_ordering` +
+`same_via_subst` + common-sub/supergraph pruning canonicalize associative/commutative
+operators, so pure assoc/comm never surface as distinct-graph pairs; the idempotent rule
+survives only because its leaf multiset differs (a genuine simplification). TASO was built
+to find runtime-*reducing* rewrites, and AC-rearrangements are runtime-neutral — exactly
+the class verifiability needs (chain vs balanced ReLU tree: same runtime, different
+certified bound). Systematic, not accidental.
+
+**Fix + rerun on all models.** Hand-authored 12 AC rules (assoc both directions + comm for
+ewmax/ewmin/ewadd/ewmul), **all Z3-verified**, deduped-unioned with the 621 →
+`pwl_rules_ac.txt` (632 rules). verif_cost extraction → reconstruct → α-CROWN bound:
+- **maxout: 9.6236 (5/120 unstable) vs input 12.0257 = +2.40 (20%)** — new best.
+- **lattice: 7.6167 (8/120) vs input 8.5019 = +0.89 (10.4%)** — the min-of-max's *first*
+  real verifiability improvement (was a documented null). Both numeric-gated (~7e-7).
+- The 4 Conv/Matmul nets (mnist_tiny, cnn_a, resnet2b, inception) stay **inert** — each
+  collapses to ≤1 distinct structure; commutativity gives mirror-identical ReLU topology
+  and 2-operand residual adds have no ≥3-leaf chain to associate → bounds unchanged. The
+  AC lever is specific to min/max-reduction-shaped models.
+
+**TASO speed-assumption audit (`TASO_SPEED_ASSUMPTIONS.md`).** Documented six sites where
+TASO assumes rewrites serve speed — as both issue points and insertion points for
+verification-centric optimization. Deepest finding: `Graph::optimize` (`ops.cc:441`)
+updates the best graph only on a **strict runtime decrease**, and the α-threshold
+(`ops.cc:466` → `substitution.cc:1057`, default α=1.0) prunes anything not strictly faster
+— so TASO's native search **can never return a cost-neutral (verifiability) rewrite**,
+independent of the rule set. This is the structural reason the project runs on tensat/egg
+(equality saturation keeps all equivalent forms) with our own VerifCost extraction. Other
+sites: the cost oracle (`total_cost` = summed `cudaEventElapsedTime` GPU ms), the fusion
+xfers, the generator AC-blindness (#4), and the speed-only public API.
+
+**Artifacts:** `tensat/src/main.rs` (--query_chain); `NNs/reassoc_results/`:
+`pwl_rules_ac.txt`, `ac_rules_raw.txt`, `ac_rules_verified.txt`, `pwl_rules_plus_assoc.txt`
+(superseded), `ac_{maxout,lattice}_verif.onnx`, `lat_{union,assoc}_verif.onnx`,
+`TASO_SPEED_ASSUMPTIONS.md`, `EGRAPH_BREADTH_LIMITATION.md`, updated `VERIF_COST_RESULT.md`.

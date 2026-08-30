@@ -77,10 +77,92 @@ RESULT on lattice.taso (2 groups x 8 leaves):
   group, in ANY leaf order.
 - No blacklist hit (chain never built, so nothing to blacklist).
 
-VERDICT (maps to the 4-row table): chain ABSENT + Stopped=TimeLimit => **saturation
-BUDGET**, specifically wall-clock. NOT a rule gap (associativity demonstrably fires),
-NOT the cycle blacklist, NOT the extraction heuristic (there is nothing in the e-graph
-for any cost to pick). This CONFIRMS the earlier "reachability, not cost" framing and
-pins the cause to the 120s time limit. Untested next lever: raise --n_sec (e.g. 1200)
-and re-query to see whether the depth-7 spine forms with more time; if it Saturates
-without the chain, THEN check ewmax assoc-rule directions for a genuine rule gap.
+INITIAL (WRONG) VERDICT -- superseded, see CORRECTION below: I read chain-ABSENT +
+Stopped=TimeLimit as "saturation budget / breadth-first". That was wrong.
+
+**CORRECTION (rule-set gap, not budget).** The advisor flagged the tell: the k=2 node
+max(max(g0,g1),g2) is ONE associativity application from the INITIAL graph, so its
+absence after many iterations cannot be a budget/breadth story -- crowding slows a
+frontier, it doesn't freeze it at input depth. Grep of pwl_rules_verified.txt settles
+it: **the 621 contains NO pure ewmax associativity and NO pure ewmax commutativity.**
+The only nested-ewmax rules are line 446 (idempotent: needs a SHARED operand on both
+inner maxes) and lines 540-615 (min/max DISTRIBUTIVE laws). None can re-associate a max
+over DISTINCT leaves -- so the lattice's inner group-max trees are literally frozen; the
+chain can never form under the 621. My "assoc demonstrably fires" claim was false: the
+depth-1 node max(g0,g1) I saw is an INPUT node, not a rewrite product. The 6x node
+growth in the 1200s run was OTHER rules (bridges/distributive) firing. The maxout
+succeeded only because it used ewmax_run1_verified.txt (4 rules that DO include pure
+assoc+comm), NOT the 621. This vindicates the user's original read ("limitation of the
+available rewrite rules"). Fix: add pure ewmax/ewmin assoc+comm (trivially Z3-valid) to
+the rule set and re-run. (Breadth-first may still bind AFTER that -- but it is NOT what
+blocks this run.)
+
+### Cheap-gate re-run: 10x budget (n_sec 1200, n_iter 30)
+Same rules/model/node-limit; raised time 120s->1200s and iter cap 12->30.
+- **Stopped: TimeLimit(1203s), iter 13, 224318 nodes / 92080 classes.** Still TIME-bound
+  (nodes = 45% of 500k limit; iter 13 << cap 30).
+- Chain STILL breaks at depth 2/7 (both groups); order-independent closure STILL finds
+  NO left-deep chain over all 8 leaves.
+- Nodes grew ~6x (37806 -> 224318) but the chain frontier did NOT advance at all, and
+  10x wall-clock bought only +3 iterations (10 -> 13): per-iteration cost is exploding
+  super-linearly as the e-graph widens.
+VERDICT (CORRECTED): the frozen frontier (depth unchanged despite 6x nodes) is NOT
+breadth-first starvation -- it is the RULE GAP above. With no pure ewmax assoc/comm in
+the 621, the group max-trees cannot be re-associated at all; the 6x node growth was
+unrelated rules. So raising wall-clock was never going to help, but the reason is the
+missing rule, not width-starvation. See CORRECTION under the 120s section.
+
+### CONFIRMING TEST: lattice + ewmax assoc+comm (4-rule file) -> chain MATERIALIZES
+Ran lattice.taso with ewmax_run1_verified.txt (the 4 rules that DO include pure ewmax
+associativity + commutativity), --query_chain:
+- **Stopped: Saturated, iter 20, 12218 nodes / 612 classes.** (vs 621: TimeLimit, 224318
+  nodes -- the 621's distributive/bridge rules churn without ever saturating.)
+- group 0 & 1 natural-order chain PRESENT at depth 7; order-independent closure: SOME
+  left-deep chain over all 8 leaves EXISTS; FULL chain lattice PRESENT, root-equivalent
+  = true.
+PROVES the rule gap is THE cause: swap in pure assoc+comm and the tight depth-7 chain
+appears and the e-graph saturates cleanly at 612 classes. Not budget, not breadth-first.
+Actionable next step: add pure ewmax/ewmin assoc+comm to the lattice's rule set (or use
+the 621 UNION these 4), run --verif_cost extraction, and bound -- expected ~7.80 (the
+measured chain envelope), i.e. the lattice's first real verifiability improvement.
+
+### RESOLVED: add the missing assoc rules -> lattice IMPROVES (first real gain)
+Added pure ewmax assoc+comm to the rule set, ran --verif_cost extraction + reconstruct +
+bound (alpha-beta-CROWN venv python; native-minmax lattice.onnx can't be bounded by
+auto_LiRPA's minmax op, but the relu-lowered reconstructions bound fine):
+| form | cert_ub | unstable | vs input | numchk |
+|---|---|---|---|---|
+| input (balanced)                 | 8.5019 | 14/120 | --          | -- |
+| hand-built pure chain (envelope) | 7.8026 | --     | +0.70       | -- |
+| assoc-only (4 rules, Saturated)  | 7.7092 |  9/120 | +0.79       | 4.8e-7 |
+| **UNION 621 + assoc (TimeLimit)**| **7.5913** | **9/120** | **+0.91 (10.7%)** | 7.2e-7 |
+- The UNION (full corpus + the 3 missing rules) gives the BEST bound, beating even the
+  hand-built pure chain -- verif_cost combines assoc + commutativity + the 621's
+  distributive laws to find a topology with fewer unstable ReLUs (9 vs 14). Semantics
+  preserved (gate 7.2e-7). The union e-graph TimeLimit'd but the tight forms built early
+  (assoc fires fast), so extraction still found them.
+- This turns the documented min-of-max NULL into a real +0.91 (10.7%) verifiability
+  improvement -- the lattice's first. Rule file: pwl_rules_plus_assoc.txt.
+
+### AC-CLOSURE corpus (pwl_rules_ac.txt = 621 + 12 Z3-verified AC rules)
+Manually added assoc(both dirs)+comm for ewmax/ewmin/ewadd/ewmul (12 rules, ALL absent
+from the 621 for every op; all 12 Z3-proven), deduped-unioned with the 621 -> 632 rules.
+pwl_rules_ac.txt SUPERSEDES pwl_rules_plus_assoc.txt (which had only the 3 ewmax rules).
+verif_cost extraction (n_iter 20 / n_sec 180), reconstruct, bound:
+| model | input | AC-corpus best | vs input | unstable |
+|---|---|---|---|---|
+| maxout  | 12.0257 | **9.6236** | **+2.40 (20%)** |  5/120 |
+| lattice |  8.5019 | **7.6167** | **+0.89 (10.4%)** | 8/120 |
+- maxout 9.6236 is a hair better than the 4-rule-file best (9.6519) -- new best.
+- lattice 7.6167 ~= the ewmax-only union (7.5913); the extra ewmin/ewadd AC rules don't
+  help the G=2 lattice (outer min is single-node, no residual adds) and only perturb which
+  form a TimeLimit'd saturation lands on. Both ~10.5% wins.
+- Both extractions numeric-gated (maxout 9.5e-7, lattice 7.2e-7): semantics preserved.
+
+### AC corpus on the 4 Conv/Matmul models -- still INERT (as predicted)
+n_diverse 8 with pwl_rules_ac.txt: mnist_tiny 8->1 distinct (=input), mnist_cnn_a 8->1
+(=input), resnet2b 8->1 (!=input), inception 8->1 (!=input). AC rules add NO new
+structure vs the 621 breadth: commutativity gives mirror-identical ReLU topology (same
+bound), and residual ewadd's are 2-operand (no >=3-leaf chain to reassociate). So bounds
+unchanged -- consistent with the prior neutral/barrier findings. The AC lever remains
+specific to min/max-reduction-shaped models (maxout, lattice).
