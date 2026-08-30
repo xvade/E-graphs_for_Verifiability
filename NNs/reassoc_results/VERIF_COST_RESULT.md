@@ -59,3 +59,28 @@ The min-of-max lattice resists BOTH the local cost (min unmovable, second-order 
 tensat's reachable rewrite set. The next lever is NOT more cost engineering: it's either
 rules that create the tight lattice form (reachability) or a genuinely global/second-order
 objective -- both bigger than a per-enode weight.
+
+## E-graph chain-query (reachability diagnostic, added later)
+Added `--query_chain` to tensat/main.rs: after saturation (EXACT verif-cost config:
+`-r pwl_rules_verified.txt --n_iter 12 --n_sec 120 --n_nodes 500000 --no_cycle`), it
+looks up (non-mutating `egraph.lookup`) whether the left-deep CHAIN association of the
+lattice is materialized. Order-independent (subset-closure bitmask per group) + natural
+-order break-depth + blacklist check + root-equivalence.
+
+RESULT on lattice.taso (2 groups x 8 leaves):
+- **Stopped: TimeLimit(120.2s), iter 10/12, 37806 nodes / 15808 classes.** Saturation
+  did NOT complete (and node count is 7% of the 500k limit -> it's the WALL-CLOCK
+  budget, not node count, not iter limit).
+- Natural-order chain BREAKS at depth 2/7 in BOTH groups (assoc DOES fire -- shallow
+  spines exist -- but the depth-7 running-max spine never forms).
+- Order-INDEPENDENT subset closure: NO left-deep chain over all 8 leaves in EITHER
+  group, in ANY leaf order.
+- No blacklist hit (chain never built, so nothing to blacklist).
+
+VERDICT (maps to the 4-row table): chain ABSENT + Stopped=TimeLimit => **saturation
+BUDGET**, specifically wall-clock. NOT a rule gap (associativity demonstrably fires),
+NOT the cycle blacklist, NOT the extraction heuristic (there is nothing in the e-graph
+for any cost to pick). This CONFIRMS the earlier "reachability, not cost" framing and
+pins the cause to the 120s time limit. Untested next lever: raise --n_sec (e.g. 1200)
+and re-query to see whether the depth-7 spine forms with more time; if it Saturates
+without the chain, THEN check ewmax assoc-rule directions for a genuine rule gap.
