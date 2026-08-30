@@ -839,5 +839,16 @@ sequential/residual nets -- confirming the barrier, not breaking it. The 660 is 
 pre-`f2109cc` dialect (matmul arity, context-dependent concat NDIM, changed enlarge
 sig) too costly to faithfully migrate; used a direction-unbiased **bidirectional-119
 (232-rule)** set instead (`tensat/rules_full_bidir.txt`, `bidir_rules.py`) and ran
-arch-diverse extraction (curated vs bidir on InceptionMNIST; resnet_2b/mnist_tiny for
-isomorphism). [Empirical diversity + verification numbers appended on run completion.]
+arch-diverse extraction. Empirical result (structural_signature dedup over 8
+extractions/config): **InceptionMNIST curated(119-fwd) -> 3 distinct structures**
+(unfused-like x6 + two fusion levels), **bidir(232) -> 4 distinct** (removing the
+direction bias adds one more fusion arrangement, nothing qualitatively new);
+**resnet_2b -> 1, mnist_tiny -> 1** (isomorphic to input -- barrier confirmed even
+with the un-biased ruleset). Exactly the corpus-analysis prediction: arch diversity
+appears only where parallelism pre-exists (InceptionMNIST's branches); sequential/
+residual nets stay isomorphic because no rule creates parallelism from a monolithic op.
+Verification of the InceptionMNIST fusion variants is verifiability-NEUTRAL (prior
+result: conv-fusion 30%=30%, see convfused). Fixed two real tensat bugs found doing
+this: rule-file trailing-newline parse panic, and a multi-pattern cycle-check panic
+(`descendents.get(id).unwrap()`) on expanded rule sets (tensat ddd6352). Artifacts:
+`tensat/converted_full.txt`, `tensat/rules_full_bidir.txt`, `tensat/bidir_rules.py`.

@@ -97,5 +97,24 @@ forward: the gain is large only for deep max-reductions, and the min/max family 
 the speed bias) is a **separate rewrite family** (broadened tensor-algebra corpus on
 Conv/Matmul models), not a scale-up of these rules.
 
-_Gating checks (200-iter budget robustness; eps/N sweep; vanilla-at-scale) appended
-below once complete._
+## Gating checks
+
+- **Budget robustness (rules out early-stop artifact):** at a forced 200-iter
+  alpha-CROWN budget (patience 200), chain tighter is **17/20** — identical to the
+  default-budget 17/20 (mean delta 0.97, unstable 8.15 vs 12.70). The effect is not
+  an artifact of the optimizer stopping early. `budget_max_N16_it200.log`.
+- **Vanilla-at-scale:** chain tighter **14/20** under vanilla CROWN (above) — effect
+  is not alpha-specific. `vanilla_max_N16.log`.
+- **Operating-point sweep (eps in {0.1,1.0} x N in {8,32}), alpha-CROWN.** The
+  *direction* is robust but the *magnitude* is regime-dependent. In EVERY point
+  mean(ub_bal - ub_chain) >= 0 (chain tighter-or-equal on average) and chain has <=
+  unstable ReLUs; chain-wins >= balanced-wins everywhere:
+    - N8 eps0.1: 2 chain / 0 balanced wins (18 ties), mean delta +0.002, unstable 0.6 vs 1.0
+    - N32 eps0.1: 4 chain / 1 balanced (15 ties), mean delta +0.019, unstable 2.15 vs 5.20
+    - N16 eps0.5: 17 chain / 3 balanced, mean delta +0.97, unstable 8.15 vs 12.70 (headline)
+    - N8 eps1.0: 10 chain / 10 balanced, mean delta +0.225 (chain ahead on average)
+  Reading: at small eps few ReLUs are unstable -> mostly ties, chain weakly ahead; the
+  effect is largest in a mid-eps regime; at large eps everything is unstable so wins
+  split but chain stays ahead on average. So "chain-ify" never hurts on average, and
+  helps most when a nontrivial-but-not-saturating fraction of ReLUs is unstable.
+- G=2,K=8 lattice (longer within-group chains than G4K4): [appended when it lands].
