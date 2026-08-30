@@ -153,8 +153,22 @@ vs depth-3 = trivial (seconds, tiny) -- a ~1000x blowup from one level. Depth 4 
 already at the edge for the trimmed 9-op set; the full op set is far worse; depth 5+
 is intractable and depth 10 impossible. Killed before it exhausted the shared node.
 
-**Not yet done (separate checkpoint):** tensat integration -- add Ewmax/Ewmin/Ewsub to
-the egg language + parser + cost + ONNX reconstruction (decision to record: lower
-min/max to the relu form, NOT native ONNX Min/Max, so ab-CROWN sees the ReLU topology
-the PoC measured), plus keeping Z3 verification (needs z3-solver + real ITE semantics
-for relu/max/min/sub, since random-numeric testing can pass false PWL equivalences).
+**tensat integration -- DONE (end-to-end).** Added Ewmax/Ewmin/Ewsub to the egg
+language (model.rs), make + cost (TASO element(); runtime-sound -- cudnn opTensor
+MAX/MIN, custom-kernel SUB), graph builders + parse_model ingestion (input.rs/parse.rs),
+and CheckApply node processing (rewrites.rs). ONNX reconstruction lowers min/max to the
+relu form (`max(a,b)=a+relu(b-a)`, `min(a,b)=a-relu(a-b)`, Sub native) -- NOT native
+ONNX Min/Max, so ab-CROWN sees the ReLU topology the PoC measured. Verified end-to-end:
+tensat ingests a max-tree TASO model, saturates with a min/max reassociation rule, and
+extracts (no crash); reconstruction emits exactly the relu decomposition (confirmed by
+ONNX op inspection). Fixed several latent tensat bugs along the way (empty-param model
+parse, trailing-newline rule parse, CheckApply todo!()). Depth-4 pricing on the 1.5TB
+node: runs (not OOM) but 174M+ graphs / ~52GB / 19+ min and climbing -- decisively
+confirms depth is super-exponential; depth 3 is the operating point.
+
+**Remaining (next block):** the pb->egg rule converter (note: the generator's xflow
+shim enum has EW_MAX=27 while TASO/tensat use 33 -- the converter must map xflow-ints
+to op names), a realistic single-input min/max model for a full numeric+verification
+loop (the synthetic 3-input test hit a TASO multi-input export merge), and Z3
+verification (z3-solver + real ITE semantics for relu/max/min/sub -- random-numeric
+testing can pass false PWL equivalences, the bidir-soundness class).
