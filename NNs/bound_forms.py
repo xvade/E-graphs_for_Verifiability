@@ -13,6 +13,19 @@ import maxtree_bounds as mtb, structural_signature as ss
 from auto_LiRPA import BoundedModule, BoundedTensor
 from auto_LiRPA.perturbations import PerturbationLpNorm
 
+# onnx2pytorch's Add does in-place `out += inp`, which fails when a rank-1 [d] operand
+# (a bias-shaped initializer the min/max->relu lowering can place first) is the
+# accumulator against a rank-2 [1,d] activation. Patch to non-in-place add, which
+# broadcasts to the common shape regardless of operand order.
+import onnx2pytorch.operations.add as _am
+import functools as _ft
+_orig_add_fwd = _am.Add.forward
+def _safe_add_forward(self, *inp):
+    if getattr(self, 'input_indices', None):
+        return _orig_add_fwd(self, *inp)
+    return _ft.reduce(lambda a, b: a + b, inp)
+_am.Add.forward = _safe_add_forward
+
 sub, ref_onnx, wbx = sys.argv[1], sys.argv[2], sys.argv[3]
 env = (float(sys.argv[4]), float(sys.argv[5])) if len(sys.argv) > 5 else None
 d = np.load(os.path.join(REPO, wbx)); x0, eps = d["x0"], float(d["eps"])
@@ -23,15 +36,19 @@ xs = (x0 + np.random.default_rng(3).uniform(-eps, eps, size=(64, x0.shape[0]))).
 def load(p):
     return onnx2pytorch.ConvertModel(onnx.load(p), experimental=True).to(dev).eval()
 
+def run_batch1(model, X):
+    # onnx2pytorch in-place Add breaks with batch>1 on some graphs; run per-sample.
+    with torch.no_grad():
+        return np.concatenate([model(torch.tensor(X[i:i+1], device=dev)).cpu().numpy()
+                               for i in range(X.shape[0])], axis=0)[:, 0]
+
 # reference (input model) component-0 outputs
 ref = load(os.path.join(REPO, ref_onnx))
-with torch.no_grad():
-    ref_out = ref(torch.tensor(xs, device=dev)).cpu().numpy()[:, 0]
+ref_out = run_batch1(ref, xs)
 
 def measure(p):
     m = load(p)
-    with torch.no_grad():
-        out = m(torch.tensor(xs, device=dev)).cpu().numpy()[:, 0]
+    out = run_batch1(m, xs)
     dmax = float(np.abs(out - ref_out).max())
     bm = BoundedModule(m, x0t, device=dev, bound_opts={'conv_mode': 'matrix'})
     lb, ub = bm.compute_bounds(x=(BoundedTensor(x0t, PerturbationLpNorm(norm=np.inf, eps=eps)),),

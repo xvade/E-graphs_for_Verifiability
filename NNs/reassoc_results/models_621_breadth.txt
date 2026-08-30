@@ -1,0 +1,5 @@
+mnist_tiny: err=0  extractions=8  8 extracted -> 2 distinct; input_in_set=True
+mnist_cnn_a: err=0  extractions=8  8 extracted -> 1 distinct; input_in_set=True
+resnet2b: err=0  extractions=8  8 extracted -> 1 distinct; input_in_set=False
+inception: err=0  extractions=8  8 extracted -> 1 distinct; input_in_set=False
+MODELS_621_DONE
