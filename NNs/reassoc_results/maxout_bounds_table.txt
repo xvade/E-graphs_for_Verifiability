@@ -1,0 +1,53 @@
+  manifest = [l.split() for l in open(os.path.join(REPO, "NNs/reassoc_results/maxout_forms/manifest.txt")) if "onnx" in l]
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/convert/model.py:151: UserWarning: Using experimental implementation that allows 'batch_size > 1'.Batchnorm layers could potentially produce false outputs.
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/utils.py:21: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  return value.ndim == 0 or value.shape == torch.Size([1])
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/operations/add.py:34: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  elif all(x == 1 for x in input[0].shape):
+form depth cert_ub  unstable  numchk
+  24     8  12.1465  13/120   4.8e-07
+  17     9  12.2939  13/120   4.8e-07
+  18     9  12.9644  14/120   4.8e-07
+  35     9  11.9575  12/120   4.8e-07
+  39     9  11.3044  12/120   4.8e-07
+   8     9  11.4196  13/120   9.5e-07
+   9     9  11.5239  11/120   9.5e-07
+   1    10  12.8826  14/120   4.8e-07
+  14    10  11.0899  13/120   4.8e-07
+  15    10  12.2378  13/120   9.5e-07
+  16    10  12.2070  13/120   4.8e-07
+  29    10  11.6662  13/120   4.8e-07
+  34    10  12.5337  12/120   4.8e-07
+   5    10  13.1455  13/120   4.8e-07
+   6    10  12.2886  12/120   4.8e-07
+  13    11  12.5044  11/120   4.8e-07
+   2    11  10.7763   9/120   9.5e-07
+  23    11  11.2703  11/120   9.5e-07
+  26    11  12.0700  12/120   4.8e-07
+  28    11  10.9449  12/120   9.5e-07
+  36    11  10.8170  10/120   9.5e-07
+   4    11  11.5882  11/120   9.5e-07
+   0    12  10.8755  10/120   4.8e-07
+  10    12  10.5962  11/120   9.5e-07
+  12    12  10.7573   9/120   9.5e-07
+  21    12  13.2213  11/120   4.8e-07
+  25    12  12.0849  12/120   4.8e-07
+  27    12  11.1448  11/120   4.8e-07
+   3    12  11.0255  10/120   9.5e-07
+  30    12  11.0635  10/120   9.5e-07
+  31    12  10.5620   9/120   9.5e-07
+  32    12  12.7720  12/120   4.8e-07
+  38    12  11.9412  10/120   4.8e-07
+  20    13  11.9001  15/120   4.8e-07
+  33    13  12.7883  13/120   4.8e-07
+  37    13  10.6264  11/120   9.5e-07
+  11    14  11.2180   9/120   4.8e-07
+  22    14  12.1064  13/120   4.8e-07
+  19    15  11.2202   8/120   4.8e-07
+   7    16  10.9956   7/120   4.8e-07
+
+numeric-gate failures: 0 []
+ENVELOPE  chain(tight)=11.7978  balanced(input,loose)=12.0257
+tensat forms: ub range [10.5620, 13.2213]  (n=40)
+best (tightest) tensat form = 10.5620  vs balanced input 12.0257  -> improvement +1.4637
+depth vs cert_ub correlation = -0.306  (negative => deeper is tighter, as predicted)
