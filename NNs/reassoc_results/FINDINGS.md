@@ -1,0 +1,100 @@
+# Min/Max reassociation vs verifiability — light-version findings
+
+**Question (light version of "step 2").** Hand-author a small number of min/max
+*reassociation* rules and test whether they change verifiability. This targets the
+one rewrite family that can escape the project's "semantics-preserving rewrites are
+verifiability-neutral" wall: a piecewise-linear function has *many* ReLU
+decompositions, and re-associating a min/max reduction tree changes the ReLU
+topology (hence the relaxation the verifier branches on) **while preserving the
+function and even the total ReLU count.**
+
+The rule tested: `max(u,v) = u + relu(v-u)`, `min(u,v) = u - relu(u-v)`, applied to
+reduce N affine functions two ways —
+- **chain** (running accumulator, depth N-1)
+- **balanced** (binary tree, depth ceil(log2 N))
+
+Both realize the *identical* function with the *identical* number of ReLUs (N-1);
+only the association (topology) differs. This isolates reassociation as the single
+variable. Verifiability is measured as the alpha-CROWN (`CROWN-Optimized`) certified
+upper bound on the scalar output over an input box — the bounding ab-CROWN actually
+uses — plus the count of *unstable* ReLUs (pre-activation straddling 0), which is the
+driver of both bound looseness and branch-and-bound size.
+
+Script: `maxtree_bounds.py` (this dir). Runs on GPU via the alpha-beta-CROWN venv +
+auto_LiRPA. Distributional design (20 random nets/config, untuned properties) — no
+threshold was tuned to manufacture a separation.
+
+## Result 1 — reassociation is NOT verifiability-neutral (pure max-reduction)
+
+N=16, d=8, eps=0.5, 20 reps, alpha-CROWN:
+
+| metric | chain | balanced |
+|---|---|---|
+| tighter certified bound | **17/20** | 3/20 |
+| mean certified upper bound | **12.15** | 13.04 |
+| mean gap to true max | **4.13** | 5.02 |
+| mean unstable ReLUs (of 15) | **8.35** | 12.70 |
+
+- Mean bound advantage of chain: **0.89** (lower = tighter = more verifiable).
+- **Under *vanilla* CROWN the two are byte-identical** (0/3 at N=8, CPU; the
+  N=16x20 confirmation is pending in the gating batch — this line will be updated
+  with the real number when `vanilla_max_N16.log` lands). The unoptimized
+  relaxation appears to telescope to a topology-independent bound; the divergence
+  shows up only under the *optimized* (alpha) bounding.
+
+So: same function, same ReLU count, but reassociation moves the certified bound.
+**The effect the whole project needed — a semantics-preserving rewrite that changes
+verifiability — exists.**
+
+## Mechanism — confirmed: reassociation changes ReLU *stability*
+
+Chain has far fewer unstable ReLUs (8.35 vs 12.70), and in *every* rep individually.
+The running max dominates later candidates, so each later `relu(candidate - running_max)`
+has a pre-activation that is usually <= 0 -> that ReLU is **stable/inactive** -> exact
+(tight) relaxation. The balanced tree combines "fresh" candidates whose difference
+straddles 0 -> more **unstable** ReLUs -> looser bound. The lever is stability, not
+count.
+
+Direction note: this is the **opposite** of the pre-registered prediction (balanced >=
+chain). The prediction was made first precisely so the reversal counts as a finding.
+The actionable design rule flips to: **chain-ify the reduction** (and, conjectured,
+order it so likely-large terms reduce first — untested extension).
+
+## Result 2 — the effect is structure-dependent (weak for tll-shaped min-of-max)
+
+Two-level lattice `min_g max_k f_{g,k}` (G=4, K=4 = 16 leaves), same settings:
+
+| metric | chain | balanced |
+|---|---|---|
+| tighter certified bound | 8/20 | 11/20 |
+| mean unstable ReLUs (of 15) | 11.85 | 12.70 |
+
+Essentially a **wash** (mean bound delta -0.04). Consistent with the mechanism, not a
+contradiction: the stability gain comes from *long* running-max chains, but a
+two-level lattice caps reduction depth at K-1=3 per level and the outer *min* dilutes
+the gain. **Reassociation strongly moves verifiability for deep max-reductions, but
+barely for the shallow-grouped min-of-max that tll is.**
+
+## Why the real tll benchmark was not lifted
+
+The real `tllBench_N16` ONNX is a **deep sequential chain of MatMul->Relu->MatMul
+"bank" blocks** (2->16->256->512->128->...->1, 8 ReLUs total) with the min/max lattice
+semantics **baked into the weight matrices** — not a graph-level tree that can be
+rebalanced. A clean semantics-preserving reassociation would require reverse-
+engineering the encoded lattice, and Result 2 predicts little payoff. Per the
+project's established theme, this is the same reason TASO can't ingest it and
+sequential nets don't rewrite. The controlled hand-built distribution above is the
+deliverable — a distributional result is stronger than one real instance anyway.
+
+## Bottom line for the light->heavy gate
+
+Light version **succeeds** on its actual criterion: a semantics-preserving rewrite
+(min/max reassociation) demonstrably moves the certified bound under the optimized
+bounding ab-CROWN uses, with a confirmed mechanism (ReLU stability). Caveat carried
+forward: the gain is large only for deep max-reductions, and the min/max family is
+*not* expressible in TASO's op set — so the heavy step (rerun TASO generation without
+the speed bias) is a **separate rewrite family** (broadened tensor-algebra corpus on
+Conv/Matmul models), not a scale-up of these rules.
+
+_Gating checks (200-iter budget robustness; eps/N sweep; vanilla-at-scale) appended
+below once complete._

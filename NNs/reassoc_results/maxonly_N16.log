@@ -1,0 +1,30 @@
+# N=16 d=8 reps=20 eps=0.5 method=CROWN-Optimized dev=cuda
+# depth chain=15 balanced=4 (#relus identical = 15)
+rep00  ub_chain= 11.7978 ub_bal= 12.0257  gap_chain= 4.2233 gap_bal= 4.4512  unstable c/b=11/14 of 15  chain_tighter=True  (eq=9.5e-07)
+rep01  ub_chain= 15.6373 ub_bal= 16.3473  gap_chain= 1.1041 gap_bal= 1.8141  unstable c/b=6/10 of 15  chain_tighter=True  (eq=9.5e-07)
+rep02  ub_chain= 13.2427 ub_bal= 13.3609  gap_chain= 7.6837 gap_bal= 7.8019  unstable c/b=13/14 of 15  chain_tighter=True  (eq=7.2e-07)
+rep03  ub_chain= 11.2187 ub_bal= 12.0892  gap_chain= 6.7479 gap_bal= 7.6184  unstable c/b=11/14 of 15  chain_tighter=True  (eq=4.8e-07)
+rep04  ub_chain= 10.9436 ub_bal= 12.0334  gap_chain= 6.0048 gap_bal= 7.0946  unstable c/b=13/15 of 15  chain_tighter=True  (eq=7.2e-07)
+rep05  ub_chain= 13.0339 ub_bal= 14.1652  gap_chain= 3.5231 gap_bal= 4.6545  unstable c/b=7/13 of 15  chain_tighter=True  (eq=9.5e-07)
+rep06  ub_chain= 11.2461 ub_bal= 10.2816  gap_chain= 3.3758 gap_bal= 2.4114  unstable c/b=10/13 of 15  chain_tighter=False  (eq=9.5e-07)
+rep07  ub_chain= 13.2277 ub_bal= 13.4466  gap_chain= 0.8128 gap_bal= 1.0317  unstable c/b=3/8 of 15  chain_tighter=True  (eq=9.5e-07)
+rep08  ub_chain= 11.2539 ub_bal= 13.2470  gap_chain= 4.5892 gap_bal= 6.5823  unstable c/b=8/13 of 15  chain_tighter=True  (eq=9.5e-07)
+rep09  ub_chain= 13.1668 ub_bal= 12.9275  gap_chain= 1.0544 gap_bal= 0.8151  unstable c/b=4/11 of 15  chain_tighter=False  (eq=1.9e-06)
+rep10  ub_chain=  9.4183 ub_bal= 11.8936  gap_chain= 1.1777 gap_bal= 3.6530  unstable c/b=4/12 of 15  chain_tighter=True  (eq=9.5e-07)
+rep11  ub_chain= 11.7192 ub_bal= 12.0940  gap_chain= 3.0965 gap_bal= 3.4713  unstable c/b=9/13 of 15  chain_tighter=True  (eq=1.4e-06)
+rep12  ub_chain= 12.8039 ub_bal= 15.6555  gap_chain= 1.7715 gap_bal= 4.6231  unstable c/b=5/9 of 15  chain_tighter=True  (eq=9.5e-07)
+rep13  ub_chain=  8.0100 ub_bal= 10.0251  gap_chain= 2.6329 gap_bal= 4.6479  unstable c/b=4/13 of 15  chain_tighter=True  (eq=9.5e-07)
+rep14  ub_chain= 12.4939 ub_bal= 13.6024  gap_chain= 4.9394 gap_bal= 6.0479  unstable c/b=7/14 of 15  chain_tighter=True  (eq=9.5e-07)
+rep15  ub_chain= 14.1236 ub_bal= 14.3989  gap_chain= 7.8960 gap_bal= 8.1713  unstable c/b=12/15 of 15  chain_tighter=True  (eq=4.8e-07)
+rep16  ub_chain= 13.3451 ub_bal= 15.6080  gap_chain= 4.7767 gap_bal= 7.0395  unstable c/b=10/15 of 15  chain_tighter=True  (eq=9.5e-07)
+rep17  ub_chain=  9.2810 ub_bal= 10.5886  gap_chain= 3.3126 gap_bal= 4.6202  unstable c/b=4/10 of 15  chain_tighter=True  (eq=4.8e-07)
+rep18  ub_chain= 13.7492 ub_bal= 13.5086  gap_chain= 6.9949 gap_bal= 6.7543  unstable c/b=12/13 of 15  chain_tighter=False  (eq=4.8e-07)
+rep19  ub_chain= 13.1995 ub_bal= 13.4719  gap_chain= 6.8507 gap_bal= 7.1231  unstable c/b=14/15 of 15  chain_tighter=True  (eq=4.8e-07)
+
+=== SUMMARY ===
+chain tighter (ub_chain<ub_bal):    17/20
+balanced tighter:                   3/20
+mean gap-to-true  chain=4.1284  balanced=5.0213
+mean ub           chain=12.1456  balanced=13.0385
+mean (ub_bal-ub_chain) = 0.8929  (>0 => chain tighter)
+mean unstable relus  chain=8.35  balanced=12.70  (of 15 total)

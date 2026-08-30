@@ -1,0 +1,7 @@
+# N=16 d=8 reps=20 eps=0.5 method=CROWN-Optimized dev=cuda
+# depth chain=15 balanced=4 (#relus identical = 15)
+rep00  ub_chain= 11.7016 ub_bal= 11.9840  gap_chain= 4.1270 gap_bal= 4.4095  unstable c/b=11/14 of 15  chain_tighter=True  (eq=9.5e-07)
+rep01  ub_chain= 15.6271 ub_bal= 16.3263  gap_chain= 1.0939 gap_bal= 1.7931  unstable c/b=6/10 of 15  chain_tighter=True  (eq=9.5e-07)
+rep02  ub_chain= 12.6902 ub_bal= 13.0876  gap_chain= 7.1312 gap_bal= 7.5287  unstable c/b=11/14 of 15  chain_tighter=True  (eq=7.2e-07)
+rep03  ub_chain= 10.8687 ub_bal= 11.9227  gap_chain= 6.3979 gap_bal= 7.4519  unstable c/b=11/14 of 15  chain_tighter=True  (eq=4.8e-07)
+rep04  ub_chain= 10.3311 ub_bal= 11.9132  gap_chain= 5.3923 gap_bal= 6.9744  unstable c/b=13/15 of 15  chain_tighter=True  (eq=7.2e-07)
