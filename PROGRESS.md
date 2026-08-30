@@ -804,3 +804,40 @@ Artifacts: `NNs/run_vnncomp_baselines.py`, `NNs/normalize_for_taso.py`,
 `NNs/candidate_models/` (staged models, specs, configs, normalized+.taso),
 `NNs/baseline_logs/`, `NNs/baselines_results.jsonl`.
 
+
+## 2026-08-29 (cont. 2): min/max reassociation moves verifiability + un-curated corpus
+
+**Light version of "step 2" (hand-authored min/max reassociation) -- SUCCEEDED.**
+First positive result that a semantics-preserving rewrite changes verifiability.
+A piecewise-linear function has many ReLU decompositions; re-associating a min/max
+reduction tree (`max(u,v)=u+relu(v-u)`) changes ReLU *topology* while holding the
+function AND total ReLU count fixed -- escaping the neutrality wall (which assumed a
+fixed ReLU skeleton). Hand-built max-of-affine distribution (N=16, 20 reps,
+auto_LiRPA), measuring the certified upper bound + unstable-ReLU count:
+- chain (deep) certifies TIGHTER than balanced (shallow): **17/20** alpha-CROWN,
+  **14/20** vanilla CROWN (not an alpha artifact), budget-robust (chain-tighter at
+  200 iters too).
+- Mechanism = ReLU *stability*: chain 8.35/15 unstable vs balanced 12.70 (fewer in
+  every rep) -- the running max keeps later `relu(cand - runmax)` inactive/exact.
+- Direction is opposite the naive "shallower=tighter" guess -> design rule: chain-ify.
+- Structure-dependent: nearly vanishes (8/20) for the tll-shaped min-of-max lattice
+  (caps reduction depth). Real tll couldn't be lifted -- it's a deep sequential chain
+  of MatMul->Relu->MatMul bank blocks with min/max baked into weights, not a
+  rebalanceable tree. Artifacts: `NNs/reassoc_results/` (maxtree_bounds.py, FINDINGS.md, logs).
+
+**Heavy version (rerun TASO generation without the speed bias).** Key discovery:
+TASO's generator (`taso/src/generator/generator.cc`) has NO speed filter -- it
+enumerates verified equivalences, direction = DFS discovery order, depth <=3, op set
+has no min/max. The bias lives DOWNSTREAM in the 660->119 curation (converted.txt was
+660 rules at tensat commit d4e0811, cut to 119 at cde6d36). Recovered the full 660
+corpus from git; 621 rules were curated out, but analysis shows the learned corpus has
+NO from-scratch structure-creating rule (0 `split` rules; the 8 concat-creating rules
+need a pre-existing `ewadd(op,op)` = two parallel ops). The ONLY structure creators
+are 4 hardcoded `PRE_DEFINED_MULTI` conv-splitters (bind a 2nd weight via multi-pattern
+matching; need a 1x1 conv). So even the un-curated corpus can't create parallelism in
+sequential/residual nets -- confirming the barrier, not breaking it. The 660 is in a
+pre-`f2109cc` dialect (matmul arity, context-dependent concat NDIM, changed enlarge
+sig) too costly to faithfully migrate; used a direction-unbiased **bidirectional-119
+(232-rule)** set instead (`tensat/rules_full_bidir.txt`, `bidir_rules.py`) and ran
+arch-diverse extraction (curated vs bidir on InceptionMNIST; resnet_2b/mnist_tiny for
+isomorphism). [Empirical diversity + verification numbers appended on run completion.]
