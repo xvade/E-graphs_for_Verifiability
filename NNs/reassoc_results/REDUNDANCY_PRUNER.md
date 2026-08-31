@@ -40,3 +40,29 @@ This validates the pruner. The intended use is NOT to prune the 621 (which alrea
 rules to TASO's quotient) but to: RELAX the generator's quotient (emit the full closure
 incl. AC), regenerate, then prune back to a minimal-complete core. That regeneration is
 the next phase.
+
+## Phase 2 progress: quotient relaxation (generator toggles) -- INTUITION BUILT
+Made the generator's 4 quotient steps env-toggleable (taso 03825ff): RELAX_SUBGRAPH,
+RELAX_SUPERGRAPH, RELAX_VARORDER, RELAX_SUBST. Depth-2 PWL intuition run:
+| config | transfers | vs baseline |
+|---|---|---|
+| baseline (original)            |  34 | 1x |
+| RELAX_VARORDER only            |  34 | 1x (inert alone) |
+| **RELAX_SUBST only**           | 260 | **7.6x (the main lever)** |
+| RELAX_VARORDER+SUBST           | 438 | 12.9x |
+| all four relaxed               | 488 | 14.4x |
+- **RELAX_SUBST (drop the renaming-dedup) is what recovers the AC family.** Associativity
+  re-emerges as e.g. EWMax(x3,EWMax(x1,x2)) => EWMax(x1,EWMax(x2,x3)) (root operand order
+  is still canonicalized, so it's not literally EWMax(EWMax(..),x3)); plus reorderings.
+  Emitted redundantly across input classes (x/w/i) -- exactly what the redundancy pruner
+  collapses.
+- Blowup is ~14x at depth 2; depth-3 compounds (baseline depth-3 PWL was ~790 transfers,
+  so all-relaxed depth-3 could be ~10^4+). That's the explosion to watch.
+
+## Phase 2 big-run plan (needs a fresh allocation)
+1. Rebuild generator all-relaxed at depth 3 (PWL op set first, then full op set), measure
+   the transfer count -- gate on tractability (if >~50k, do RELAX_SUBST-only first).
+2. pb2egg the relaxed graph_subst.pb -> egg rules.
+3. Z3-verify (the count is the cost driver; ~10^4 rules is feasible but slow).
+4. Redundancy-prune (tensat -m redundancy, budget 4) to a minimal-complete core.
+5. Validate the pruned core reaches the same forms on maxout/lattice/tll; sweep budget.
