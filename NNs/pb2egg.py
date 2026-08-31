@@ -38,16 +38,31 @@ OP_EW_SUB, OP_EW_MAX, OP_EW_MIN = 26, 27, 28
  PM_STRIDE_H, PM_STRIDE_W, PM_PAD, PM_ACTI, PM_NUMDIM, PM_AXIS, PM_PERM,
  PM_OUTSHUFFLE, PM_MERGE_GCONV_COUNT) = range(15)
 
-# op -> (egg_name, [param_keys in egg order], input_arity)
+# op -> (egg_name, [param_keys], order)  where order is the child layout tensat's
+# `Mdl` define_language expects, verified against model.rs make() AND `tensat -m
+# parse_check`:  'pi' = params (in the listed key order) then inputs; 'ip' = input(s)
+# then params. Different ops genuinely differ (conv2d params-first; pool INPUT-first),
+# so the order is encoded per-op here rather than assumed in build().
 operator_data = {
-    OP_RELU:    ('relu',  [], 1),
-    OP_EW_ADD:  ('ewadd', [], 2),
-    OP_EW_MUL:  ('ewmul', [], 2),
-    OP_EW_SUB:  ('ewsub', [], 2),
-    OP_EW_MAX:  ('ewmax', [], 2),
-    OP_EW_MIN:  ('ewmin', [], 2),
-    OP_MATMUL:  ('matmul', [PM_ACTI], 2),
-    OP_MUL:     ('smul',  [], 2),
+    OP_RELU:    ('relu',  [], 'pi'),
+    OP_EW_ADD:  ('ewadd', [], 'pi'),
+    OP_EW_MUL:  ('ewmul', [], 'pi'),
+    OP_EW_SUB:  ('ewsub', [], 'pi'),
+    OP_EW_MAX:  ('ewmax', [], 'pi'),
+    OP_EW_MIN:  ('ewmin', [], 'pi'),
+    OP_MATMUL:  ('matmul', [PM_ACTI], 'pi'),         # (matmul acti in1 in2)
+    OP_MUL:     ('smul',  [], 'pi'),
+    # --- Tier-1 full-op coverage: parametrized SINGLE-output ops. This is the fix for
+    #     the non-clean drop that made conv/matmul models look inert. ---
+    OP_CONV2D:     ('conv2d', [PM_STRIDE_H, PM_STRIDE_W, PM_PAD, PM_ACTI], 'pi'),  # (conv2d sh sw pad acti input weight)
+    OP_POOL2D_MAX: ('poolmax', [PM_KERNEL_H, PM_KERNEL_W, PM_STRIDE_H, PM_STRIDE_W, PM_PAD, PM_ACTI], 'ip'),  # (poolmax input kh kw sh sw pad acti)
+    OP_POOL2D_AVG: ('poolavg', [PM_KERNEL_H, PM_KERNEL_W, PM_STRIDE_H, PM_STRIDE_W, PM_PAD, PM_ACTI], 'ip'),
+    OP_CONCAT:     ('concat', [PM_AXIS, PM_NUMDIM], 'pi'),  # (concat axis ndim in..); egg name -> concat/concat3/4/5 by input count
+    # Tier-2 (still dropped, tracked): transpose/reshape (config encoded as a name
+    # string, not Num params -- needs the @dims mechanism), enlarge (pb is kernel-based
+    # but current egg is ref-input-based -- a semantic mismatch, not a format one), and
+    # split (multi-OUTPUT -- can't be a single-pattern egg rule; belongs to the
+    # multi-pattern lane). See TASO_SPEED_ASSUMPTIONS / REDUNDANCY_PRUNER notes.
 }
 # Only emit rules whose every op is convertible with faithful egg arity.
 CLEAN_OPS = set(operator_data.keys())
@@ -56,10 +71,15 @@ def build(tensor, ops):
     if tensor.opId < 0:
         return "?input_{}".format(-tensor.opId)
     op = ops[tensor.opId]
-    name, pkeys, in_ar = operator_data[op.type]
+    name, pkeys, order = operator_data[op.type]      # KeyError => non-clean op => rule skipped
     params = {p.key: p.value for p in op.para}
-    args = [str(params[k]) for k in pkeys]
-    args += [build(x, ops) for x in op.input]
+    pargs = [str(params[k]) for k in pkeys]          # KeyError (missing param) => rule skipped
+    iargs = [build(x, ops) for x in op.input]
+    if op.type == OP_CONCAT:                          # tensat: concat/concat3/concat4/concat5 by input count
+        if len(iargs) not in (2, 3, 4, 5):
+            raise KeyError("concat arity {} unsupported".format(len(iargs)))
+        name = "concat" if len(iargs) == 2 else "concat{}".format(len(iargs))
+    args = pargs + iargs if order == "pi" else iargs + pargs
     return "({} {})".format(name, " ".join(args)) if args else "({})".format(name)
 
 def rule_is_clean(rule):

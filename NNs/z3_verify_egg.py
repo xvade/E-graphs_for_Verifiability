@@ -43,6 +43,7 @@ class Builder:
         self.vars = {}
         self.matmul = z3.Function("matmul", z3.IntSort(), z3.RealSort(), z3.RealSort(), z3.RealSort())
         self.smul = z3.Function("smul", z3.RealSort(), z3.RealSort(), z3.RealSort())
+        self._uf = {}  # cache of uninterpreted Functions for non-PWL ops, keyed (op, arg sorts)
 
     def var(self, name):
         if name not in self.vars:
@@ -71,6 +72,19 @@ class Builder:
             act = self.build(args[0]); return self.matmul(act, self.build(args[1]), self.build(args[2]))
         if op == "smul":
             return self.smul(self.build(args[0]), self.build(args[1]))
+        # Non-PWL ops (conv2d, poolmax/avg, concat/3/4/5, ...): treated as UNINTERPRETED
+        # functions of their (interpreted) args -- sound and conservative, exactly like
+        # matmul/smul. A rewrite provable only via the op's real (e.g. conv-linearity)
+        # semantics is safely REJECTED, not crashed on. (Proving conv/concat rewrites
+        # would need the op's distribution axioms -- future work; see validate_axioms.py.)
+        if op in ("conv2d", "poolmax", "poolavg", "concat", "concat3", "concat4", "concat5"):
+            zargs = [self.build(a) for a in args]
+            key = (op, tuple(a.sort() for a in zargs))
+            if key not in self._uf:
+                self._uf[key] = z3.Function(
+                    "{}_{}".format(op, len(zargs)), *[a.sort() for a in zargs], z3.RealSort()
+                )
+            return self._uf[key](*zargs)
         raise ValueError("unhandled op: " + op)
 
 def verify_rule(line, timeout_ms):
