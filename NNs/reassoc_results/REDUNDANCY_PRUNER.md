@@ -66,3 +66,17 @@ RELAX_SUPERGRAPH, RELAX_VARORDER, RELAX_SUBST. Depth-2 PWL intuition run:
 3. Z3-verify (the count is the cost driver; ~10^4 rules is feasible but slow).
 4. Redundancy-prune (tensat -m redundancy, budget 4) to a minimal-complete core.
 5. Validate the pruned core reaches the same forms on maxout/lattice/tll; sweep budget.
+
+## Phase 2 depth-3 GATE (tractability) -- intuition complete, found a scaling wall
+- Generation runtime is ENUMERATION-bound, NOT relaxation-bound: relaxing only changes
+  which transfers are KEPT, not the graph search. Baseline depth-3 PWL ~= 1536 transfers,
+  ~20 min. RELAX_SUBST depth-3 = SAME ~20-min enumeration but emits >=7936 (still climbing;
+  ~7-10x baseline).
+- So the "explosion" is in OUTPUT COUNT (-> Z3 + prune load), not generation time.
+- **Scaling wall at the PRUNE step:** the redundancy pruner does ~1 saturation per rule
+  (up to 5s). ~10k relaxed rules -> up to ~14 h. NOT tractable as-is.
+- **Refined pipeline (the fix):** relaxed-gen -> pb2egg -> CHEAP syntactic pre-dedup
+  (exact-match + variable-renaming canonicalization; no saturation -- collapses the x/w/i
+  renaming-copies and exact dups, ~10k -> ~hundreds) -> Z3-verify survivors -> the
+  expensive derivability-prune on the small set -> minimal-complete core. The pre-dedup is
+  a new prerequisite the intuition phase surfaced; build it before the full run.
