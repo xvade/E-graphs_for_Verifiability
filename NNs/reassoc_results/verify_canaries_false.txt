@@ -1,0 +1,1 @@
+matmul(0,input_1,input_2)==matmul(0,input_2,input_1)concat(0,4,input_1,input_2)==concat(0,4,input_2,input_1)matmul(0,input_1,input_2)==matmul(2,input_1,input_2)poolmax(input_1,2,3,1,1,0,0)==poolmax(input_1,3,2,1,1,0,0)transpose(input_1,input_2,0)==input_1

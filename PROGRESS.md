@@ -1024,3 +1024,53 @@ AND the activation-unfolding axiom (`operator-commutativity-4: conv acti=2 => re
 acti=0)`; relu is acti=2). It LACKS ewmax/ewmin — that's the complementary reason z3_verify
 exists. Clean unification (future): add min/max axioms + the max/min↔relu bridge to rules()
 for one GPU-free verifier. So: for conv/matmul use `-m verify`, not the uninterpreted z3 path.
+
+## 2026-08-31 (cont.) — Migrated the ~6-year-stale rules() axioms to current arities; `-m verify` restored
+
+- **Root cause of the stale axioms (answered):** rules() was written 2020-06 (Remy Wang)
+  against the op arities of the day (2-arg matmul, 1-arg transpose, 3-arg concat, 6-arg
+  params-first pool). The Mdl `define_language!` grew params ~6 weeks later
+  (f2109cc 2020-07-16 matmul+activation → [Id;3]; 86a2617 2020-07-31 transpose+perm/shuffle
+  → [Id;3]; concat+ndim, pool→7-arg input-first, enlarge→2-arg ref-based) to let the
+  OPTIMIZER represent real models. rules() is verify-only (the optimizer uses
+  `rules_from_str`, always current), and `-m verify`/`prove_taso_rules` is off by default
+  (README: "uncomment it"), so the drift went unrun and undetected for ~6 years. Dead code rots.
+
+- **Migration (tensat, src/rewrites.rs `rules()`).** Guiding fact: `verify()` is PURE-EGG
+  (`Runner::<Mdl,(),()>`), so an axiom only needs to PARSE and be a TRUE universal identity —
+  `make()`/shape checks never run. So free-var params are sound ONLY where the identity is
+  param-agnostic. Changes:
+  - **matmul** → literal activation `0` (associativity/linearity hold only with no fused relu).
+  - **concat** → free rank var `?n` (identity holds at any rank; concat preserves rank, so the
+    same `?n` threads through nested concats).
+  - **pool** → input-first order `[in,kh,kw,sh,sw,pad,acti]`; free `?c` on the concat-distribution
+    rules, literal `0` on the two conv-equivalence (Cpool/pooling-by-conv) rules (avgpool==conv
+    only with no activation).
+  - **transpose** → free perm `?p` + shuffle `?s` (Name/Scalar leaves are written as pattern vars);
+    only the *distribution over elementwise* axioms — sound for any perm.
+  - **Added** the matmul relu-unfold `(matmul 2 ?x ?y) <=> relu(matmul 0 ?x ?y)` (couldn't exist
+    in 2020 — matmul had no activation param). conv2d axioms were ALREADY current (6-arg
+    params-first) and left untouched.
+  - **DROPPED (unsound or unexpressible in pure-egg — documented in-file so they're not "recovered"):**
+    transpose-is-its-own-inverse / matmul-and-transpose / concatenation-and-transpose (2D-transpose /
+    involution-specific; a free perm asserts them for ALL perms = false); split-definition-0/1
+    (split_0/1 now unary + only conditionally true); enlarge-convolution-kernel (2-arg ref-based now);
+    and two INVERSE directions (`-concatenation-and-matrix-mul.-1`, `-concatenation-and-conv.-2`)
+    whose RHS reintroduces a concat whose rank `?n` is unbound by the elementwise LHS (egg rejects it;
+    the forward directions are kept).
+
+- **Validated (NNs/tests/run_tests.sh Test 4 — the permanent guard):**
+  - rules() constructs with no panic → every axiom parses at current arity.
+  - min/max axioms still `Proved 8/8`.
+  - orig 116 current-arity rules → `Proved 109/116`. The 7 gaps need left-argument
+    matmul-distributivity / the other-argument concat-matmul / grouped-conv-merge (the
+    multi-pattern enlarge/merge machinery) — axiom-set gaps, not regressions.
+  - **5 known-FALSE negative canaries (`verify_canaries_false.txt`) ALL rejected** — the soundness
+    guard: matmul/concat arg-swap, transpose-drops-input, matmul acti-swap, pool kernel-swap.
+  - Full harness: 11/11 pass.
+- New files: `NNs/reassoc_results/verify_canaries_false.txt` (functional `==` notation, whitespace-free
+  per equation.pest), `NNs/sexpr_to_functional.py` (S-expr `=>` → functional `==` converter, used to
+  feed orig_full_egg.txt to `-m verify`), `NNs/reassoc_results/orig_full_functional.txt`.
+- Build note: the container's `/opt/cargo` registry isn't persisted in the .sif; build with
+  `CARGO_HOME=/mmfs1/gscratch/scrubbed/sgvtc/toolchain-tensat/cargo_container` + `--offline` (see
+  `build_verify.sh`). Ran inside the existing cpu-g2 allocation via `srun --jobid=… --overlap`.

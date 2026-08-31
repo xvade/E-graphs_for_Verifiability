@@ -50,6 +50,20 @@ assert_ge "$nconv"   "31"  "conv2d family coverage"
 assert_ge "$nconcat" "54"  "concat family coverage"
 assert_ge "$nmatmul" "26"  "matmul family coverage"
 
+echo "== Test 4: axiom verifier (rules()) -- SOUND (rejects false rules) and LIVE (proves) =="
+# Guards the -m verify axiom set. This is the permanent guard for the exact class of bug
+# that dead-code'd rules() for ~6 years: (a) construction must not panic -> every axiom
+# parses under the CURRENT Mdl arities (stale arities panic here); (b) NO axiom may prove a
+# known-FALSE rewrite -> catches any future unsound axiom edit; (c) the migrated set still
+# proves the min/max family. See NNs/reassoc_results/verify_canaries_false.txt.
+CAN=$("$TENSAT" -m verify -r "$R/verify_canaries_false.txt" 2>&1)
+canpanic=$(echo "$CAN" | grep -c "panic")
+canrej=$(echo "$CAN"   | grep -c "Couldn't prove 5 rule(s)")
+assert_eq "$canpanic" "0" "rules() constructs without panic (all axioms parse at current arity)"
+assert_ge "$canrej"   "1" "all 5 negative-canary (false) rules are REJECTED (soundness)"
+MM=$("$TENSAT" -m verify -r "$R/minmax_verify_test.txt" 2>&1 | grep -c "Proved 8 on this trip")
+assert_ge "$MM" "1" "min/max axioms still prove all 8 representative rules"
+
 rm -rf "$TMP"
 echo "======================================"
 echo "TESTS: $PASS passed, $FAIL failed"
