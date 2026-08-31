@@ -1,0 +1,16 @@
+relaxed_d3_egg.multi.pb  -- SAVED multi-output rewrite rules (gitignored: 164 MB > GitHub limit)
+
+Contents: 798,729 multi-output rules (RuleCollection protobuf; every rule has
+len(mappedOutput) > 1, so its dst graph produces several outputs -- typically via a
+`split`, whose outputs are selected by split_0/split_1). These have NO single-pattern
+egg form and belong to tensat's multi-pattern lane (rewrites.rs PRE_DEFINED_MULTI), not
+the single-pattern --rules file. pb2egg.py saves them here instead of dropping them
+(--multi-out); the multi-pattern conversion will be built against this file later.
+
+Load:  import rules_pb2; rc = rules_pb2.RuleCollection()
+       rc.ParseFromString(open("relaxed_d3_egg.multi.pb","rb").read())   # -> 798729 rules
+
+Regenerate (this .pb + relaxed_d3_graph_subst.pb + all text artifacts):
+       sbatch ... apptainer exec tensat.sif bash NNs/run_rule_gen.sh
+Both large .pb files live durably on gscratch; only their text derivatives
+(relaxed_d3_{dedup,verified,core}.txt) are tracked in git.

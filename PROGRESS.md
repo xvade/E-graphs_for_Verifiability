@@ -1074,3 +1074,32 @@ for one GPU-free verifier. So: for conv/matmul use `-m verify`, not the uninterp
 - Build note: the container's `/opt/cargo` registry isn't persisted in the .sif; build with
   `CARGO_HOME=/mmfs1/gscratch/scrubbed/sgvtc/toolchain-tensat/cargo_container` + `--offline` (see
   `build_verify.sh`). Ran inside the existing cpu-g2 allocation via `srun --jobid=… --overlap`.
+
+## 2026-08-31 (cont. 2) — pb2egg multi-output save + pre-prune retention; full pipeline reran
+
+- **pb2egg now SAVES multi-output rewrites** (previously dropped). Rules with
+  len(mappedOutput) != 1 have no single-pattern egg form (dst produces several outputs via
+  `split`); pb2egg writes the exact source rules to a filtered RuleCollection protobuf
+  (`--multi-out`, default `<out>.multi.pb`) for the multi-pattern lane to consume later.
+  Single-output emission is unchanged.
+- **New pipeline driver `NNs/run_rule_gen.sh`** runs the whole thing in one command
+  (generator all-relaxed depth-3 -> pb2egg +multi save -> pre-dedup -> Z3-verify -> prune),
+  every stage output durable. The Z3-verified set (`relaxed_d3_verified.txt`) is retained as
+  the **"all rules pre-prune"** snapshot for future learned pruning.
+- **Full rerun (job 39389879, cpu-g2, 32 min, COMPLETED):** reproduces the prior end-to-end
+  numbers exactly AND preserves the multi-output family:
+  | stage | count |
+  |---|---|
+  | generator transfers | 849,839 |
+  | pb2egg single-output egg | 36,976 |
+  | **multi-output saved (relaxed_d3_egg.multi.pb)** | **798,729** (all mappedOutput=2; loads clean) |
+  | pre-dedup (alpha) | 3,757 |
+  | Z3-verified (pre-prune) | 2,658 (min/max 1,440; 1,099 false-positives rejected) |
+  | redundancy-prune (budget 4) -> core | 1,097 (1,906 groundable, 1,561 pruned; 752 non-PWL kept) |
+  The tracked text artifacts (dedup/verified/core) came out byte-identical to the committed
+  versions -> the axiom migration + multi-output save did not perturb the single-output pipeline.
+- **Git note:** the two large binaries (`relaxed_d3_graph_subst.pb` 173 MB, `relaxed_d3_egg.multi.pb`
+  164 MB) exceed GitHub's 100 MB limit -> gitignored; they live durably on gscratch and are
+  regenerable via the driver. A tracked `.multi.pb.README` records the path, count, and load recipe.
+- Fix folded in: the driver's PYTHONPATH now includes `toolchain-tensat/z3pkg` (the first rerun
+  failed stage 4 on `ModuleNotFoundError: z3`).

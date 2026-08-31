@@ -21,7 +21,7 @@ GEN="$REPO/taso/src/generator"
 TENSAT="$REPO/tensat/target/debug/tensat"
 export PATH=/opt/conda/bin:$PATH
 export LD_LIBRARY_PATH="$REPO/taso/build:/opt/conda/lib:${LD_LIBRARY_PATH:-}"
-export PYTHONPATH="$OUT:$REPO/NNs:/mmfs1/gscratch/scrubbed/sgvtc/toolchain-tensat/pycontainer/lib/python3.14/site-packages"
+export PYTHONPATH="$OUT:$REPO/NNs:/mmfs1/gscratch/scrubbed/sgvtc/toolchain-tensat/z3pkg:/mmfs1/gscratch/scrubbed/sgvtc/toolchain-tensat/pycontainer/lib/python3.14/site-packages"
 ts(){ date +%H:%M:%S; }
 
 echo "[$(ts)] [0/5] regenerate protobuf python binding"

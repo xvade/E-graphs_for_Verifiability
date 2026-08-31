@@ -9,3 +9,9 @@ __pycache__/
 
 # Claude Code local session state
 /.claude/
+
+# Rule-generation large binaries (>100MB, regenerable via NNs/run_rule_gen.sh; live on gscratch)
+NNs/reassoc_results/relaxed_d3_graph_subst.pb
+NNs/reassoc_results/relaxed_d3_egg.multi.pb
+NNs/reassoc_results/relaxed_d3_egg.txt
+NNs/reassoc_results/rulegen_rerun.log
