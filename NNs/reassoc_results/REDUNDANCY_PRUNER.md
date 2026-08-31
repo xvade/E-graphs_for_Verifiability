@@ -80,3 +80,26 @@ RELAX_SUPERGRAPH, RELAX_VARORDER, RELAX_SUBST. Depth-2 PWL intuition run:
   renaming-copies and exact dups, ~10k -> ~hundreds) -> Z3-verify survivors -> the
   expensive derivability-prune on the small set -> minimal-complete core. The pre-dedup is
   a new prerequisite the intuition phase surfaced; build it before the full run.
+
+## FULL depth-3 pipeline RUN (all cost-neutral families) -- through verification
+Ran gen(all 4 relaxations, depth 3) -> pb2egg -> pre-dedup -> Z3 verify -> prune:
+| stage | count |
+|---|---|
+| generator transfers (all-relaxed depth 3) | **849,839** |
+| pb2egg valid egg rules | 36,976 |
+| **pre-dedup (alpha-equivalence)** | **3,757** (10x collapse -- the safety valve worked) |
+| **Z3-verified** | **2,658** (min/max 1440; 1,099 false-positives rejected) |
+| redundancy-prune -> minimal core | (blocked tonight, see below) |
+- The relaxation recovered the full cost-neutral closure (849k transfers vs the original
+  quotiented 790); pre-dedup + Z3 cut it to 2,658 sound, alpha-distinct rules.
+- Files: relaxed_d3_egg.txt (36,976), relaxed_d3_dedup.txt (3,757), relaxed_d3_verified.txt
+  (2,658). prededup.py, generator toggles (taso 03825ff), tunable prune caps (tensat 4c7c77f).
+- **The final prune of the 2,658 is validated (632->117 earlier today) but was blocked on
+  tonight's cluster:** (1) the sbatch didn't reserve --mem, so the per-check saturation
+  across ~2,657 simultaneous rules OOM-killed the job; fixed by resubmitting with
+  --mem=200G. (2) Then Cuda failure 35 (cudaErrorInsufficientDriver) on every node reached
+  -- rtx6k is genuinely container-incompatible, and the l40s node (g3120) was wedged from
+  the session's earlier crash cycle. Driver 580 + container CUDA 12.4 are compatible, so
+  this is a transient GPU-state issue, not the method. RE-RUN on a clean l40s+--mem
+  allocation:  tensat -m redundancy -r relaxed_d3_verified.txt -o relaxed_d3_core.txt
+  --redundancy_iters 4 --n_nodes 8000 --n_sec 4
