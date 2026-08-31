@@ -12,9 +12,16 @@ Only rules whose ops are ALL in CLEAN_OPS are emitted -- these have a faithful
 1:1 egg arity (name <params> <inputs>). transpose/conv/pool/concat/split/enlarge/
 constants are skipped: their egg form needs extra args the pest converter injects.
 
-Usage: pb2egg.py <graph_subst.pb> <out_rules.txt> [--bidir]
+Usage: pb2egg.py <graph_subst.pb> <out_rules.txt> [--bidir] [--multi-out <path.pb>]
 Requires rules_pb2 (regenerate from taso/src/core/rules.proto with the container's
 protoc; see companion invocation).
+
+Multi-output rules (len(mappedOutput) != 1) have NO single-pattern egg form -- their dst
+graph produces several outputs (typically via a `split`, whose two outputs are selected by
+split_0/split_1). They belong to tensat's multi-pattern lane (PRE_DEFINED_MULTI), not the
+single-pattern --rules file. Rather than DROP them, we save the exact source rules to a
+filtered RuleCollection protobuf (`--multi-out`, default `<out_rules base>.multi.pb`) so the
+multi-pattern conversion can be built against them later without re-running the generator.
 
 Soundness note: the generator's equivalences pass random-numeric testing, NOT Z3.
 For piecewise-linear (min/max) ops random testing can pass false equivalences, so
@@ -89,6 +96,10 @@ def rule_is_clean(rule):
 def main():
     inp, outp = sys.argv[1], sys.argv[2]
     bidir = "--bidir" in sys.argv
+    if "--multi-out" in sys.argv:
+        multi_out = sys.argv[sys.argv.index("--multi-out") + 1]
+    else:  # default sidecar: strip a trailing .txt, append .multi.pb
+        multi_out = (outp[:-4] if outp.endswith(".txt") else outp) + ".multi.pb"
     sys.path.insert(0, os.path.dirname(os.path.abspath(inp)))
     import rules_pb2
     rules = rules_pb2.RuleCollection()
@@ -96,11 +107,14 @@ def main():
 
     total = len(rules.rule)
     emitted, skipped_dirty, skipped_multi, skipped_ident, skipped_unbound = [], 0, 0, 0, 0
+    multi_coll = rules_pb2.RuleCollection()   # multi-output rules, saved not dropped
     seen = set()
     n_minmax = 0
     for rule in rules.rule:
         if len(rule.mappedOutput) != 1:
-            skipped_multi += 1; continue
+            skipped_multi += 1
+            multi_coll.rule.add().CopyFrom(rule)   # preserve the exact source rule
+            continue
         if not rule_is_clean(rule):
             skipped_dirty += 1; continue
         mo = rule.mappedOutput[0]
@@ -131,7 +145,12 @@ def main():
                     n_minmax += 1
     with open(outp, "w") as f:
         f.write("\n".join(emitted))  # no trailing newline (tensat splits on \n)
+    if skipped_multi:                # save (don't drop) multi-output rules for the multi-pattern lane
+        with open(multi_out, "wb") as f:
+            f.write(multi_coll.SerializeToString())
     print("total rules in pb:        {}".format(total))
+    print("saved multi-output -> {}: {}".format(multi_out, skipped_multi) if skipped_multi
+          else "saved multi-output:       0 (none present)")
     print("skipped (multi-output):   {}".format(skipped_multi))
     print("skipped (non-clean ops):  {}".format(skipped_dirty))
     print("skipped (identity):       {}".format(skipped_ident))

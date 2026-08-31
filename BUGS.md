@@ -651,3 +651,35 @@ illegal value" on small-N matmuls (tll's width-1/2/4 output layers). The vector 
 (pad widths >= 8) sidesteps it; a real fix would guard/clamp the leading dims (or skip
 cost measurement) for small N, since the measured runtime is irrelevant to the tensat
 pipeline. Blocks mechanical import of scalar-output FC nets until fixed.
+
+## `tensat`: `-m verify` axiom set (`rules()`) bit-rotted against the `Mdl` language for ~6 years (2026-08-31)
+
+`rewrites.rs::rules()` is the axiom set the GPU-free axiom verifier (`-m verify` /
+`prove_taso_rules`) saturates with. It was written in 2020-06 against the op arities of the
+day (2-arg `matmul`, 1-arg `transpose`, 3-arg `concat`, 6-arg params-first pool). ~6 weeks
+later the `Mdl` `define_language!` grew params to represent real models for the OPTIMIZER
+(f2109cc 2020-07-16 `matmul` +activation → `[Id;3]`; 86a2617 2020-07-31 `transpose`
++perm/shuffle → `[Id;3]`; `concat` +ndim → `[Id;4]`; pool → 7-arg input-first; `enlarge` →
+2-arg ref-based). `rules()` was never updated to match.
+
+Because these are `rw!(...)` macros parsed EAGERLY when the `Vec` is constructed, a single
+stale pattern (e.g. `(transpose (transpose ?x))` against a `[Id;3]` `Transpose`) PANICS at
+pattern-parse — so `-m verify` could not run on ANY rule set, not just ones touching those
+ops. It went undetected because (a) `rules()` is verify-only (the optimizer uses
+`rules_from_str`, loaded fresh from files, always current), and (b) `prove_taso_rules` is
+disabled by default (README: "uncomment it in main.rs"). Classic dead-code rot: two rule
+representations, one exercised and maintained, one dormant and silently broken by a language
+change. The stock `taso_rules.txt` is stale the same way and won't parse under current tensat.
+
+**Fix (this session):** migrated `rules()` to current arities. Because `verify()` is pure-egg
+(`Runner::<Mdl,(),()>` — no shape/`make()`), an axiom only needs to parse and be a TRUE
+universal identity, which dictates sound migration vs. sound drop: `matmul` → literal acti 0;
+`concat` → free rank var `?n`; pool → input-first + acti; `transpose` distribution → free perm
+`?p`/shuffle `?s`; plus the new `matmul` relu-unfold. Five families that can't be stated
+soundly in pure-egg were DROPPED (transpose-is-its-own-inverse / matmul-and-transpose /
+concat-transpose are 2D/involution-specific; split-definition is arity-broken + conditional;
+enlarge-convolution-kernel is a semantic mismatch), plus two inverse directions with an
+unbindable concat rank on the RHS. **Guard added** (`NNs/tests/run_tests.sh` Test 4): rules()
+must construct without panic (catches arity drift), 5 known-false negative canaries must all be
+REJECTED (catches any future unsound axiom), and the min/max family must still prove — the exact
+regression that would have caught this in 2020 had the verifier been wired into CI.
