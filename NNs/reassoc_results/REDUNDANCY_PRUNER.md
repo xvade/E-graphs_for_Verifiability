@@ -103,3 +103,35 @@ Ran gen(all 4 relaxations, depth 3) -> pb2egg -> pre-dedup -> Z3 verify -> prune
   this is a transient GPU-state issue, not the method. RE-RUN on a clean l40s+--mem
   allocation:  tensat -m redundancy -r relaxed_d3_verified.txt -o relaxed_d3_core.txt
   --redundancy_iters 4 --n_nodes 8000 --n_sec 4
+
+## FULL PIPELINE COMPLETE (final)
+The prune finished via a CPU-linked tensat (built against taso/build, USE_CUDA=OFF) --
+the cluster's GPU CUDA init (taso Model() cudaSetDevice) failed cluster-wide with Cuda-35
+this evening; the prune needs only shape inference, not GPU cost measurement, so the CPU
+taso lib dodges it entirely (validated identical: 4-rule AC -> pruned 1, kept 3).
+
+End-to-end:
+| stage | count |
+|---|---|
+| generator all-relaxed depth-3 | 849,839 transfers |
+| pb2egg | 36,976 |
+| pre-dedup (alpha) | 3,757 |
+| Z3-verified | 2,658 |
+| **redundancy-prune (budget 4) -> minimal core** | **1,097** (relaxed_d3_core.txt) |
+
+Prune breakdown: of 2,658 verified, 1,906 are groundable (elementwise/PWL) and 752
+non-groundable (matmul/conv, conservatively kept). Of the 1,906 -> **345 kept** (1,561
+pruned, 82% redundant -- same rate as the 632->117 validation). Core = 345 PWL + 752
+kept-non-PWL = 1,097.
+
+**Recovery vs the original 621 (the point):** the core contains **34 nested-ewmax + 34
+nested-ewmin reassociation rules** -- the AC-reassociation family the original quotiented
+621 had ZERO of. So the relaxed->dedup->verify->prune pipeline autonomously recovered the
+verifiability-relevant cost-neutral family the quotient dropped, and minimized it.
+
+**Honest gap:** standalone binary commutativity (`max(a,b)=>max(b,a)`) is absent -- NOT
+pruned, but never generated: it's an enumeration-order artifact (the generator's dfs
+builds one operand order per op), independent of the filter toggles. Binary commutativity
+alone doesn't change verifiability (a 2-leaf max has no reassociation freedom), and
+commutation IS present inside the >=3-leaf reassociation rules. For strict closure
+completeness, hand-add the 12 AC rules (pwl_rules_ac.txt) -- they're trivially Z3-valid.
