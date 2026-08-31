@@ -957,3 +957,70 @@ BUGS.md). Residual, separate: taso's SGEMM cost-measurement aborts on small-N ma
 `taso/python/taso/__init__.py` (MatMul alias), `NNs/build_tll_lattice.py`,
 `NNs/derive_weight_names_baseline.py` (empty-param guard), `NNs/reassoc_results/TLL_RESULT.md`,
 tll_lattice/recon onnx + sidecars.
+
+## 2026-08-30 (cont. 3) — Redundancy pruner + relaxed regeneration: recover what the quotient dropped
+
+Concern raised: TASO's rule generator systematically drops cost-neutral (AC) rewrite
+families by design (canonicalization/pruning) — the exact families verifiability needs
+(chain vs balanced = same runtime, different bound). Built the pipeline to recover them.
+
+**Redundancy pruner (`tensat -m redundancy`).** Greedily removes any rule whose LHS=RHS is
+re-derivable from the other kept rules within `--redundancy_iters B` e-graph iterations, in
+tensat's own sound engine (grounds vars to fresh [4,4] Inputs, saturates the rest, checks
+e-class equality). Sound (only removes); `B` is the reachability/minimality knob. Validated
+on AC → keeps the minimal 3-rule generating set (assoc-L is derivable via comm+assoc-R). On
+the 632-rule pwl_rules_ac corpus: 515 pruned → **117 core (82% redundant)**.
+
+**Generator quotient relaxation.** Made generator.cc's four quotient checks env-toggleable
+(RELAX_SUBGRAPH/SUPERGRAPH/VARORDER/SUBST). RELAX_SUBST (drop the renaming-dedup) is the
+lever that re-emits the AC family. Found a hard limit: standalone binary commutativity is
+never generated even fully relaxed — it's an ENUMERATION-ORDER artifact (`k=j+1` in the DFS
+builds one operand order per commutative op), upstream of the filters. So associativity is
+only ever emitted in a canonical operand order, and commutativity not at all.
+
+**Full depth-3 relaxed pipeline (all cost-neutral families).** generator all-relaxed depth-3
+(**849,839 transfers**) → pb2egg (36,976) → NEW prededup.py alpha-dedup (3,757, the safety
+valve) → Z3 verify (2,658) → redundancy-prune → **1,097-rule minimal core**. The core has
+34 ewmax + 34 ewmin reassociation rules the original 621 had ZERO of — recovered the
+verifiability family autonomously. Honest gaps: core alone did NOT improve the lattice
+(binary-comm gap → reassociation can't fire); the 12 hand-AC rules restore it.
+
+**Infra saga (recorded so future sessions don't repeat it).** The container's `apptainer
+--nv` CUDA broke cluster-wide (Cuda-35 / cudaErrorInsufficientDriver) on 2026-08-30 evening,
+still broken 08-31 — a driver-injection skew (container .sif intact, native torch CUDA
+works, both l40s and rtx6k affected). Report written for cluster support. Workaround: the
+prune needs only shape inference, so a CPU-linked tensat (built against taso/build,
+USE_CUDA=OFF) runs it GPU-free — validated identical to the GPU build.
+
+## 2026-08-31 — pb2egg full-op coverage, first pipeline tests, and the axiom-verifier find
+
+**Root-caused why conv/matmul models look inert: pb2egg was clean-only.** It silently
+dropped ~84% of the generator's output — ALL conv/pool/concat/structural rules
+(converted_full660: 553/660 non-clean). So tensat never received conv rewrites; the "conv
+inert" conclusion was an artifact. (Original TASO/tensat "got by" because taso_rules.txt is
+a HAND-COMMITTED static file; -m convert just reformats it. pb2egg fills a real automation
+gap — it was just scoped too narrowly.)
+
+**Extended pb2egg to full-op (Tier-1: conv2d/pool/concat).** Each op's exact egg child order
+taken from tensat model.rs make() — NOT the Mdl comments or converted_full660 (BOTH stale).
+Orders differ per op (conv2d params-first, pool INPUT-first, concat params-first + variable
+arity). Verified with a new **`tensat -m parse_check`** oracle (the authoritative
+"does this parse as Pattern<Mdl>" check). On the original taso/graph_subst.pb: 48 → 116
+rules, 0 non-clean dropped, all parse. z3_verify_egg got uninterpreted entries for the new
+ops so it doesn't crash (stopgap).
+
+**Started a test culture (NNs/tests/run_tests.sh, plain-assert, no pytest).** (1) regression:
+non-clean not dropped (fails on old pb2egg — 72 dropped, conv=0); (2) parse-validity: every
+emitted rule parses (catches op-format drift forever); (3) reproduction/coverage from the
+original pb. 8/8 pass; demonstrated the regression test catches the old bug.
+
+**Discovered tensat ALREADY has an axiom verifier — DON'T reinvent** ([[tensat-already-has-axiom-verifier]]).
+`tensat -m verify` (README's prove_taso_rules) is a GPU-free egraph axiom-saturation
+verifier: verify() in lib.rs uses `Runner<Mdl,(),()>` (no analysis, no GPU), adds all rule
+pairs, saturates with `rules()` (~40 bidirectional axioms in rewrites.rs), checks e-class
+equality; ~30x faster than rule-by-rule. `rules()` already has matmul assoc/linear, conv
+bilinear, matmul/conv-over-concat (grouped conv), enlarge, pooling, transpose, identities —
+AND the activation-unfolding axiom (`operator-commutativity-4: conv acti=2 => relu(conv
+acti=0)`; relu is acti=2). It LACKS ewmax/ewmin — that's the complementary reason z3_verify
+exists. Clean unification (future): add min/max axioms + the max/min↔relu bridge to rules()
+for one GPU-free verifier. So: for conv/matmul use `-m verify`, not the uninterpreted z3 path.
