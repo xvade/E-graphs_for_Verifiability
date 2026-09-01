@@ -145,6 +145,19 @@ echo "== Test 10: transpose perm decode round-trip (PROBLEMATIC.md #6) =="
 tpp=$($PY "$REPO/NNs/tests/test_transpose_perm.py" 2>&1 | grep -oE "TRANSPOSE PERM TEST: [A-Z]+" | grep -oE "[A-Z]+$")
 assert_eq "${tpp:-X}" "PASS" "transpose perm decode oracle + taso round-trip"
 
+echo "== Test 11: const_* emission (tier-2, PROBLEMATIC.md #8) =="
+# pb2egg emits Cpool/Iconv (kernel params) and nullary Imatmul/Iewmul. Fixture covers
+# all 4 const types (carved from the fullop corpus, tracked, ~4KB).
+CFIX="$REPO/NNs/tests/const_fixture.pb"; CEGG="$TMP/const_egg.txt"
+CSTATS=$($PY "$REPO/NNs/pb2egg.py" "$CFIX" "$CEGG" 2>&1)
+cnonclean=$(echo "$CSTATS" | grep -oE "non-clean ops\):[ ]*[0-9]+" | grep -oE "[0-9]+$")
+cemit=$(grep -c "=>" "$CEGG"); ctypes=$(grep -oE "\((Cpool|Iconv|Imatmul|Iewmul)" "$CEGG" | sort -u | wc -l)
+cpc=$("$TENSAT" -m parse_check -r "$CEGG" 2>&1 | grep -oE "[0-9]+ FAIL" | grep -oE "^[0-9]+")
+assert_eq "$cemit"        "24" "pb2egg emits all 24 fixture const rules"
+assert_eq "${cnonclean:-X}" "0" "0 non-clean drops (const_* now clean ops)"
+assert_ge "$ctypes"       "4"  "all 4 const ops (Cpool/Iconv/Imatmul/Iewmul) emitted"
+assert_eq "${cpc:-X}"     "0"  "all emitted const rules parse in tensat"
+
 rm -rf "$TMP"
 echo "======================================"
 echo "TESTS: $PASS passed, $FAIL failed"

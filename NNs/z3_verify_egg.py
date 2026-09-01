@@ -103,7 +103,8 @@ class Builder:
         # matmul/smul. A rewrite provable only via the op's real (e.g. conv-linearity)
         # semantics is safely REJECTED here in lane 1 -- lane 2 (tensor_axioms.py) proves
         # those with TASO's quantified axioms.
-        if op in ("conv2d", "poolmax", "poolavg", "concat", "concat3", "concat4", "concat5"):
+        if op in ("conv2d", "poolmax", "poolavg", "concat", "concat3", "concat4", "concat5",
+                  "Cpool", "Iconv", "Imatmul", "Iewmul"):  # const-tensor ops (0-tensor-input leaves)
             zargs = [self.build(a) for a in args]
             key = (op, tuple(a.sort() for a in zargs))
             if key not in self._uf:

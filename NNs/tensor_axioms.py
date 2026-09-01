@@ -218,6 +218,10 @@ def build(node, memo):
     if op == "poolavg":
         inp = b(args[0]); kh, kw, sh, sw, pd = (int(args[i][1]) for i in range(1, 6))
         return pool2d_avg_0(kh, kw, sh, sw, pd, inp)
+    if op == "Cpool":   return const_pool_0(int(args[0][1]), int(args[1][1]))   # avg-pool kernel
+    if op == "Iconv":   return const_iconv_0(int(args[0][1]), int(args[1][1]))  # identity conv kernel
+    if op == "Imatmul": return const_imm_0()                                    # identity matrix
+    if op == "Iewmul":  return const_one_0()                                    # all-ones tensor
     if op in ("ewsub", "ewmax", "ewmin"):
         raise UnsupportedOp(op)              # lane 1's job (interpreted exactly)
     raise ValueError("unhandled op: " + op)

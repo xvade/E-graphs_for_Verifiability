@@ -8,7 +8,7 @@ Exits nonzero if any test fails. (`--no-mount bind-paths` disables the site
 apptainer.conf bind mounts — e.g. `/var/run/slurm` — that otherwise abort
 container creation on non-slurm nodes. Drop it if your node has those paths.)
 
-Current status: **27 assertions, all passing** (tests 1–10).
+Current status: **31 assertions, all passing** (tests 1–11).
 
 ## Tests
 1. **Regression -- non-clean drop.** pb2egg on the original `taso/graph_subst.pb` must drop
@@ -57,6 +57,10 @@ Current status: **27 assertions, all passing** (tests 1–10).
     rejects non-permutations, plus a taso `core` round-trip `transpose(perm) ->
     get_operator_attr('perm')`. Guards the Release-build uninitialized-read that
     `fb0b3db` fixed. See `test_transpose_perm.py`.
+11. **const_* emission (tier-2, PROBLEMATIC.md #8).** `pb2egg` emits Cpool/Iconv
+    (kernel params) and nullary Imatmul/Iewmul; the tracked `const_fixture.pb`
+    (24 rules across all 4 const types) emits 24/24 with 0 non-clean drops, all
+    parse_check OK.
 
 Tests 5–7 are pure-Python (stdlib only) and need neither GPU nor the tensat
 binary; tests 2, 4, 8, 9 drive the prebuilt `tensat` binary (no rebuild). They run
@@ -71,12 +75,14 @@ host-run suite:
 ```
 bash NNs/tests/test_z3_axioms.sh
 ```
-Asserts (14, all passing): the 6 negative canaries in `z3_canaries_false.txt`
+Asserts (18, all passing): the 8 negative canaries in `z3_canaries_false.txt`
 stay unproven (soundness — a consistent axiom set can't prove `conv(x,w)=conv(w,x)`,
-nor a non-involutive `1_2_0` double-transpose = identity); 4 flips (conv-linearity,
-relu(conv)=conv+relu, relu-over-concat, 2-D transpose involution) that lane 1
-rejects and lane 2 proves; 2 shuffle-invariance rewrites (transpose shuffle 0≡1,
-value-invariant) that must verify; and 2 PWL regressions still proven by lane 1.
+a non-involutive `1_2_0` double-transpose = identity, or the identity-matrix-vs-
+all-ones confusions `ewmul(x,Imatmul)=x` / `matmul(x,Iewmul)=x`); 6 flips
+(conv-linearity, relu(conv)=conv+relu, relu-over-concat, 2-D transpose involution,
+matmul·identity-matrix, conv·identity-conv) that lane 1 rejects and lane 2 proves;
+2 shuffle-invariance rewrites (transpose shuffle 0≡1) that must verify; and 2 PWL
+regressions still proven by lane 1.
 
 ## Outstanding (tracked, not yet done)
 - **Z3 conv-axioms — DONE (2026-09-01).** conv/concat/matmul rewrites now verify via the

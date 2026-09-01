@@ -4,3 +4,5 @@
 (conv2d 1 1 0 0 ?input_1 (ewadd ?input_2 ?input_3))=>(ewadd (conv2d 1 1 0 0 ?input_1 ?input_2) (conv2d 1 1 0 0 ?input_1 ?input_1))
 (relu (concat 1 4 ?input_1 ?input_2))=>(concat 1 4 (relu ?input_1) (relu ?input_1))
 (transpose (transpose ?input_1 1_2_0 0) 1_2_0 0)=>?input_1
+(ewmul ?input_1 (Imatmul))=>?input_1
+(matmul 0 ?input_1 (Iewmul))=>?input_1

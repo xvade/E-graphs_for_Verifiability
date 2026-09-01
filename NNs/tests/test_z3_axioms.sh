@@ -47,6 +47,10 @@ flips = [
     ("2-D transpose involution",
      "(transpose (transpose ?input_1 1_0 0) 1_0 0)",
      "?input_1"),
+    ("matmul . identity-matrix (Imatmul)",
+     "(matmul 0 ?input_1 (Imatmul))", "?input_1"),
+    ("conv . identity-conv (Iconv) = id",
+     "(conv2d 1 1 0 0 ?input_1 (Iconv 3 3))", "?input_1"),
 ]
 for name, lhs, rhs in flips:
     ln, rn = parse(lhs), parse(rhs)

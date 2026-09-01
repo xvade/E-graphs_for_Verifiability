@@ -69,12 +69,19 @@ operator_data = {
     OP_POOL2D_AVG: ('poolavg', [PM_KERNEL_H, PM_KERNEL_W, PM_STRIDE_H, PM_STRIDE_W, PM_PAD, PM_ACTI], 'ip'),
     OP_CONCAT:     ('concat', [PM_AXIS, PM_NUMDIM], 'pi'),  # (concat axis ndim in..); egg name -> concat/concat3/4/5 by input count
     OP_TRANSPOSE:  ('transpose', [], 'special'),  # (transpose input perm_name shuffle); perm decoded from PM_PERM, see build()
+    # Constant-tensor ops (0 tensor inputs). egg names differ from the pb enum:
+    #   const_pool -> Cpool(kh,kw) [avg-pool kernel]; const_iconv -> Iconv(kh,kw)
+    #   [identity conv kernel]; const_imm -> Imatmul [identity matrix]; const_one ->
+    #   Iewmul [all-ones]. The generic build() emits nullary ops as "(Imatmul)".
+    OP_CONSTANT_POOL:  ('Cpool',   [PM_KERNEL_H, PM_KERNEL_W], 'pi'),
+    OP_CONSTANT_ICONV: ('Iconv',   [PM_KERNEL_H, PM_KERNEL_W], 'pi'),
+    OP_CONSTANT_IMM:   ('Imatmul', [], 'pi'),
+    OP_CONSTANT_ONE:   ('Iewmul',  [], 'pi'),
     # Tier-2 (still dropped, tracked): reshape (0 occurrences in every corpus seen --
     # not present), enlarge (pb is KERNEL-based (PM_KERNEL_H/W + 1 input) but tensat's
     # Enlarge is REF-INPUT-based (2 tensor inputs) -- a semantic mismatch needing graph
-    # context, ~8k rules deferred), const_* (Cpool/Iconv/Imm/One -- candidate follow-up),
-    # and split (multi-OUTPUT -- routed to the multi-pattern .multi.pb, not a single
-    # pattern). See PROBLEMATIC.md #8.
+    # context, ~8k rules deferred), and split (multi-OUTPUT -- routed to the
+    # multi-pattern .multi.pb, not a single pattern). See PROBLEMATIC.md #8.
 }
 def _decode_perm(perm_idx, numdim):
     """Invert transpose.cc's permutation_to_index (idx = sum_i perm[i]*numdim**(numdim-1-i)):

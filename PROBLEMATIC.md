@@ -209,13 +209,24 @@ Verification of any transpose rewrite that genuinely needs multi-step
 transpose/matmul reasoning would still be subject to #7's incompleteness limit,
 but the fixture no longer exercises that (it was all shuffle invariance).
 
+**const_\* — FIXED (2026-09-01).** The four constant-tensor ops now emit, mapping
+the pb enum to tensat's egg names (confirmed by `parse_check`): `const_pool →
+(Cpool kh kw)`, `const_iconv → (Iconv kh kw)`, `const_imm → Imatmul`, `const_one
+→ Iewmul`. Recovers the **3,640** single-output rules whose only tier-2 ops were
+const_* (with transpose already clean). Both lanes handle them: lane 1 treats
+them as uninterpreted constants; lane 2 maps them to the already-ported axiom
+functions (`const_pool_0`/`const_iconv_0`/`const_imm_0`/`const_one_0`) — so the
+const axioms (`matmul(x,Imatmul)=x`, `ewmul(x,Iewmul)=x`, `conv(x,Iconv)=x`,
+`conv(x,Cpool)=poolavg`) discharge. Tests: `run_tests.sh` Test 11 (fixture 24/24
+emitted across all 4 types, 0 non-clean, all parse_check), `test_z3_axioms.sh`
+(2 flips + 2 false canaries guarding the identity-matrix-vs-all-ones confusion).
+The fixture verifies **24/24** (12 lane 1, 12 lane 2), 0 rejected/unknown.
+
 **Still deferred (with reasons):**
 - **enlarge (~8,239):** the pb's `enlarge` is kernel-based (`PM_KERNEL_H/W` + 1
   input) but tensat's `Enlarge([Id;2])` is *ref-input*-based — synthesizing the
   ref tensor needs graph/shape context this converter doesn't have. A genuine
-  semantic mismatch, not a format one.
-- **const_\* (~3,844):** `Cpool`/`Iconv`/`Imatmul`/`Iewmul` map plausibly to the
-  const ops but arities are unverified — candidate next increment.
+  semantic mismatch, not a format one. The last sizeable single-output tier-2 class.
 - **reshape:** 0 occurrences in every corpus seen; no code written.
 - **split / multi-output:** its own feature (tensat's multi-pattern lane); the
   rules are preserved in `.multi.pb`, not lost.
