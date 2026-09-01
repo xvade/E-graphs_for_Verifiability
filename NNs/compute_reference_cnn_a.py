@@ -1,3 +1,5 @@
+# Seed-0 PyTorch reference (input, output) for mnist_cnn_a, for the
+# reconstruction round-trip check (verify_reconstruction_cnn_a.py).
 import sys
 import numpy as np
 import torch

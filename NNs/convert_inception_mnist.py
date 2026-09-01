@@ -1,3 +1,4 @@
+# Load inception_mnist.onnx into TASO and export to the .taso graph format.
 import taso
 
 graph = taso.load_onnx("NNs/inception_mnist.onnx")

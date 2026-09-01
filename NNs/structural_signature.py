@@ -65,6 +65,16 @@ def parse_model_file(path):
 
 
 def analyze(path):
+    """Parse a .model file and return a JSON-able structural summary dict:
+    {path, node_count, op_counts (name->count), max_depth (longest dependency
+    chain from any Input/Weight leaf, both depth 0), max_branching_factor
+    (max #deps of any node), concat_split_axes (list of {guid, op, axis})}.
+
+    Read-only. Op ints are mapped to names via OP_NAMES -- accurate only when
+    taso is importable (see the module header's fallback caveat). Note the
+    depth of Concat/Split axes drives the project's single most
+    verifiability-relevant feature (axis 0 vs >0, BUGS.md #11/#12).
+    """
     nodes = parse_model_file(path)
     op_counts = Counter(OP_NAMES.get(n["op"], f"Op{n['op']}") for n in nodes.values())
 

@@ -1,3 +1,5 @@
+# Assert mnist_cnn_a_optimized.onnx matches its seed-0 PyTorch reference to
+# atol 1e-4 (single-threaded onnxruntime). Exits nonzero on mismatch.
 import numpy as np
 import onnxruntime as ort
 

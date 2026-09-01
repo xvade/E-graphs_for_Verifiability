@@ -1,3 +1,6 @@
+# Assert the reconstructed mnist_tiny_mlp_optimized.onnx reproduces the seed-0
+# PyTorch reference output (compute_reference.py) to atol 1e-4, under
+# single-threaded onnxruntime. Exits nonzero (assert) on mismatch.
 import numpy as np
 import onnxruntime as ort
 

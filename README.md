@@ -9,6 +9,23 @@ Start with `TENSAT_SUMMARY.md` for the technical deep-dive (paper summary,
 build internals) and `PROGRESS.md` for a chronological log of what's been
 done. `BUGS.md` catalogs bugs found in vanilla TASO/tensat along the way.
 
+## Documentation map
+
+- **`NNs/README.md`** — the pipeline code, indexed by stage (model builders →
+  converters → rule-gen → reconstruct → bounds). The place to start for "what
+  does this script do".
+- **`taso/MODIFICATIONS.md`** + **`taso/src/generator/README.md`** — this fork's
+  delta from upstream TASO, and the generator's flag semantics
+  (`RELAX_*`/`GEN_COMMUTE`, the presence-check gotcha, the 2 GB trap).
+- **`tensat/MODIFICATIONS.md`** — this fork's added CLI modes (`verify`,
+  `redundancy`, `parse_check`), verifiability-aware extraction, and weight
+  provenance.
+- **`PROBLEMATIC.md`** — code/infra that resists testing or is suspected wrong;
+  read before trusting or pinning it.
+- **`NNs/tests/`** — the runnable regression suite (22 assertions);
+  `taso/src/generator/tests/` holds the generator flag probe test.
+- **`AGENTS.md`** — the documentation/spec/test conventions for this repo.
+
 This repo lives on Hyak Klone's `gscratch` scratch space, which sysadmins
 can wipe without notice -- that's why it's on GitHub at all, and why the
 large, regenerable pieces below are deliberately *not* committed.

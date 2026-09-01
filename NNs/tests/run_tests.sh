@@ -64,6 +64,66 @@ assert_ge "$canrej"   "1" "all 5 negative-canary (false) rules are REJECTED (sou
 MM=$("$TENSAT" -m verify -r "$R/minmax_verify_test.txt" 2>&1 | grep -c "Proved 8 on this trip")
 assert_ge "$MM" "1" "min/max axioms still prove all 8 representative rules"
 
+echo "== Test 5: prededup -- alpha-equivalence collapses copies, keeps comm vs identity =="
+# Pins the load-bearing invariant of prededup.canon: two input-renamed copies of the
+# SAME rewrite collapse to one, but a commutativity swap and its identity do NOT
+# (they canonicalize differently). Regression guard: if canon ever became AC-aware it
+# would wrongly drop the comm rules the lattice needs.
+cat > "$TMP/dd_in.txt" <<'EOF'
+(ewmax ?a ?b)=>(ewmax ?b ?a)
+(ewmax ?x ?y)=>(ewmax ?y ?x)
+(ewmax ?a ?b)=>(ewmax ?a ?b)
+(ewadd ?p ?q)=>(ewadd ?q ?p)
+EOF
+$PY "$REPO/NNs/prededup.py" "$TMP/dd_in.txt" "$TMP/dd_out.txt" >/dev/null 2>&1
+ddn=$(grep -c "=>" "$TMP/dd_out.txt")
+ddcomm=$(grep -c '(ewmax ?input_0 ?input_1)=>(ewmax ?input_1 ?input_0)' "$TMP/dd_out.txt")
+ddident=$(grep -c '(ewmax ?input_0 ?input_1)=>(ewmax ?input_0 ?input_1)' "$TMP/dd_out.txt")
+assert_eq "$ddn"     "3" "4 rules (2 alpha-equiv comm copies) -> 3 unique"
+assert_eq "$ddcomm"  "1" "the ewmax commutativity rule survives dedup"
+assert_eq "$ddident" "1" "the ewmax identity rule survives (NOT collapsed into comm)"
+
+echo "== Test 6: sexpr_to_functional -- functional round-trip + bare-atom drop =="
+# Pins the s-expr -> tensat `-m verify` functional form and the bare-atom-side guard
+# (a bare-atom RHS would merge with the next rule under the whitespace-free grammar).
+cat > "$TMP/sx_in.txt" <<'EOF'
+(ewmax ?input_0 ?input_1)=>(ewmax ?input_1 ?input_0)
+(ewadd ?input_0 ?input_1)=>?input_0
+EOF
+sxout=$($PY "$REPO/NNs/sexpr_to_functional.py" "$TMP/sx_in.txt" "$TMP/sx_out.txt" 2>&1)
+sxfun=$(grep -c 'ewmax(input_0,input_1)==ewmax(input_1,input_0)' "$TMP/sx_out.txt")
+sxdrop=$(echo "$sxout" | grep -oE "dropped [0-9]+" | grep -oE "[0-9]+")
+assert_eq "$sxfun"  "1" "ewmax comm rule converts to functional form"
+assert_eq "${sxdrop:-X}" "1" "bare-atom-RHS rule is dropped (1)"
+
+echo "== Test 7: structural_signature -- parse + depth + concat axis =="
+# Pins the .model parser and the concat-axis feature (axis 0 vs >0 is the project's
+# single most verifiability-relevant structural signal, BUGS.md #11/#12).
+# Fixture: Input(1) Weight(2) -> Conv(3) -> Concat(4, axis=1). No blank separators
+# (4 lines/node); empty params line for leaves.
+printf '1\n0\n0:0\n\n2\n1\n0:0\n\n3\n3\n1:0,2:0\n\n4\n21\n3:0\n1\n' > "$TMP/ss.model"
+ssjson=$($PY "$REPO/NNs/structural_signature.py" "$TMP/ss.model" 2>/dev/null)
+ssnodes=$($PY -c "import json,sys; print(json.loads(sys.argv[1])['node_count'])" "$ssjson" 2>/dev/null)
+ssdepth=$($PY -c "import json,sys; print(json.loads(sys.argv[1])['max_depth'])" "$ssjson" 2>/dev/null)
+ssaxis=$($PY -c "import json,sys; a=json.loads(sys.argv[1])['concat_split_axes']; print(a[0]['axis'] if a else 'NONE')" "$ssjson" 2>/dev/null)
+assert_eq "${ssnodes:-X}" "4" "structural_signature parses 4 nodes"
+assert_eq "${ssdepth:-X}" "2" "longest dependency chain (Concat<-Conv<-leaf) = depth 2"
+assert_eq "${ssaxis:-X}"  "1" "Concat axis read from params (=1)"
+
+echo "== Test 8: redundancy mode -- grounds PWL rules and prunes a derivable one =="
+# Exercises tensat -m redundancy on the prebuilt binary. Two rules where the
+# second is a renamed duplicate of the first (add-commutativity): the pruner must
+# recognize both as groundable (elementwise/PWL) and drop the derivable copy.
+printf '(ewadd ?a ?b)=>(ewadd ?b ?a)\n(ewadd ?x ?y)=>(ewadd ?y ?x)\n' > "$TMP/red_in.txt"
+RED=$("$TENSAT" -m redundancy -r "$TMP/red_in.txt" -o "$TMP/red_out.txt" \
+      --redundancy_iters 3 --n_nodes 3000 --n_sec 3 2>&1)
+redground=$(echo "$RED" | grep -oE "[0-9]+ groundable" | grep -oE "^[0-9]+")
+redpruned=$(echo "$RED" | grep -oE "pruned [0-9]+" | grep -oE "[0-9]+")
+redkept=$(grep -c "=>" "$TMP/red_out.txt")
+assert_eq "${redground:-X}" "2" "both PWL rules recognized as groundable"
+assert_ge "${redpruned:-0}" "1" "the renamed-duplicate rule is pruned as redundant"
+assert_eq "$redkept" "1" "exactly one representative kept"
+
 rm -rf "$TMP"
 echo "======================================"
 echo "TESTS: $PASS passed, $FAIL failed"

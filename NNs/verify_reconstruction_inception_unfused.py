@@ -1,3 +1,5 @@
+# Assert the unfused-baseline inception_mnist_unfused.onnx matches the
+# InceptionMNIST seed-0 reference to atol 1e-4.
 import numpy as np
 import onnxruntime as ort
 

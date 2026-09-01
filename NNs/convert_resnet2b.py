@@ -1,3 +1,4 @@
+# Load resnet2b.onnx into TASO and export to the .taso graph format.
 import taso
 
 graph = taso.load_onnx("NNs/resnet2b.onnx")

@@ -1,3 +1,8 @@
+# Bound a SINGLE reconstructed form with auto_LiRPA/CROWN and print its
+# certified upper bound. Args: <onnx_path> <wbx.npz (x0, eps)> <ref_onnx>.
+# Patches onnx2pytorch's Add.forward to accept variadic (bias-less) adds, then
+# converts the ONNX to torch and runs an Lp-norm CROWN bound around x0+-eps.
+# The per-form primitive under bound_forms.py; also usable standalone.
 import sys, numpy as np, torch, onnx, onnx2pytorch, functools as ft
 sys.path[:0]=["NNs","NNs/reassoc_results","alpha-beta-CROWN/complete_verifier"]
 import maxtree_bounds as mtb

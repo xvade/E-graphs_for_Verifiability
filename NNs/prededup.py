@@ -18,6 +18,17 @@ import sys, re
 VAR = re.compile(r"\?[A-Za-z0-9_]+")
 
 def canon(rule: str) -> str:
+    """Canonicalize a rule's variables to ?input_0, ?input_1, ... in
+    first-appearance order (scanning left to right across the whole line,
+    including the =>).
+
+    Two rules are alpha-equivalent iff their canon() outputs are byte-equal.
+    This is deliberately SYNTACTIC and order-sensitive: it does NOT reason
+    modulo associativity/commutativity, so (op a b)=>(op b a) and
+    (op a b)=>(op a b) canonicalize differently and both survive -- that is
+    the point (comm/assoc rewrites are genuinely distinct). Pure function; the
+    input string is not mutated.
+    """
     seen = {}
     def repl(m):
         v = m.group(0)

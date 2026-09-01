@@ -1,3 +1,5 @@
+# Seed-0 PyTorch reference (input, output) for resnet2b, for the reconstruction
+# round-trip check (verify_reconstruction*.py).
 import sys
 import numpy as np
 import torch

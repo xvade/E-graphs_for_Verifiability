@@ -1,3 +1,7 @@
+# Compute a fixed (seed-0) PyTorch reference (input, output) pair for
+# mnist_tiny_mlp, saved as NNs/reference_{input,output}.npy. The reconstruction
+# round-trip check (verify_reconstruction.py) asserts the rebuilt ONNX matches
+# this to atol 1e-4.
 import numpy as np
 import torch
 import torch.nn as nn

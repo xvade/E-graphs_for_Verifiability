@@ -1,3 +1,5 @@
+# Assert the fusion-v2 inception_mnist_fused_v2.onnx (axis-1 relu-batch,
+# ab-CROWN-verifiable) matches the InceptionMNIST seed-0 reference to atol 1e-4.
 import numpy as np
 import onnxruntime as ort
 

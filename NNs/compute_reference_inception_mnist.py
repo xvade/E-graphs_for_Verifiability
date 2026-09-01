@@ -1,3 +1,5 @@
+# Seed-0 PyTorch reference (input, output) for InceptionMNIST, for the
+# reconstruction round-trip checks (verify_reconstruction_inception_*.py).
 import numpy as np
 import torch
 
