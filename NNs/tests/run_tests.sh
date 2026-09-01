@@ -138,6 +138,13 @@ assert_ge "$tptrans"       "20" "every emitted rule is a (transpose ...) rewrite
 assert_eq "${tpnonclean:-X}" "0" "0 non-clean drops (transpose is now a clean op)"
 assert_eq "${tppc:-X}"     "0"  "all emitted transpose rules parse in tensat"
 
+echo "== Test 10: transpose perm decode round-trip (PROBLEMATIC.md #6) =="
+# fb0b3db fixed a Release-build uninitialized-read that corrupted Transpose perm to
+# garbage ([0,0]). Pins pb2egg._decode_perm against a hardcoded idx oracle + a taso
+# core round-trip. See NNs/tests/test_transpose_perm.py.
+tpp=$($PY "$REPO/NNs/tests/test_transpose_perm.py" 2>&1 | grep -oE "TRANSPOSE PERM TEST: [A-Z]+" | grep -oE "[A-Z]+$")
+assert_eq "${tpp:-X}" "PASS" "transpose perm decode oracle + taso round-trip"
+
 rm -rf "$TMP"
 echo "======================================"
 echo "TESTS: $PASS passed, $FAIL failed"

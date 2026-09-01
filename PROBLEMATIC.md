@@ -118,13 +118,32 @@ directory) — `structural_signature.py` guards against this but its op-name
 fallback is then unverified. See `NNs/README.md` (Environment) and the
 `structural_signature.py` header.
 
-## 6. [behavior] Transpose ONNX export round-trip is broken
-`core.pyx::get_operator_attr('perm')` decodes the permutation as a plain base-N
-digit sequence, but `transpose.cc`'s encoder doesn't round-trip through it —
-every exported Transpose came back with an invalid perm (e.g. `[0,0]`) that ONNX
-rejects. **Workaround:** the reconstruct scripts fold weight-derived transposes
-in numpy directly and never use the graph Transpose export path. Documented in
-`reconstruct_optimized.py`'s header. Not chased further given the workaround.
+## 6. [RESOLVED — was a Release-build uninitialized read] Transpose ONNX export perm
+Exported Transpose ops came back with a garbage perm (e.g. `[0,0]`) that ONNX
+rejects. **Root cause (commit `fb0b3db`, taso fork):** `Graph::get_operator_int_attr`
+read the parameter via `assert(op.ptr->get_int_parameter(attr, &ret))` — and under
+NDEBUG/Release the assert's argument is never evaluated, so `get_int_parameter`
+was never called and `ret` stayed uninitialized. Every attribute read through that
+path (Transpose perm, Conv/Pool strides/kernel/pads) came back as garbage **only in
+Release builds** — exactly the config the GPU work used. `fb0b3db` calls
+`get_int_parameter` unconditionally; the diff is the fix. (The decode arithmetic in
+`core.pyx::get_operator_attr('perm')` was always correct.)
+
+**Verified 2026-09-01:** the perm decode round-trips for 6/6 perms (2-D/3-D/4-D) in
+the current CPU build, and `pb2egg._decode_perm` matches a hardcoded
+`permutation_to_index` oracle (`NNs/tests/test_transpose_perm.py`, wired into
+`run_tests.sh` Test 10). Caveats, stated honestly: (a) the CPU build is
+assert-enabled, where the bug never manifested — so the round-trip corroborates the
+decode but does not itself re-prove the Release fix; `fb0b3db`'s diff does. (b) the
+full `export_onnx` → `onnx.checker` end-to-end is **not** re-verified here (onnx is
+not importable in the container — a #5-adjacent issue). (c) the generator/optimizer
+only ever emits the 2-D swap (`NUMDIM=2, PERM=2`), so the N-D path is verified
+*correct* but not *exercised in production*.
+
+**Workaround retained (by design):** `reconstruct_optimized.py` still folds
+weight-derived transposes in numpy — it avoids a graph op for weight-only
+transposes and is the simpler path, so it stays regardless of the fix. Its docstring
+is updated to note the decode now round-trips.
 
 ## 7. [largely RESOLVED] Z3 conv/concat/matmul verification
 `pb2egg.py` emits conv/pool/concat rules, but `z3_verify_egg.py` (lane 1) treats

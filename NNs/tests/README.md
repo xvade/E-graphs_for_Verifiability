@@ -8,7 +8,7 @@ Exits nonzero if any test fails. (`--no-mount bind-paths` disables the site
 apptainer.conf bind mounts — e.g. `/var/run/slurm` — that otherwise abort
 container creation on non-slurm nodes. Drop it if your node has those paths.)
 
-Current status: **26 assertions, all passing** (tests 1–9).
+Current status: **27 assertions, all passing** (tests 1–10).
 
 ## Tests
 1. **Regression -- non-clean drop.** pb2egg on the original `taso/graph_subst.pb` must drop
@@ -52,6 +52,11 @@ Current status: **26 assertions, all passing** (tests 1–9).
    and emits `(transpose input perm_name shuffle)`; the tracked
    `transpose_fixture.pb` (20 transpose-only rules carved from the fullop corpus)
    emits 20/20 with 0 non-clean drops, and all 20 pass `parse_check`.
+10. **transpose perm decode round-trip (PROBLEMATIC.md #6).** `pb2egg._decode_perm`
+    matches a hardcoded `permutation_to_index` idx oracle (encoder-independent) and
+    rejects non-permutations, plus a taso `core` round-trip `transpose(perm) ->
+    get_operator_attr('perm')`. Guards the Release-build uninitialized-read that
+    `fb0b3db` fixed. See `test_transpose_perm.py`.
 
 Tests 5–7 are pure-Python (stdlib only) and need neither GPU nor the tensat
 binary; tests 2, 4, 8, 9 drive the prebuilt `tensat` binary (no rebuild). They run

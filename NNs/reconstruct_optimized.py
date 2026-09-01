@@ -18,19 +18,20 @@
 # identities through extraction), not just this shape lookup.
 #
 # Weight-derived Transpose is folded here in Python (np.transpose), not via
-# graph.transpose()+export_onnx()'s attribute round-trip. That path is
-# independently broken: core.pyx's get_operator_attr('perm') decodes the
-# permutation as a plain base-N digit sequence
-# (dims[i]=perIdx%N; perIdx//=N), but transpose.cc's encoder
-# (permutation_to_index) and the *other* get_or_create_transpose overload
-# it calls don't appear to round-trip consistently through that path --
-# every Transpose we exported came back with an invalid perm (repeated
-# index, e.g. [0, 0]), which ONNX rejects outright. Not worth chasing
-# further given the workaround: since we already hold the real weight
-# arrays in Python, transposing them directly and emitting a literal
-# Weight node sidesteps the bug entirely. graph.transpose() would still be
-# needed (and would still hit this bug) for a transpose applied to a
-# non-weight (activation) tensor -- none appear in this model.
+# graph.transpose()+export_onnx()'s attribute round-trip.
+#
+# HISTORICAL NOTE (bug since fixed): that export path used to come back with an
+# invalid perm (e.g. [0, 0]) that ONNX rejects. The decode in core.pyx's
+# get_operator_attr('perm') was always correct; the real cause was
+# get_operator_int_attr reading via assert(get_int_parameter(...)), which is
+# unevaluated under NDEBUG/Release -> uninitialized garbage (taso commit fb0b3db;
+# PROBLEMATIC.md #6). The perm now round-trips (NNs/tests/test_transpose_perm.py).
+#
+# The numpy fold is RETAINED anyway: it is the simpler path (we already hold the
+# real weight arrays, so transposing them directly and emitting a literal Weight
+# node avoids a graph op for weight-only transposes). graph.transpose() would be
+# needed only for a transpose applied to a non-weight (activation) tensor -- none
+# appear in this model.
 import sys
 import numpy as np
 import onnx
@@ -79,9 +80,10 @@ def parse_and_build(model_path, original_weights):
             src_guid = deps[0][0]
             if src_guid not in weight_arrays:
                 raise NotImplementedError(
-                    "Transpose of a non-weight tensor -- graph.transpose()'s "
-                    "ONNX perm round-trip is broken (see module docstring), "
-                    "and this script only folds weight-derived transposes"
+                    "Transpose of a non-weight (activation) tensor -- this script "
+                    "only folds weight-derived transposes in numpy; use "
+                    "graph.transpose()+export_onnx() for activation transposes "
+                    "(perm round-trip fixed, see module docstring / PROBLEMATIC.md #6)"
                 )
             arr = np.transpose(weight_arrays[src_guid], perm)
             weight_arrays[guid] = arr
