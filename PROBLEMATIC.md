@@ -126,13 +126,33 @@ rejects. **Workaround:** the reconstruct scripts fold weight-derived transposes
 in numpy directly and never use the graph Transpose export path. Documented in
 `reconstruct_optimized.py`'s header. Not chased further given the workaround.
 
-## 7. [coverage] Z3 conv-axioms missing → conv rewrites rejected at verification
-`pb2egg.py` now emits conv/pool/concat rules, but `z3_verify_egg.py` treats
-conv/pool/concat as **uninterpreted** (sound but conservative), so most conv
-rewrites are REJECTED at verification. Keeping them needs op
-linearity/distribution axioms (cf. `taso/verify/validate_axioms.py`). Until then
-the full-op corpus parses but conv rules won't survive Z3. Tracked in
-`NNs/tests/README.md` (Outstanding).
+## 7. [largely RESOLVED] Z3 conv/concat/matmul verification
+`pb2egg.py` emits conv/pool/concat rules, but `z3_verify_egg.py` (lane 1) treats
+them as **uninterpreted** — sound but conservative, so it proved only rules that
+hold by congruence and REJECTED the op-algebra rewrites (conv linear in its
+weight, conv/concat distribution, relu(conv)=conv+relu, matmul associativity…).
+
+**Fixed 2026-09-01 by a second verifier lane.** `NNs/tensor_axioms.py` ports
+TASO's own rule verifier — the quantified tensor axioms in
+**`taso/verify/verify.py`** (not `validate_axioms.py`, which is only the
+meta-checker that validates those axioms on small shapes) — to Python 3: tensors
+are an uninterpreted sort, ops are Z3 functions, and the proven `axioms`/`lemmas`
+are asserted. No shape inference (the axioms are shape-polymorphic).
+`z3_verify_egg.py` runs lane 1 unchanged, then lane 2 on any rule lane 1 did not
+verify; a rule is VERIFIED if **either** lane proves it (union of two sound
+checks, monotone). Result on the tracked `graph_subst.pb`: **35 → 104 / 116
+verified** (conv2d 8→26, concat 0→43), 0 regressions, 0 negative-canary
+failures. Tests: `NNs/tests/test_z3_axioms.sh` (run with the `taso_py` env, since
+z3 is not in the container python — #5).
+
+**Residue (~12 rules, follow-up):** grouped-convolution and matmul/concat-fold
+substitutions that TASO's *own* verifier also does not prove universally
+(`verify.py` comments the grouped-conv axiom out as "wrong axiom — caught with
+N=[1,3]" and blacklists such rules). Reaching them needs grouped-conv-aware
+reasoning, not a missing basic axiom. Also still-open: rerunning the full 6k
+`fullop` corpus through the two-lane verifier (this validated the method on the
+116-rule tracked pb), and pool/split/enlarge remain dropped upstream at
+`pb2egg` (#8), so their axioms (ported but present) are currently unexercised.
 
 ## 8. [coverage] pb2egg tier-2 ops still dropped
 `transpose`/`reshape` (config-as-name-string), `enlarge` (pb kernel-based vs egg

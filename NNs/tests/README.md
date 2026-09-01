@@ -52,12 +52,25 @@ Tests 5–7 are pure-Python (stdlib only) and need neither GPU nor the tensat
 binary; tests 2, 4, 8 drive the prebuilt `tensat` binary (no rebuild). They run
 in-container because that is where the toolchain lives.
 
+## Z3 tensor-axiom lane (separate suite)
+
+`test_z3_axioms.sh` covers the conv/concat/matmul verifier lane
+(`NNs/tensor_axioms.py`). It runs with the **`taso_py` env**, not in the
+container (z3 lives there, not in the container python — #5), so it is a separate
+host-run suite:
+```
+bash NNs/tests/test_z3_axioms.sh
+```
+Asserts (10, all passing): the 5 negative canaries in `z3_canaries_false.txt`
+stay unproven (soundness — a consistent axiom set can't prove `conv(x,w)=conv(w,x)`);
+3 flips (conv-linearity, relu(conv)=conv+relu, relu-over-concat) that lane 1
+rejects and lane 2 proves; and 2 PWL regressions still proven by lane 1.
+
 ## Outstanding (tracked, not yet done)
-- **Z3 conv-axioms.** pb2egg now EMITS conv/concat rules, but z3_verify_egg treats
-  conv/pool/concat as UNINTERPRETED (sound but conservative) -> most conv rewrites get
-  REJECTED at verification. Keeping them needs the op linearity/distribution axioms (cf.
-  taso/verify/validate_axioms.py). Until then, full-op pb2egg unblocks parsing but conv
-  rules won't survive verification.
+- **Z3 conv-axioms — DONE (2026-09-01).** conv/concat/matmul rewrites now verify via the
+  `tensor_axioms.py` lane (port of `taso/verify/verify.py`): 35→104/116 on the tracked pb.
+  See `../../PROBLEMATIC.md` #7. Follow-up: rerun the full 6k `fullop` corpus through it;
+  ~12 grouped-conv/matmul-fold rules remain (TASO's own verifier doesn't prove them either).
 - **Tier-2 ops still dropped:** transpose/reshape (config-as-name-string), enlarge (pb
   kernel-based vs egg ref-based -- semantic mismatch), split (multi-output -> multi-pattern
   lane). See pb2egg.py operator_data comments.

@@ -81,7 +81,8 @@ generator (taso) → graph_subst.pb → pb2egg.py → prededup.py → z3_verify_
 |---|---|---|
 | `pb2egg.py` | protobuf → egg rewrite rules | Full-op (conv/pool/concat/matmul), `--multi-out` saves multi-output rewrites. |
 | `prededup.py` | syntactic alpha-equivalence dedup | Canonically renames vars in first-appearance order; **keeps** comm-vs-assoc distinct. |
-| `z3_verify_egg.py` | Z3 soundness check per rule | Interprets ew ops; conv/pool/concat are **uninterpreted** (sound but conservative → conv rules rejected). |
+| `z3_verify_egg.py` | Z3 soundness check per rule (2 lanes) | Lane 1: ew ops exact, conv/concat/matmul uninterpreted. Lane 2 (`tensor_axioms.py`) on lane-1 non-verifieds. VERIFIED if either lane proves it. |
+| `tensor_axioms.py` | Z3 lane 2: TASO tensor axioms | Port of `taso/verify/verify.py`'s quantified conv/concat/matmul/pool axioms; proves the op-algebra rewrites lane 1 can't (35→104/116 on the tracked pb). |
 | `sexpr_to_functional.py` | egg s-expr → functional form | Shared helper. |
 
 ## 4. Extraction & reconstruction (rewritten form → real-weight ONNX)
