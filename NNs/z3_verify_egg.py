@@ -84,16 +84,19 @@ class Builder:
             act = self.build(args[0]); return self.matmul(act, self.build(args[1]), self.build(args[2]))
         if op == "smul":
             return self.smul(self.build(args[0]), self.build(args[1]))
-        # transpose: (transpose input perm_name shuffle). perm_name/shuffle are config
-        # LEAVES (e.g. "1_0", "0"), not tensors -- fold them into the function IDENTITY
-        # (so transpose with different perms are different functions) and take only the
-        # input tensor as the argument. Congruence then proves perm-preserving rewrites.
+        # transpose: (transpose input perm_name shuffle). perm_name is a config LEAF
+        # (e.g. "1_0"), NOT a tensor -- fold it into the function IDENTITY (so different
+        # perms are different functions) and take only the input tensor as the argument.
+        # The `shuffle` flag is DELIBERATELY IGNORED: it only changes output memory
+        # strides (view vs contiguous copy), never the logical values (transpose.cc:102),
+        # so transpose(x,perm,0) and transpose(x,perm,1) are value-identical. Congruence
+        # then proves perm-preserving (and shuffle-invariant) rewrites.
         if op == "transpose":
             inp = self.build(args[0])
-            perm, shuf = args[1][1], args[2][1]      # atom token strings, NOT built
-            key = ("transpose", perm, shuf, inp.sort())
+            perm = args[1][1]                        # atom token string, NOT built; shuffle ignored
+            key = ("transpose", perm, inp.sort())
             if key not in self._uf:
-                self._uf[key] = z3.Function("transpose_{}_{}".format(perm, shuf), inp.sort(), z3.RealSort())
+                self._uf[key] = z3.Function("transpose_{}".format(perm), inp.sort(), z3.RealSort())
             return self._uf[key](inp)
         # Non-PWL ops (conv2d, poolmax/avg, concat/3/4/5, ...): treated as UNINTERPRETED
         # functions of their (interpreted) args -- sound and conservative, exactly like

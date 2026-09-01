@@ -172,10 +172,23 @@ to TASO's `transpose_0` while giving every other perm its own uninterpreted
 function — so `transpose_0`'s 2-D-only axioms can't misfire (guarded by a
 non-involutive `1_2_0` double-transpose canary). Tests: `run_tests.sh` Test 9
 (fixture emits 20/20, 0 non-clean, all parse_check), `test_z3_axioms.sh`
-(involution flip + 3-cycle canary). Verification rate on transpose rules is
-partial — the clean single-axiom cases prove; multi-step transpose+matmul-chain
-rewrites hit the same quantifier-incompleteness ceiling as #7's residue (a
-coverage, not soundness, limit).
+(involution flip + 3-cycle canary).
+
+**Shuffle invariance (found while verifying the transpose fixture).** The
+transpose op carries a `shuffle` flag; `transpose.cc:102` shows it changes only
+the output *strides* (view vs contiguous copy), never the logical values, so
+`transpose(x,perm,0)` and `transpose(x,perm,1)` are value-identical (TASO's
+`transpose_0` correctly has no shuffle param). Both verifier lanes initially
+keyed transpose functions on `(perm, shuffle)`, so shuffle-only rewrites
+(`… transpose(x,perm,0) … => … transpose(x,perm,1) …`) could not be proved. Both
+lanes now key on `perm` alone and ignore shuffle (sound — it is value-invariant),
+which makes those rewrites trivial identities: the transpose fixture went from
+2/20 to **20/20** verified. This was a missing-axiom gap, *not* a quantifier
+budget ceiling — the distinction matters (see the #7 note on incompleteness);
+the earlier characterization of these as "quantifier-incompleteness" was wrong.
+Verification of any transpose rewrite that genuinely needs multi-step
+transpose/matmul reasoning would still be subject to #7's incompleteness limit,
+but the fixture no longer exercises that (it was all shuffle invariance).
 
 **Still deferred (with reasons):**
 - **enlarge (~8,239):** the pb's `enlarge` is kernel-based (`PM_KERNEL_H/W` + 1

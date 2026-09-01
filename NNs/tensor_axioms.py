@@ -89,10 +89,11 @@ class UnsupportedOp(Exception):
     left to lane 1 rather than crashing the pipeline."""
 
 
-# transpose functions for non-2D-swap perms, keyed by (perm_name, shuffle). TASO's
+# transpose functions for non-2D-swap perms, keyed by perm_name only. TASO's
 # transpose_0 is 2-D-only (its axioms transpose(transpose)=x etc. hold only for the
-# [1,0] swap); every other perm/shuffle gets its OWN uninterpreted function so those
-# axioms never wrongly apply to it. Congruence still proves perm-preserving rewrites.
+# [1,0] swap); every other perm gets its OWN uninterpreted function so those axioms
+# never wrongly apply. The `shuffle` flag is NOT part of the key: it changes only
+# memory strides, not logical values (transpose.cc:102), so it is value-invariant.
 _TR_UF = {}
 
 
@@ -190,13 +191,12 @@ def build(node, memo):
     if op == "smul":   return scalar_mul_0(b(args[0]), b(args[1]))
     if op == "transpose":                    # (transpose input perm_name shuffle)
         inp = b(args[0])
-        perm, shuf = args[1][1], args[2][1]  # config LEAVES, not tensors
-        if perm == "1_0" and shuf == "0":    # the 2-D matrix transpose TASO models
-            return transpose_0(inp)
-        key = (perm, shuf)                   # any other perm/shuffle: its own function
-        if key not in _TR_UF:
-            _TR_UF[key] = z3.Function("transpose_{}_{}".format(perm, shuf), T, T)
-        return _TR_UF[key](inp)
+        perm = args[1][1]                    # config LEAF (perm); shuffle (args[2]) IGNORED --
+        if perm == "1_0":                    # it changes only strides, not values (transpose.cc)
+            return transpose_0(inp)          # the 2-D matrix transpose TASO models
+        if perm not in _TR_UF:               # any other perm: its own uninterpreted function
+            _TR_UF[perm] = z3.Function("transpose_{}".format(perm), T, T)
+        return _TR_UF[perm](inp)
     if op == "matmul":
         acti = int(args[0][1])               # (matmul acti a b)
         if acti != AC_MODE_NONE:

@@ -66,11 +66,12 @@ host-run suite:
 ```
 bash NNs/tests/test_z3_axioms.sh
 ```
-Asserts (12, all passing): the 6 negative canaries in `z3_canaries_false.txt`
+Asserts (14, all passing): the 6 negative canaries in `z3_canaries_false.txt`
 stay unproven (soundness — a consistent axiom set can't prove `conv(x,w)=conv(w,x)`,
 nor a non-involutive `1_2_0` double-transpose = identity); 4 flips (conv-linearity,
 relu(conv)=conv+relu, relu-over-concat, 2-D transpose involution) that lane 1
-rejects and lane 2 proves; and 2 PWL regressions still proven by lane 1.
+rejects and lane 2 proves; 2 shuffle-invariance rewrites (transpose shuffle 0≡1,
+value-invariant) that must verify; and 2 PWL regressions still proven by lane 1.
 
 ## Outstanding (tracked, not yet done)
 - **Z3 conv-axioms — DONE (2026-09-01).** conv/concat/matmul rewrites now verify via the

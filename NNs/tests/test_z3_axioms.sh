@@ -60,6 +60,19 @@ for name, lhs, rhs in flips:
         "{}: lane1={}, lane2={}".format(name, l1, v2))
 
 # --- regression: a PWL rule still proven by lane 1 alone (union must not lose it).
+print("== shuffle invariance: transpose shuffle flag is value-invariant ==")
+# transpose(x,perm,0) == transpose(x,perm,1): shuffle changes only strides, not values
+# (transpose.cc). Both lanes must ignore shuffle -- guards against re-keying on it.
+for name, lhs, rhs in [
+    ("2-D transpose shuffle 0==1",
+     "(matmul 0 ?input_1 (transpose ?input_2 1_0 0))",
+     "(matmul 0 ?input_1 (transpose ?input_2 1_0 1))"),
+    ("3-D transpose shuffle 0==1",
+     "(transpose ?input_1 1_2_0 0)", "(transpose ?input_1 1_2_0 1)"),
+]:
+    v, lane = L1.verify_rule("{}=>{}".format(lhs, rhs), TIMEOUT)
+    (ok if v == "VERIFIED" else bad)("{}: {} (lane {})".format(name, v, lane))
+
 print("== regression: PWL lane still proves min/max + ewadd assoc ==")
 for name, lhs, rhs in [
     ("ewadd assoc", "(ewadd ?input_1 (ewadd ?input_2 ?input_3))", "(ewadd (ewadd ?input_1 ?input_2) ?input_3)"),
