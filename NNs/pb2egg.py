@@ -8,12 +8,19 @@ without the Z3 verification detour.
 
 Op-type ints follow the XFLOW enum the generator writes (== read_rules.py's
 range(26)), extended with EW_SUB/MAX/MIN = 26/27/28 (the generator's xflow shim).
-Only rules whose ops are ALL in CLEAN_OPS are emitted -- these have a faithful
-1:1 egg arity. Covered: ew*/relu/matmul/smul, conv2d/pool/concat (tier-1), and
-transpose (perm decoded from PM_PERM -> a `dim_dim` Name leaf). Still skipped:
-enlarge (kernel-based pb vs ref-input-based egg -- a semantic mismatch), the
-const_* family, and split (multi-OUTPUT -> the .multi.pb multi-pattern lane).
-See PROBLEMATIC.md #8.
+Two filters gate emission:
+  1. PARSE-emittable (CLEAN_OPS): the op has a faithful 1:1 egg arity. Covers
+     ew*/relu/matmul/smul, conv2d/pool/concat (tier-1), transpose (perm decoded
+     from PM_PERM), and the const_* family (Cpool/Iconv/Imatmul/Iewmul). Still
+     un-emittable: enlarge (kernel-based pb vs ref-input-based egg -- a semantic
+     mismatch) and split (multi-OUTPUT -> the .multi.pb multi-pattern lane).
+  2. APPLY-safe (DEFAULT): the op is one tensat can BUILD during saturation
+     (rewrites.rs). A rule using any other op parses and Z3-verifies but PANICS
+     tensat when it applies (`todo!()`), so by default such rules are dropped
+     (skipped_unapplicable). `--emit-unapplicable` keeps them for consumers that
+     never apply rules (Z3 corpus studies). Apply-safe set: see APPLY_SAFE_EGG_OPS.
+     Currently apply-UNsafe (gated by default): smul, poolmax/avg, transpose,
+     const_*, concat3/4/5. See PROBLEMATIC.md #8 and docs/ADD_AN_OP.md.
 
 Usage: pb2egg.py <graph_subst.pb> <out_rules.txt> [--bidir] [--multi-out <path.pb>]
 Requires rules_pb2 (regenerate from taso/src/core/rules.proto with the container's
@@ -124,6 +131,26 @@ def build(tensor, ops):
     args = pargs + iargs if order == "pi" else iargs + pargs
     return "({} {})".format(name, " ".join(args)) if args else "({})".format(name)
 
+# Ops tensat's APPLY path (rewrites.rs) can actually build during saturation. A rule
+# whose egg form uses any op OUTSIDE this set parses (parse_check) and Z3-verifies fine
+# but PANICS tensat at application time (rewrites.rs `other => todo!()`), so it is unsafe
+# to feed to `tensat --rules`. Confirmed empirically (2-iter saturation probes):
+# matmul/ewadd/... saturate; smul/poolmax/poolavg/transpose/Cpool/Iconv/Imatmul/Iewmul/
+# concat3/4/5 panic. By DEFAULT pb2egg emits only apply-safe rules; `--emit-unapplicable`
+# emits the full parse-valid set for consumers that never apply rules (e.g. Z3 corpus
+# studies via z3_verify_egg.py). See PROBLEMATIC.md #8 and docs/ADD_AN_OP.md.
+# NOTE: "concat" (binary) is apply-safe; concat3/concat4/concat5 are NOT (only Mdl::Concat
+# has an apply arm), so they are excluded here by name.
+APPLY_SAFE_EGG_OPS = {
+    "relu", "ewadd", "ewmul", "ewsub", "ewmax", "ewmin", "matmul", "conv2d", "concat",
+}
+_EGG_OP = re.compile(r"\(([A-Za-z][A-Za-z0-9_]*)")   # op name = token right after "("
+
+def is_apply_safe(egg_line):
+    """True iff every op in the egg rule is one tensat can build at apply time (so the
+    rule can be fed to `tensat --rules` without a todo!() panic)."""
+    return set(_EGG_OP.findall(egg_line)) <= APPLY_SAFE_EGG_OPS
+
 def rule_is_clean(rule):
     return all(o.type in CLEAN_OPS for o in rule.srcOp) and \
            all(o.type in CLEAN_OPS for o in rule.dstOp)
@@ -131,6 +158,7 @@ def rule_is_clean(rule):
 def main():
     inp, outp = sys.argv[1], sys.argv[2]
     bidir = "--bidir" in sys.argv
+    emit_unapplicable = "--emit-unapplicable" in sys.argv  # keep tensat-unapplicable rules (Z3 studies)
     if "--multi-out" in sys.argv:
         multi_out = sys.argv[sys.argv.index("--multi-out") + 1]
     else:  # default sidecar: strip a trailing .txt, append .multi.pb
@@ -142,6 +170,7 @@ def main():
 
     total = len(rules.rule)
     emitted, skipped_dirty, skipped_multi, skipped_ident, skipped_unbound = [], 0, 0, 0, 0
+    skipped_unapplicable = 0
     multi_coll = rules_pb2.RuleCollection()   # multi-output rules, saved not dropped
     seen = set()
     n_minmax = 0
@@ -174,6 +203,8 @@ def main():
             skipped_unbound += 1; continue
         for a, b in cand:
             line = "{}=>{}".format(a, b)
+            if not emit_unapplicable and not (is_apply_safe(a) and is_apply_safe(b)):
+                skipped_unapplicable += 1; continue   # would panic tensat at apply time
             if line not in seen:
                 seen.add(line); emitted.append(line)
                 if "ewmax" in line or "ewmin" in line:
@@ -190,6 +221,8 @@ def main():
     print("skipped (non-clean ops):  {}".format(skipped_dirty))
     print("skipped (identity):       {}".format(skipped_ident))
     print("skipped (unbound RHS var):{}".format(skipped_unbound))
+    print("skipped (tensat-unapplicable ops): {}{}".format(
+        skipped_unapplicable, " [--emit-unapplicable to keep]" if skipped_unapplicable else ""))
     print("emitted egg rules:        {}{}".format(len(emitted), " (bidir)" if bidir else ""))
     print("  of which min/max rules: {}".format(n_minmax))
 

@@ -8,7 +8,7 @@ Exits nonzero if any test fails. (`--no-mount bind-paths` disables the site
 apptainer.conf bind mounts — e.g. `/var/run/slurm` — that otherwise abort
 container creation on non-slurm nodes. Drop it if your node has those paths.)
 
-Current status: **31 assertions, all passing** (tests 1–11).
+Current status: **40 assertions, all passing** (tests 1–12).
 
 ## Tests
 1. **Regression -- non-clean drop.** pb2egg on the original `taso/graph_subst.pb` must drop
@@ -48,23 +48,29 @@ Current status: **31 assertions, all passing** (tests 1–11).
    groundable and prune a renamed duplicate (add-commutativity), keeping exactly
    one representative. Exercises the pruner on the prebuilt binary.
 
-9. **transpose emission (tier-2, PROBLEMATIC.md #8).** `pb2egg` decodes `PM_PERM`
-   and emits `(transpose input perm_name shuffle)`; the tracked
-   `transpose_fixture.pb` (20 transpose-only rules carved from the fullop corpus)
-   emits 20/20 with 0 non-clean drops, and all 20 pass `parse_check`.
+9. **transpose emission — gated by default (tier-2, PROBLEMATIC.md #8).** transpose
+   is apply-UNsafe (tensat can't build it during saturation), so pb2egg drops it by
+   default (0 emitted, 20 counted unapplicable); `--emit-unapplicable` emits all 20 +
+   parse_check. Fixture `transpose_fixture.pb`.
 10. **transpose perm decode round-trip (PROBLEMATIC.md #6).** `pb2egg._decode_perm`
     matches a hardcoded `permutation_to_index` idx oracle (encoder-independent) and
     rejects non-permutations, plus a taso `core` round-trip `transpose(perm) ->
     get_operator_attr('perm')`. Guards the Release-build uninitialized-read that
     `fb0b3db` fixed. See `test_transpose_perm.py`.
-11. **const_* emission (tier-2, PROBLEMATIC.md #8).** `pb2egg` emits Cpool/Iconv
-    (kernel params) and nullary Imatmul/Iewmul; the tracked `const_fixture.pb`
-    (24 rules across all 4 const types) emits 24/24 with 0 non-clean drops, all
-    parse_check OK.
+11. **const_* emission — gated by default (tier-2, PROBLEMATIC.md #8).** the const
+    ops are apply-UNsafe, so pb2egg gates them by default (0 emitted, 24 unapplicable);
+    `--emit-unapplicable` emits all 24 across the 4 types + parse_check. Fixture
+    `const_fixture.pb`.
+12. **apply-smoke (PROBLEMATIC.md #8 application gap).** The gate the
+    emission/parse_check/Z3 tests can't give: a guaranteed-fire rule per op family
+    through a 2-iteration saturation on `mnist_tiny_mlp` — apply-safe ops
+    (ewadd/matmul/ewmax/ewmul) must NOT hit the `rewrites.rs` `todo!()` panic, and
+    gated ops (transpose, const Iewmul) MUST (proving the gating is load-bearing).
+    This is what would have caught transpose/const shipping as apply-panicking rules.
 
 Tests 5–7 are pure-Python (stdlib only) and need neither GPU nor the tensat
-binary; tests 2, 4, 8, 9 drive the prebuilt `tensat` binary (no rebuild). They run
-in-container because that is where the toolchain lives.
+binary; tests 2, 4, 8, 9, 11, 12 drive the prebuilt `tensat` binary (no rebuild). They
+run in-container because that is where the toolchain lives.
 
 ## Z3 tensor-axiom lane (separate suite)
 
@@ -89,6 +95,7 @@ regressions still proven by lane 1.
   `tensor_axioms.py` lane (port of `taso/verify/verify.py`): 35→104/116 on the tracked pb.
   See `../../PROBLEMATIC.md` #7. Follow-up: rerun the full 6k `fullop` corpus through it;
   ~12 grouped-conv/matmul-fold rules remain (TASO's own verifier doesn't prove them either).
-- **Tier-2 ops still dropped:** transpose/reshape (config-as-name-string), enlarge (pb
-  kernel-based vs egg ref-based -- semantic mismatch), split (multi-output -> multi-pattern
-  lane). See pb2egg.py operator_data comments.
+- **Tensat application gap (open):** transpose + const_* emission/verification are done,
+  but tensat can't APPLY those ops (rewrites.rs `todo!()`), so pb2egg gates them by default
+  (`--emit-unapplicable` to keep). enlarge is blocked behind the same gap; reshape absent;
+  split is the multi-pattern lane. See PROBLEMATIC.md #8 and docs/ADD_AN_OP.md.

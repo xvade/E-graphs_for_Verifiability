@@ -180,53 +180,83 @@ rules — its only tier-2 loss is 13 two-output split rules, already preserved i
 single-output dirty rules — transpose 9,203, enlarge 8,239, const_* ~3,844,
 reshape 0.
 
-**transpose — FIXED (2026-09-01).** `pb2egg.py` decodes `PM_PERM` (via the
-inverse of `transpose.cc::permutation_to_index`, validated to be a real
-permutation) and emits `(transpose input perm_name shuffle)` — the `Name`-leaf
-form tensat parses. Recovers the **9,093** single-output rules whose only tier-2
-op was transpose. Both verifier lanes learned transpose (they previously
-*errored* on it, so it never reached lane 2): perm/shuffle are folded into the
-op identity (lane 1 congruence), and lane 2 maps the 2-D swap (`1_0`,shuffle 0)
-to TASO's `transpose_0` while giving every other perm its own uninterpreted
-function — so `transpose_0`'s 2-D-only axioms can't misfire (guarded by a
-non-involutive `1_2_0` double-transpose canary). Tests: `run_tests.sh` Test 9
-(fixture emits 20/20, 0 non-clean, all parse_check), `test_z3_axioms.sh`
-(involution flip + 3-cycle canary).
+### ⚠ THE TENSAT APPLICATION GAP (open — to be addressed soon)
+Emitting a rule and *applying* it are different. tensat's apply path
+(`rewrites.rs`, the tensor-building match) supports only a subset of ops and ends
+in `other => { println!(...); todo!() }` — so a rule that uses any other op
+**parses (`parse_check`) and Z3-verifies fine but PANICS tensat at application
+time**. Confirmed empirically (2-iter saturation probes on `mnist_tiny_mlp`):
 
-**Shuffle invariance (found while verifying the transpose fixture).** The
-transpose op carries a `shuffle` flag; `transpose.cc:102` shows it changes only
-the output *strides* (view vs contiguous copy), never the logical values, so
-`transpose(x,perm,0)` and `transpose(x,perm,1)` are value-identical (TASO's
-`transpose_0` correctly has no shuffle param). Both verifier lanes initially
-keyed transpose functions on `(perm, shuffle)`, so shuffle-only rewrites
-(`… transpose(x,perm,0) … => … transpose(x,perm,1) …`) could not be proved. Both
-lanes now key on `perm` alone and ignore shuffle (sound — it is value-invariant),
-which makes those rewrites trivial identities: the transpose fixture went from
-2/20 to **20/20** verified. This was a missing-axiom gap, *not* a quantifier
-budget ceiling — the distinction matters (see the #7 note on incompleteness);
-the earlier characterization of these as "quantifier-incompleteness" was wrong.
-Verification of any transpose rewrite that genuinely needs multi-step
-transpose/matmul reasoning would still be subject to #7's incompleteness limit,
-but the fixture no longer exercises that (it was all shuffle invariance).
+- **Apply-safe** (build without panic): `conv2d`, `concat` (binary), `matmul`,
+  `ewadd/ewmul/ewsub/ewmax/ewmin`, `relu`, `sigmoid`, `tanh`, `enlarge`,
+  `split/split_0/split_1`, `merge`.
+- **Apply-UNsafe** (panic on apply): `smul`, `poolmax`, `poolavg`, `transpose`,
+  `Cpool`/`Iconv`/`Imatmul`/`Iewmul`, `concat3/4/5`.
 
-**const_\* — FIXED (2026-09-01).** The four constant-tensor ops now emit, mapping
-the pb enum to tensat's egg names (confirmed by `parse_check`): `const_pool →
-(Cpool kh kw)`, `const_iconv → (Iconv kh kw)`, `const_imm → Imatmul`, `const_one
-→ Iewmul`. Recovers the **3,640** single-output rules whose only tier-2 ops were
-const_* (with transpose already clean). Both lanes handle them: lane 1 treats
-them as uninterpreted constants; lane 2 maps them to the already-ported axiom
-functions (`const_pool_0`/`const_iconv_0`/`const_imm_0`/`const_one_0`) — so the
-const axioms (`matmul(x,Imatmul)=x`, `ewmul(x,Iewmul)=x`, `conv(x,Iconv)=x`,
-`conv(x,Cpool)=poolavg`) discharge. Tests: `run_tests.sh` Test 11 (fixture 24/24
-emitted across all 4 types, 0 non-clean, all parse_check), `test_z3_axioms.sh`
-(2 flips + 2 false canaries guarding the identity-matrix-vs-all-ones confusion).
-The fixture verifies **24/24** (12 lane 1, 12 lane 2), 0 rejected/unknown.
+**pb2egg now gates on this:** by default it emits only apply-safe rules;
+`--emit-unapplicable` keeps the full parse-valid set for consumers that never
+apply rules (Z3 corpus studies via `z3_verify_egg.py`). Guarded permanently by
+`run_tests.sh` **Test 12** (apply-smoke: guaranteed-fire rules through a real
+saturation — apply-safe ops must not panic, gated ops must). The tracked-pb
+corpus is unaffected (its 116 rules are all apply-safe).
 
-**Still deferred (with reasons):**
-- **enlarge (~8,239):** the pb's `enlarge` is kernel-based (`PM_KERNEL_H/W` + 1
-  input) but tensat's `Enlarge([Id;2])` is *ref-input*-based — synthesizing the
-  ref tensor needs graph/shape context this converter doesn't have. A genuine
-  semantic mismatch, not a format one. The last sizeable single-output tier-2 class.
+**Why this is left open, and the fix:** making the gated ops applicable is a
+tensat core change (a `make()` arm *and* an apply arm per op, plus — for the
+const family — new taso C++ const-tensor APIs). It is not "add match arms":
+`validate_axioms.py` models the const ops as `MagicConst`, shape-polymorphic with
+channel dims supplied by the *consuming* op, so a standalone `Cpool(3,3)` has no
+sound bottom-up metadata — which is exactly why the authors left `todo!()`.
+Buildable (offline cargo, §3) but a real design problem. See `docs/ADD_AN_OP.md`
+for the full op-addition contract this gap illustrates.
+
+**Process lesson:** the transpose and const increments below shipped rules that
+panic tensat on application, because every test (emission counts, `parse_check`,
+the two Z3 lanes) ran *before* application. Test 12 closes that class.
+
+### transpose — emission + verification done; application-blocked (gated)
+`pb2egg.py` decodes `PM_PERM` (inverse of `transpose.cc::permutation_to_index`,
+validated to be a real permutation) and emits `(transpose input perm_name
+shuffle)` — the `Name`-leaf form tensat parses. **9,093** single-output rules use
+only transpose. Both verifier lanes learned it (they previously *errored*, so it
+never reached lane 2): perm folded into the op identity (lane 1 congruence), lane
+2 maps the 2-D swap to `transpose_0`, other perms to their own uninterpreted
+function (`transpose_0`'s 2-D-only axioms can't misfire — guarded by a
+non-involutive `1_2_0` canary). **But transpose is apply-UNsafe, so these rules
+are gated by default** and only materialize under `--emit-unapplicable`. Tests:
+`run_tests.sh` Test 9 (gated by default; emits 20/20 + parse_check under the
+flag), `test_z3_axioms.sh` (involution flip + 3-cycle canary).
+
+**Shuffle invariance (found while verifying the transpose fixture).**
+`transpose.cc:102` shows the `shuffle` flag changes only output *strides*, never
+values, so `transpose(x,perm,0)` and `transpose(x,perm,1)` are value-identical
+(TASO's `transpose_0` correctly has no shuffle param). Both lanes now key on
+`perm` alone and ignore shuffle (sound), which made the fixture's shuffle-only
+rewrites trivial identities: verification went 2/20 → **20/20**. This was a
+missing-axiom gap, *not* a quantifier ceiling (the earlier characterization was
+wrong; guarded by 2 shuffle-invariance asserts).
+
+### const_* — emission + verification done; application-blocked (gated)
+The four constant-tensor ops emit, mapping the pb enum to tensat's egg names
+(confirmed by `parse_check`): `const_pool → (Cpool kh kw)`, `const_iconv →
+(Iconv kh kw)`, `const_imm → Imatmul`, `const_one → Iewmul`. **3,640**
+single-output rules use only const_*. Lane 2 maps them to the ported axiom
+functions, so `matmul(x,Imatmul)=x`, `ewmul(x,Iewmul)=x`, `conv(x,Iconv)=x`,
+`conv(x,Cpool)=poolavg` discharge (fixture verifies **24/24**). **But the const
+ops are apply-UNsafe, so these rules are gated by default** (emit under
+`--emit-unapplicable`). Tests: `run_tests.sh` Test 11 (gated by default; 24/24 +
+parse_check under the flag), `test_z3_axioms.sh` (2 flips + 2 false canaries
+guarding the identity-matrix-vs-all-ones confusion).
+
+### Still un-emittable / deferred (with reasons)
+- **enlarge (~8,239):** egg accepts only the ref-based `Enlarge([Id;2])` (kernel
+  `(enlarge 3 3 x)` fails parse_check); the generator serialized enlarge
+  kernel-based, dropping the ref tensor, and no bound tensor of the target size
+  exists in the pattern. The one bridge — `(enlarge ?w (Iconv 3 3))`, using Iconv
+  as a ground-term size-carrier — *parses* and the `Enlarge` ctor accepts it
+  (takes only w2's spatial dims, no channel assert), **but it needs an Iconv
+  enode, which is apply-UNsafe** (the application gap above). So enlarge is
+  blocked behind the same core change. `enlarge` itself *is* apply-safe; only its
+  ref is not.
 - **reshape:** 0 occurrences in every corpus seen; no code written.
 - **split / multi-output:** its own feature (tensat's multi-pattern lane); the
   rules are preserved in `.multi.pb`, not lost.

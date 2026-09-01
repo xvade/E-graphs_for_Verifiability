@@ -20,6 +20,10 @@ done. `BUGS.md` catalogs bugs found in vanilla TASO/tensat along the way.
 - **`tensat/MODIFICATIONS.md`** — this fork's added CLI modes (`verify`,
   `redundancy`, `parse_check`), verifiability-aware extraction, and weight
   provenance.
+- **`docs/ADD_AN_OP.md`** — the end-to-end contract for teaching a new tensor op
+  to every pipeline stage (generator → pb2egg → tensat parse/make/apply → Z3 →
+  reconstruct), with the authoritative check per stage. Read this before adding
+  or extending an operator.
 - **`PROBLEMATIC.md`** — code/infra that resists testing or is suspected wrong;
   read before trusting or pinning it.
 - **`NNs/tests/`** — the runnable regression suite (22 assertions);

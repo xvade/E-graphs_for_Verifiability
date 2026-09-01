@@ -124,18 +124,22 @@ assert_eq "${redground:-X}" "2" "both PWL rules recognized as groundable"
 assert_ge "${redpruned:-0}" "1" "the renamed-duplicate rule is pruned as redundant"
 assert_eq "$redkept" "1" "exactly one representative kept"
 
-echo "== Test 9: transpose emission (tier-2 op, PROBLEMATIC.md #8) =="
-# pb2egg now decodes PM_PERM and emits (transpose input perm_name shuffle). Fixture is
-# 20 transpose-only single-output rules carved from the fullop corpus (tracked, ~4KB).
+echo "== Test 9: transpose emission -- GATED by default (apply-unsafe), PROBLEMATIC.md #8 =="
+# transpose parses + Z3-verifies but tensat can't apply it (rewrites.rs todo!()), so it is
+# apply-UNsafe and pb2egg drops it by default. --emit-unapplicable keeps it (Z3 studies).
 FIX="$REPO/NNs/tests/transpose_fixture.pb"
+DSTATS=$($PY "$REPO/NNs/pb2egg.py" "$FIX" "$TMP/tp_def.txt" 2>&1)
+tpdef=$(grep -c "=>" "$TMP/tp_def.txt" 2>/dev/null)
+tpskip=$(echo "$DSTATS" | grep -oE "unapplicable ops\): [0-9]+" | grep -oE "[0-9]+$")
+assert_eq "${tpdef:-X}"  "0"  "transpose rules gated by default (0 emitted)"
+assert_eq "${tpskip:-X}" "20" "20 transpose rules counted tensat-unapplicable"
 TEGG="$TMP/tp_egg.txt"
-TPSTATS=$($PY "$REPO/NNs/pb2egg.py" "$FIX" "$TEGG" 2>&1)
+TPSTATS=$($PY "$REPO/NNs/pb2egg.py" "$FIX" "$TEGG" --emit-unapplicable 2>&1)
 tpnonclean=$(echo "$TPSTATS" | grep -oE "non-clean ops\):[ ]*[0-9]+" | grep -oE "[0-9]+$")
 tpemit=$(grep -c "=>" "$TEGG"); tptrans=$(grep -c "(transpose " "$TEGG")
 tppc=$("$TENSAT" -m parse_check -r "$TEGG" 2>&1 | grep -oE "[0-9]+ FAIL" | grep -oE "^[0-9]+")
-assert_eq "$tpemit"        "20" "pb2egg emits all 20 fixture transpose rules"
-assert_ge "$tptrans"       "20" "every emitted rule is a (transpose ...) rewrite"
-assert_eq "${tpnonclean:-X}" "0" "0 non-clean drops (transpose is now a clean op)"
+assert_eq "$tpemit"        "20" "--emit-unapplicable emits all 20 transpose rules"
+assert_eq "${tpnonclean:-X}" "0" "0 non-clean drops (transpose is a clean op)"
 assert_eq "${tppc:-X}"     "0"  "all emitted transpose rules parse in tensat"
 
 echo "== Test 10: transpose perm decode round-trip (PROBLEMATIC.md #6) =="
@@ -145,18 +149,46 @@ echo "== Test 10: transpose perm decode round-trip (PROBLEMATIC.md #6) =="
 tpp=$($PY "$REPO/NNs/tests/test_transpose_perm.py" 2>&1 | grep -oE "TRANSPOSE PERM TEST: [A-Z]+" | grep -oE "[A-Z]+$")
 assert_eq "${tpp:-X}" "PASS" "transpose perm decode oracle + taso round-trip"
 
-echo "== Test 11: const_* emission (tier-2, PROBLEMATIC.md #8) =="
-# pb2egg emits Cpool/Iconv (kernel params) and nullary Imatmul/Iewmul. Fixture covers
-# all 4 const types (carved from the fullop corpus, tracked, ~4KB).
-CFIX="$REPO/NNs/tests/const_fixture.pb"; CEGG="$TMP/const_egg.txt"
-CSTATS=$($PY "$REPO/NNs/pb2egg.py" "$CFIX" "$CEGG" 2>&1)
+echo "== Test 11: const_* emission -- GATED by default (apply-unsafe), PROBLEMATIC.md #8 =="
+# Cpool/Iconv/Imatmul/Iewmul parse + Z3-verify but tensat can't apply them -> gated by default.
+CFIX="$REPO/NNs/tests/const_fixture.pb"
+CDSTATS=$($PY "$REPO/NNs/pb2egg.py" "$CFIX" "$TMP/const_def.txt" 2>&1)
+cdef=$(grep -c "=>" "$TMP/const_def.txt" 2>/dev/null)
+cskip=$(echo "$CDSTATS" | grep -oE "unapplicable ops\): [0-9]+" | grep -oE "[0-9]+$")
+assert_eq "${cdef:-X}"  "0"  "const rules gated by default (0 emitted)"
+assert_eq "${cskip:-X}" "24" "24 const rules counted tensat-unapplicable"
+CEGG="$TMP/const_egg.txt"
+CSTATS=$($PY "$REPO/NNs/pb2egg.py" "$CFIX" "$CEGG" --emit-unapplicable 2>&1)
 cnonclean=$(echo "$CSTATS" | grep -oE "non-clean ops\):[ ]*[0-9]+" | grep -oE "[0-9]+$")
 cemit=$(grep -c "=>" "$CEGG"); ctypes=$(grep -oE "\((Cpool|Iconv|Imatmul|Iewmul)" "$CEGG" | sort -u | wc -l)
 cpc=$("$TENSAT" -m parse_check -r "$CEGG" 2>&1 | grep -oE "[0-9]+ FAIL" | grep -oE "^[0-9]+")
-assert_eq "$cemit"        "24" "pb2egg emits all 24 fixture const rules"
-assert_eq "${cnonclean:-X}" "0" "0 non-clean drops (const_* now clean ops)"
+assert_eq "$cemit"        "24" "--emit-unapplicable emits all 24 const rules"
+assert_eq "${cnonclean:-X}" "0" "0 non-clean drops (const_* are clean ops)"
 assert_ge "$ctypes"       "4"  "all 4 const ops (Cpool/Iconv/Imatmul/Iewmul) emitted"
 assert_eq "${cpc:-X}"     "0"  "all emitted const rules parse in tensat"
+
+echo "== Test 12: apply-smoke -- emitted (default) ops don't panic tensat; gated ops do =="
+# The gate the emission/parse_check/Z3 tests can't give: run a guaranteed-fire rule through a
+# 2-iteration saturation on mnist_tiny_mlp and check for the rewrites.rs todo!() panic. This is
+# what would have caught transpose/const shipping as apply-panicking rules.
+M="$REPO/NNs/mnist_tiny_mlp.taso"
+apply_probe() {  # $1 rule ; $2 label ; $3 expect: "ok" (no panic) | "panic"
+  printf '%s\n' "$1" > "$TMP/asmoke.txt"
+  local out; out=$("$TENSAT" -r "$TMP/asmoke.txt" -s none --model_file "$M" \
+      --n_iter 2 --n_sec 8 --no_cycle --no_runtime_report 2>&1)
+  local panicked=no; echo "$out" | grep -qaE "todo|not yet implemented|panicked" && panicked=yes
+  if [ "$3" = "ok" ]; then
+    [ "$panicked" = "no" ] && ok "$2 applies without panic (apply-safe)" || bad "$2 must not panic"
+  else
+    [ "$panicked" = "yes" ] && ok "$2 panics as expected (gated -- gating is load-bearing)" || bad "$2 expected to panic"
+  fi
+}
+apply_probe '(relu ?input_1)=>(ewadd (relu ?input_1) (relu ?input_1))'          "ewadd"  ok
+apply_probe '(relu ?input_1)=>(matmul 0 (relu ?input_1) (relu ?input_1))'       "matmul" ok
+apply_probe '(relu ?input_1)=>(ewmax (relu ?input_1) (relu ?input_1))'          "ewmax"  ok
+apply_probe '(relu ?input_1)=>(ewmul (relu ?input_1) (relu ?input_1))'          "ewmul"  ok
+apply_probe '(relu ?input_1)=>(transpose (transpose (relu ?input_1) 1_0 0) 1_0 0)' "transpose (gated)" panic
+apply_probe '(relu ?input_1)=>(ewmul (relu ?input_1) (Iewmul))'                 "const Iewmul (gated)" panic
 
 rm -rf "$TMP"
 echo "======================================"
