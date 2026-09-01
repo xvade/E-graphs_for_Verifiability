@@ -11,29 +11,67 @@ behavior, **[coverage]** correct but currently untestable here.
 
 ---
 
-## 1. [infra] GPU TASO — `Cuda failure 35` (`taso/build_gpu`)
-The GPU-built taso Python extension dies at `ops_cudnn.cu:24` (cuDNN init,
-`Cuda failure 35`) even when the bare CUDA runtime works. Blocks any GPU taso
-path. **Workaround in use:** the CPU build (`taso/build`) for structural stages
-1–2 (no real kernels needed), abcrown's own venv for stage 3. Can't be
-regression-tested without a working cuDNN. See `BUGS.md`.
+## 1. [infra] GPU TASO — `Cuda failure 35` was a driver mismatch, NOT resolved-in-code but node-dependent
+The GPU-built taso extension died at `ops_cudnn.cu:24` (cuDNN init) with
+`Cuda failure 35`. **Diagnosed 2026-09-01:** CUDA error 35 is
+`cudaErrorInsufficientDriver` (confirmed from the container's
+`driver_types.h`) — "the installed NVIDIA driver is too old for the CUDA
+runtime". The container is CUDA 12.4 (`tensat.def`), so the original failure was
+simply a GPU node whose driver predated CUDA 12.4 support (~550.x), not a taso or
+cuDNN bug.
+
+**Verified on a modern node (slurm job on A40 `g3064`, driver 580.178.04):** in
+the container, `cudaGetDeviceCount` returns `rc=0` (cudaSuccess), runtime 12040 /
+driver 13000 — **CUDA 12.4 initializes fine; error 35 does not recur.** So the
+GPU path is *not* categorically blocked; it just needs a node with a
+sufficiently new driver (most current cluster GPU nodes: a40/a100/h200/l40).
+
+**Still to confirm (separate, small):** an end-to-end `import taso` against
+`build_gpu` on such a node — the probe's bonus attempt failed on a shell-quoting
+bug (space in the repo path) and because the GPU cython ext is currently renamed
+aside (`taso/python/core*.so.gpubak`), not on CUDA. Restoring/rebuilding the GPU
+cython ext and re-running the import is the remaining check; the driver-mismatch
+root cause is settled. Meanwhile the CPU build (`taso/build`) still serves
+structural stages 1–2 and abcrown's venv serves stage 3. See `BUGS.md`.
 
 ## 2. [behavior] `--n_diverse` extraction collapse
 The diverse sampler reports `"0 new enodes added"` after ~3 samples and returns
 duplicates, collapsing to a single shallow depth — for both the 632 and 1097
-rule sets, where the Aug-29 binary reached depths 10–18. Suspected regression
-between the Aug-29 build and the Aug-31 rebuild (suspects: the VerifCost / cost /
-CheckApply commits). **Do NOT write a test asserting the current `--n_diverse`
-output is correct** — it is the thing under suspicion. Use `--verif_cost`
-(deterministic) for verifiability wins instead. Full analysis:
+rule sets, where the Aug-29 binary reached depths 10–18. **Do NOT write a test
+asserting the current `--n_diverse` output is correct** — it is under suspicion.
+Use `--verif_cost` (deterministic) for verifiability wins instead. Full history:
 `NNs/reassoc_results/REVERIFY_1097.md`.
 
-## 3. [infra] `cargo test` needs network (offline sandbox)
-`tensat/tests/parse.rs` can't build in the research sandbox: cargo must resolve
-the crates.io registry index and no CARGO_HOME here has it cached offline
-(`no matching package named 'arrayvec'`). The tensat *modes* are covered instead
-by CLI-integration tests against the prebuilt binary (`NNs/tests/run_tests.sh`
-tests 2/4/8). The Rust unit tests are expected to pass in the original networked
+**Mechanism (current-binary repro, 2026-09-01, maxout + 632 `pwl_rules_ac.txt`,
+CPU).** Sampled cost/used-set per sample: `2.4e-6 (136 enodes) → 1.02e8 (+90) →
+1.76e8 (+53, total 279) → 1.76e8 (+0) → …`. After sample 2 the `used` set
+plateaus at **279 distinct enodes** and every later sample re-picks the same
+penalty-dominated (1.76e8) tree. So the collapse is **e-graph exhaustion**, not
+a dead cost jitter: only ~279 distinct enodes are reachable from the root, and
+`DiverseCost` (optimize.rs) only ever *penalizes* reuse (flat +1e6) — it never
+rewards crossing a cost cliff (its own `ArchDiverseCost` doc comment documents
+this ceiling). Once the reachable enodes are used up, there is nothing new to
+extract.
+
+**Regression status: narrowed, not settled.** The cost commits (`f52cc16` et al.)
+are exonerated by mechanism — `Ewsub/Ewmax/Ewmin` carry real nonzero TASO
+runtimes (optimize.rs:677), so the jitter is alive. All suspects date to
+2026-08-29 (same day as the "good" binary); the leading suspects are the
+**cycle-check commits `ddd6352` / `5e3e9e9`**, which change what saturates *into*
+the e-graph — a thinner e-graph yields exactly this exhaustion. Settling it needs
+the Aug-29 bisect build, blocked by #3 (offline cargo). The practical fix already
+exists in-tree: `--verif_cost` and `ArchDiverseCost` both sidestep the ceiling.
+
+## 3. [infra] `cargo test` / `cargo build` need network (offline sandbox)
+The crate can't build in the research sandbox: cargo must resolve the crates.io
+registry index and neither CARGO_HOME here has it cached offline —
+`cargo build --offline --tests` fails with `no matching package named 'arrayvec'`
+under both `toolchain-tensat/cargo` and `toolchain-tensat/cargo_container`.
+(Caution: `cargo metadata --offline --no-deps` *succeeds* but is a false
+positive — `--no-deps` skips dependency resolution; the full build still fails.)
+This also blocks the #2 Aug-29 bisect. The tensat *modes* are covered instead by
+CLI-integration tests against the prebuilt binary (`NNs/tests/run_tests.sh` tests
+2/4/8). The Rust unit tests are expected to pass in the original networked
 container build; they are simply unverifiable from here.
 
 ## 4. [infra] Broken `cmake install` for taso
