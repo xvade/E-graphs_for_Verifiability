@@ -84,11 +84,22 @@ class Builder:
             act = self.build(args[0]); return self.matmul(act, self.build(args[1]), self.build(args[2]))
         if op == "smul":
             return self.smul(self.build(args[0]), self.build(args[1]))
+        # transpose: (transpose input perm_name shuffle). perm_name/shuffle are config
+        # LEAVES (e.g. "1_0", "0"), not tensors -- fold them into the function IDENTITY
+        # (so transpose with different perms are different functions) and take only the
+        # input tensor as the argument. Congruence then proves perm-preserving rewrites.
+        if op == "transpose":
+            inp = self.build(args[0])
+            perm, shuf = args[1][1], args[2][1]      # atom token strings, NOT built
+            key = ("transpose", perm, shuf, inp.sort())
+            if key not in self._uf:
+                self._uf[key] = z3.Function("transpose_{}_{}".format(perm, shuf), inp.sort(), z3.RealSort())
+            return self._uf[key](inp)
         # Non-PWL ops (conv2d, poolmax/avg, concat/3/4/5, ...): treated as UNINTERPRETED
         # functions of their (interpreted) args -- sound and conservative, exactly like
         # matmul/smul. A rewrite provable only via the op's real (e.g. conv-linearity)
-        # semantics is safely REJECTED, not crashed on. (Proving conv/concat rewrites
-        # would need the op's distribution axioms -- future work; see validate_axioms.py.)
+        # semantics is safely REJECTED here in lane 1 -- lane 2 (tensor_axioms.py) proves
+        # those with TASO's quantified axioms.
         if op in ("conv2d", "poolmax", "poolavg", "concat", "concat3", "concat4", "concat5"):
             zargs = [self.build(a) for a in args]
             key = (op, tuple(a.sort() for a in zargs))

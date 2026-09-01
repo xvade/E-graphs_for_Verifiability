@@ -124,6 +124,20 @@ assert_eq "${redground:-X}" "2" "both PWL rules recognized as groundable"
 assert_ge "${redpruned:-0}" "1" "the renamed-duplicate rule is pruned as redundant"
 assert_eq "$redkept" "1" "exactly one representative kept"
 
+echo "== Test 9: transpose emission (tier-2 op, PROBLEMATIC.md #8) =="
+# pb2egg now decodes PM_PERM and emits (transpose input perm_name shuffle). Fixture is
+# 20 transpose-only single-output rules carved from the fullop corpus (tracked, ~4KB).
+FIX="$REPO/NNs/tests/transpose_fixture.pb"
+TEGG="$TMP/tp_egg.txt"
+TPSTATS=$($PY "$REPO/NNs/pb2egg.py" "$FIX" "$TEGG" 2>&1)
+tpnonclean=$(echo "$TPSTATS" | grep -oE "non-clean ops\):[ ]*[0-9]+" | grep -oE "[0-9]+$")
+tpemit=$(grep -c "=>" "$TEGG"); tptrans=$(grep -c "(transpose " "$TEGG")
+tppc=$("$TENSAT" -m parse_check -r "$TEGG" 2>&1 | grep -oE "[0-9]+ FAIL" | grep -oE "^[0-9]+")
+assert_eq "$tpemit"        "20" "pb2egg emits all 20 fixture transpose rules"
+assert_ge "$tptrans"       "20" "every emitted rule is a (transpose ...) rewrite"
+assert_eq "${tpnonclean:-X}" "0" "0 non-clean drops (transpose is now a clean op)"
+assert_eq "${tppc:-X}"     "0"  "all emitted transpose rules parse in tensat"
+
 rm -rf "$TMP"
 echo "======================================"
 echo "TESTS: $PASS passed, $FAIL failed"

@@ -44,6 +44,9 @@ flips = [
     ("relu over concat",
      "(relu (concat 1 4 ?input_1 ?input_2))",
      "(concat 1 4 (relu ?input_1) (relu ?input_2))"),
+    ("2-D transpose involution",
+     "(transpose (transpose ?input_1 1_0 0) 1_0 0)",
+     "?input_1"),
 ]
 for name, lhs, rhs in flips:
     ln, rn = parse(lhs), parse(rhs)

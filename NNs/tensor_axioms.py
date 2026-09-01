@@ -89,6 +89,13 @@ class UnsupportedOp(Exception):
     left to lane 1 rather than crashing the pipeline."""
 
 
+# transpose functions for non-2D-swap perms, keyed by (perm_name, shuffle). TASO's
+# transpose_0 is 2-D-only (its axioms transpose(transpose)=x etc. hold only for the
+# [1,0] swap); every other perm/shuffle gets its OWN uninterpreted function so those
+# axioms never wrongly apply to it. Congruence still proves perm-preserving rewrites.
+_TR_UF = {}
+
+
 # ---- axioms (formulas only; the shape-lambdas in verify.py are for its
 #      small-shape meta-checker, validate_axioms.py, and are not needed to
 #      *use* the axioms for rule proving). Ported verbatim from verify.py. -----
@@ -181,6 +188,15 @@ def build(node, memo):
     if op == "ewmul":  return ewmul_0(b(args[0]), b(args[1]))
     if op == "relu":   return relu_0(b(args[0]))
     if op == "smul":   return scalar_mul_0(b(args[0]), b(args[1]))
+    if op == "transpose":                    # (transpose input perm_name shuffle)
+        inp = b(args[0])
+        perm, shuf = args[1][1], args[2][1]  # config LEAVES, not tensors
+        if perm == "1_0" and shuf == "0":    # the 2-D matrix transpose TASO models
+            return transpose_0(inp)
+        key = (perm, shuf)                   # any other perm/shuffle: its own function
+        if key not in _TR_UF:
+            _TR_UF[key] = z3.Function("transpose_{}_{}".format(perm, shuf), T, T)
+        return _TR_UF[key](inp)
     if op == "matmul":
         acti = int(args[0][1])               # (matmul acti a b)
         if acti != AC_MODE_NONE:

@@ -154,10 +154,39 @@ reasoning, not a missing basic axiom. Also still-open: rerunning the full 6k
 116-rule tracked pb), and pool/split/enlarge remain dropped upstream at
 `pb2egg` (#8), so their axioms (ported but present) are currently unexercised.
 
-## 8. [coverage] pb2egg tier-2 ops still dropped
-`transpose`/`reshape` (config-as-name-string), `enlarge` (pb kernel-based vs egg
-ref-based — a semantic mismatch), and `split` (multi-output → the multi-pattern
-lane) are still dropped by `pb2egg.py`. See its `operator_data` comments.
+## 8. [partly resolved] pb2egg tier-2 ops
+**Note first:** the *tracked* `graph_subst.pb` has **zero** single-output dirty
+rules — its only tier-2 loss is 13 two-output split rules, already preserved in
+`.multi.pb`. Tier-2 volume lives in the (untracked) fullop corpus: 20,972
+single-output dirty rules — transpose 9,203, enlarge 8,239, const_* ~3,844,
+reshape 0.
+
+**transpose — FIXED (2026-09-01).** `pb2egg.py` decodes `PM_PERM` (via the
+inverse of `transpose.cc::permutation_to_index`, validated to be a real
+permutation) and emits `(transpose input perm_name shuffle)` — the `Name`-leaf
+form tensat parses. Recovers the **9,093** single-output rules whose only tier-2
+op was transpose. Both verifier lanes learned transpose (they previously
+*errored* on it, so it never reached lane 2): perm/shuffle are folded into the
+op identity (lane 1 congruence), and lane 2 maps the 2-D swap (`1_0`,shuffle 0)
+to TASO's `transpose_0` while giving every other perm its own uninterpreted
+function — so `transpose_0`'s 2-D-only axioms can't misfire (guarded by a
+non-involutive `1_2_0` double-transpose canary). Tests: `run_tests.sh` Test 9
+(fixture emits 20/20, 0 non-clean, all parse_check), `test_z3_axioms.sh`
+(involution flip + 3-cycle canary). Verification rate on transpose rules is
+partial — the clean single-axiom cases prove; multi-step transpose+matmul-chain
+rewrites hit the same quantifier-incompleteness ceiling as #7's residue (a
+coverage, not soundness, limit).
+
+**Still deferred (with reasons):**
+- **enlarge (~8,239):** the pb's `enlarge` is kernel-based (`PM_KERNEL_H/W` + 1
+  input) but tensat's `Enlarge([Id;2])` is *ref-input*-based — synthesizing the
+  ref tensor needs graph/shape context this converter doesn't have. A genuine
+  semantic mismatch, not a format one.
+- **const_\* (~3,844):** `Cpool`/`Iconv`/`Imatmul`/`Iewmul` map plausibly to the
+  const ops but arities are unverified — candidate next increment.
+- **reshape:** 0 occurrences in every corpus seen; no code written.
+- **split / multi-output:** its own feature (tensat's multi-pattern lane); the
+  rules are preserved in `.multi.pb`, not lost.
 
 ## 9. [coverage] Training scripts are nondeterministic / slow
 `train_inception_mnist.py` (+ `_fast`) train on real MNIST — not seeded for

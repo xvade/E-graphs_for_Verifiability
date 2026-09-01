@@ -8,7 +8,7 @@ Exits nonzero if any test fails. (`--no-mount bind-paths` disables the site
 apptainer.conf bind mounts — e.g. `/var/run/slurm` — that otherwise abort
 container creation on non-slurm nodes. Drop it if your node has those paths.)
 
-Current status: **22 assertions, all passing** (tests 1–8).
+Current status: **26 assertions, all passing** (tests 1–9).
 
 ## Tests
 1. **Regression -- non-clean drop.** pb2egg on the original `taso/graph_subst.pb` must drop
@@ -48,8 +48,13 @@ Current status: **22 assertions, all passing** (tests 1–8).
    groundable and prune a renamed duplicate (add-commutativity), keeping exactly
    one representative. Exercises the pruner on the prebuilt binary.
 
+9. **transpose emission (tier-2, PROBLEMATIC.md #8).** `pb2egg` decodes `PM_PERM`
+   and emits `(transpose input perm_name shuffle)`; the tracked
+   `transpose_fixture.pb` (20 transpose-only rules carved from the fullop corpus)
+   emits 20/20 with 0 non-clean drops, and all 20 pass `parse_check`.
+
 Tests 5–7 are pure-Python (stdlib only) and need neither GPU nor the tensat
-binary; tests 2, 4, 8 drive the prebuilt `tensat` binary (no rebuild). They run
+binary; tests 2, 4, 8, 9 drive the prebuilt `tensat` binary (no rebuild). They run
 in-container because that is where the toolchain lives.
 
 ## Z3 tensor-axiom lane (separate suite)
@@ -61,9 +66,10 @@ host-run suite:
 ```
 bash NNs/tests/test_z3_axioms.sh
 ```
-Asserts (10, all passing): the 5 negative canaries in `z3_canaries_false.txt`
-stay unproven (soundness — a consistent axiom set can't prove `conv(x,w)=conv(w,x)`);
-3 flips (conv-linearity, relu(conv)=conv+relu, relu-over-concat) that lane 1
+Asserts (12, all passing): the 6 negative canaries in `z3_canaries_false.txt`
+stay unproven (soundness — a consistent axiom set can't prove `conv(x,w)=conv(w,x)`,
+nor a non-involutive `1_2_0` double-transpose = identity); 4 flips (conv-linearity,
+relu(conv)=conv+relu, relu-over-concat, 2-D transpose involution) that lane 1
 rejects and lane 2 proves; and 2 PWL regressions still proven by lane 1.
 
 ## Outstanding (tracked, not yet done)

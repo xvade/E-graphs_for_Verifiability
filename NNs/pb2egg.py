@@ -9,8 +9,11 @@ without the Z3 verification detour.
 Op-type ints follow the XFLOW enum the generator writes (== read_rules.py's
 range(26)), extended with EW_SUB/MAX/MIN = 26/27/28 (the generator's xflow shim).
 Only rules whose ops are ALL in CLEAN_OPS are emitted -- these have a faithful
-1:1 egg arity (name <params> <inputs>). transpose/conv/pool/concat/split/enlarge/
-constants are skipped: their egg form needs extra args the pest converter injects.
+1:1 egg arity. Covered: ew*/relu/matmul/smul, conv2d/pool/concat (tier-1), and
+transpose (perm decoded from PM_PERM -> a `dim_dim` Name leaf). Still skipped:
+enlarge (kernel-based pb vs ref-input-based egg -- a semantic mismatch), the
+const_* family, and split (multi-OUTPUT -> the .multi.pb multi-pattern lane).
+See PROBLEMATIC.md #8.
 
 Usage: pb2egg.py <graph_subst.pb> <out_rules.txt> [--bidir] [--multi-out <path.pb>]
 Requires rules_pb2 (regenerate from taso/src/core/rules.proto with the container's
@@ -65,12 +68,27 @@ operator_data = {
     OP_POOL2D_MAX: ('poolmax', [PM_KERNEL_H, PM_KERNEL_W, PM_STRIDE_H, PM_STRIDE_W, PM_PAD, PM_ACTI], 'ip'),  # (poolmax input kh kw sh sw pad acti)
     OP_POOL2D_AVG: ('poolavg', [PM_KERNEL_H, PM_KERNEL_W, PM_STRIDE_H, PM_STRIDE_W, PM_PAD, PM_ACTI], 'ip'),
     OP_CONCAT:     ('concat', [PM_AXIS, PM_NUMDIM], 'pi'),  # (concat axis ndim in..); egg name -> concat/concat3/4/5 by input count
-    # Tier-2 (still dropped, tracked): transpose/reshape (config encoded as a name
-    # string, not Num params -- needs the @dims mechanism), enlarge (pb is kernel-based
-    # but current egg is ref-input-based -- a semantic mismatch, not a format one), and
-    # split (multi-OUTPUT -- can't be a single-pattern egg rule; belongs to the
-    # multi-pattern lane). See TASO_SPEED_ASSUMPTIONS / REDUNDANCY_PRUNER notes.
+    OP_TRANSPOSE:  ('transpose', [], 'special'),  # (transpose input perm_name shuffle); perm decoded from PM_PERM, see build()
+    # Tier-2 (still dropped, tracked): reshape (0 occurrences in every corpus seen --
+    # not present), enlarge (pb is KERNEL-based (PM_KERNEL_H/W + 1 input) but tensat's
+    # Enlarge is REF-INPUT-based (2 tensor inputs) -- a semantic mismatch needing graph
+    # context, ~8k rules deferred), const_* (Cpool/Iconv/Imm/One -- candidate follow-up),
+    # and split (multi-OUTPUT -- routed to the multi-pattern .multi.pb, not a single
+    # pattern). See PROBLEMATIC.md #8.
 }
+def _decode_perm(perm_idx, numdim):
+    """Invert transpose.cc's permutation_to_index (idx = sum_i perm[i]*numdim**(numdim-1-i)):
+    read numdim base-`numdim` digits, most-significant first. Returns the perm list, or
+    None if it is not a permutation of range(numdim) (so a mis-decode can't emit garbage)."""
+    if numdim <= 0:
+        return None
+    digits, x = [], perm_idx
+    for _ in range(numdim):
+        digits.append(x % numdim); x //= numdim
+    if x != 0:
+        return None                       # index too large for numdim
+    perm = digits[::-1]
+    return perm if sorted(perm) == list(range(numdim)) else None
 # Only emit rules whose every op is convertible with faithful egg arity.
 CLEAN_OPS = set(operator_data.keys())
 
@@ -80,6 +98,16 @@ def build(tensor, ops):
     op = ops[tensor.opId]
     name, pkeys, order = operator_data[op.type]      # KeyError => non-clean op => rule skipped
     params = {p.key: p.value for p in op.para}
+    if op.type == OP_TRANSPOSE:                       # (transpose input perm_name shuffle)
+        numdim, permidx = params.get(PM_NUMDIM), params.get(PM_PERM)
+        if numdim is None or permidx is None:
+            raise KeyError("transpose missing NUMDIM/PERM")
+        perm = _decode_perm(permidx, numdim)
+        if perm is None:
+            raise KeyError("transpose bad perm idx={} numdim={}".format(permidx, numdim))
+        perm_name = "_".join(str(p) for p in perm)   # e.g. [1,0] -> "1_0"; a Name leaf in tensat
+        shuffle = params.get(PM_OUTSHUFFLE, 0)
+        return "(transpose {} {} {})".format(build(op.input[0], ops), perm_name, shuffle)
     pargs = [str(params[k]) for k in pkeys]          # KeyError (missing param) => rule skipped
     iargs = [build(x, ops) for x in op.input]
     if op.type == OP_CONCAT:                          # tensat: concat/concat3/concat4/concat5 by input count
