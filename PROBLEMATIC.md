@@ -11,27 +11,29 @@ behavior, **[coverage]** correct but currently untestable here.
 
 ---
 
-## 1. [infra] GPU TASO — `Cuda failure 35` was a driver mismatch, NOT resolved-in-code but node-dependent
+## 1. [RESOLVED] GPU TASO — `Cuda failure 35` was a too-old driver, not a bug
 The GPU-built taso extension died at `ops_cudnn.cu:24` (cuDNN init) with
-`Cuda failure 35`. **Diagnosed 2026-09-01:** CUDA error 35 is
-`cudaErrorInsufficientDriver` (confirmed from the container's
-`driver_types.h`) — "the installed NVIDIA driver is too old for the CUDA
-runtime". The container is CUDA 12.4 (`tensat.def`), so the original failure was
-simply a GPU node whose driver predated CUDA 12.4 support (~550.x), not a taso or
-cuDNN bug.
+`Cuda failure 35`. **Diagnosed + verified resolved 2026-09-01.** CUDA error 35 is
+`cudaErrorInsufficientDriver` (confirmed from the container's `driver_types.h`) —
+"the installed NVIDIA driver is too old for the CUDA runtime". The container is
+CUDA 12.4 (`tensat.def`), so the original failure was simply a GPU node whose
+driver predated CUDA 12.4 support (~550.x), not a taso or cuDNN bug.
 
-**Verified on a modern node (slurm job on A40 `g3064`, driver 580.178.04):** in
-the container, `cudaGetDeviceCount` returns `rc=0` (cudaSuccess), runtime 12040 /
-driver 13000 — **CUDA 12.4 initializes fine; error 35 does not recur.** So the
-GPU path is *not* categorically blocked; it just needs a node with a
-sufficiently new driver (most current cluster GPU nodes: a40/a100/h200/l40).
+**Confirmed end-to-end on a modern node** (slurm job on A40 `g3064`, driver
+580.178.04, in-container `--nv`): loaded the GPU cython ext directly from
+`build_gpu` and ran `PyGraph().conv2d(...)` — `cudnnCreate` + a real cuDNN conv
+kernel both succeeded (`GPU_TASO_OK`), the exact original failure site. Error 35
+does not recur. (Method note: `import taso` also needs `onnx`, absent for the
+container python3.14 — the probe bypassed `__init__.py` and loaded the `core` ext
+by path; a full `import taso` additionally needs onnx installed. The GPU cython
+ext lives at `taso/python/taso/core*.so.gpubak`, RPATH → `build_gpu`; the active
+`.so` is RPATH → `build` (CPU), so the working CPU path is untouched.)
 
-**Still to confirm (separate, small):** an end-to-end `import taso` against
-`build_gpu` on such a node — the probe's bonus attempt failed on a shell-quoting
-bug (space in the repo path) and because the GPU cython ext is currently renamed
-aside (`taso/python/core*.so.gpubak`), not on CUDA. Restoring/rebuilding the GPU
-cython ext and re-running the import is the remaining check; the driver-mismatch
-root cause is settled. Meanwhile the CPU build (`taso/build`) still serves
+**Conclusion:** the GPU path is **not** blocked — it needs a node with a
+driver new enough for CUDA 12.4 (current cluster a40/a100/h200/l40 nodes qualify;
+driver 580 seen). To use it: run on such a node and swap the `.gpubak` ext in
+(or rebuild the GPU cython ext), plus install `onnx` for the container python if
+using the high-level `import taso` API. The CPU build (`taso/build`) still serves
 structural stages 1–2 and abcrown's venv serves stage 3. See `BUGS.md`.
 
 ## 2. [behavior] `--n_diverse` extraction collapse
