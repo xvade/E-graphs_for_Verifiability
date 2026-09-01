@@ -137,8 +137,11 @@ Supporting:
 
 ## 7. Tests
 
-`tests/run_tests.sh` — plain-assert harness (no pytest), run in the container:
+`tests/run_tests.sh` — plain-assert harness (no pytest, 22 assertions), run in
+the container:
 ```
-apptainer exec tensat.sif bash NNs/tests/run_tests.sh
+apptainer exec --no-mount bind-paths tensat.sif bash NNs/tests/run_tests.sh
 ```
+(`--no-mount bind-paths` skips the site apptainer.conf binds — e.g.
+`/var/run/slurm` — that abort container creation on non-slurm nodes.)
 See [`tests/README.md`](tests/README.md) for the test list and what each pins.

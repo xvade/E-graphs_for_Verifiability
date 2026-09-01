@@ -1,3 +1,10 @@
+# Compare how many STRUCTURALLY DISTINCT extractions each sampling mode yields
+# on resnet2b: n_random jitter, n_random uniform, and n_diverse (20 each). Exports
+# the forms, then counts distinct op-histogram + concat/split-axis signatures per
+# mode (the diversity pre-flight gate). Usage: sample_egraph_structures.sh <repo>.
+# Runs in the container (GPU taso build_gpu on LD_LIBRARY_PATH).
+# NOTE: n_diverse is the mode PROBLEMATIC.md #2 flags as a suspected regression --
+# read its output as diagnostic, not ground truth.
 cd "$1/tensat"
 export LD_LIBRARY_PATH=$PWD/../taso/build_gpu:/opt/conda/lib:$LD_LIBRARY_PATH
 R=../NNs/candidate_models/cifar10_resnet2021/onnx/resnet_2b.taso

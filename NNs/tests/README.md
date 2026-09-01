@@ -8,7 +8,7 @@ Exits nonzero if any test fails. (`--no-mount bind-paths` disables the site
 apptainer.conf bind mounts — e.g. `/var/run/slurm` — that otherwise abort
 container creation on non-slurm nodes. Drop it if your node has those paths.)
 
-Current status: **19 assertions, all passing** (tests 1–7).
+Current status: **22 assertions, all passing** (tests 1–8).
 
 ## Tests
 1. **Regression -- non-clean drop.** pb2egg on the original `taso/graph_subst.pb` must drop
