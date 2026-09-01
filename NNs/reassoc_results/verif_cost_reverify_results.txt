@@ -1,0 +1,39 @@
+==== verif_cost reverify (1097 core) Mon Aug 31 17:10:44 PDT 2026 ====
+### maxout (verif_cost, 1097 core) ###
+  Stopped: TimeLimit(150.096053309)
+  Number of iterations: 13
+verif-cost: 0 sensitivity weights loaded
+verif-cost: 16/16 leaf intervals matched an e-class weight-name set
+verif-cost extraction: gap-cost 35482788.0, 132 nodes, took 273.842059ms
+Cuda failure: 35
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/taso/src/cudnn/ops_cudnn.cu:24
+Aborting...
+verif form depth 7, reconstructed
+### lattice (verif_cost, 1097 core) ###
+  Stopped: TimeLimit(150.257697555)
+  Number of iterations: 15
+verif-cost: 0 sensitivity weights loaded
+verif-cost: 16/16 leaf intervals matched an e-class weight-name set
+verif-cost extraction: gap-cost 35482788.0, 132 nodes, took 625.476478ms
+Cuda failure: 35
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/taso/src/cudnn/ops_cudnn.cu:24
+Aborting...
+verif form depth 7, reconstructed
+==== DONE Mon Aug 31 17:18:13 PDT 2026. baselines: maxout input 12.0257 (prior verif_cost 9.65); lattice plateau 8.50 ====
+
+==== RECONSTRUCT+BOUND (re-run after RPATH fix; reconstruct was crashing on Cuda-35) ====
+# ROOT CAUSE of the reconstruct crash: taso python ext core.cpython-314.so had DT_RPATH
+# hardcoded to taso/build_gpu (GPU libtaso -> cuDNN init -> Cuda failure 35 at import).
+# DT_RPATH is searched BEFORE LD_LIBRARY_PATH, so LD_LIBRARY_PATH=taso/build was ignored.
+# FIX: same-length in-place binary patch of the RPATH string build_gpu -> build (CPU libtaso,
+# zero cuda deps). taso now imports CPU-only, no GPU node needed. (backup: core...so.gpubak)
+### maxout (verif_cost, 1097 core) ###
+form depth cert_ub  unstable  numchk
+   0     7  12.0257  14/120   9.5e-07     <- == INPUT baseline; NO improvement (prior verif_cost win 9.65)
+### lattice (verif_cost, 1097 core) ###
+form depth cert_ub  unstable  numchk
+   0     7   8.5019  14/120   4.8e-07     <- == plateau 8.50; NO improvement
+# Both verif_cost forms == input bound. gap-cost identical (35482788) & "0 sensitivity weights
+# loaded" for both -> extraction is returning the input form, not a reassociated one. Next:
+# 632 pwl_rules_ac (the rule set that hit 9.65) through this SAME fixed path, to isolate
+# rules(core lacks AC/commutativity) vs extraction-regression.

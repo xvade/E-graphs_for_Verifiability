@@ -683,3 +683,69 @@ unbindable concat rank on the RHS. **Guard added** (`NNs/tests/run_tests.sh` Tes
 must construct without panic (catches arity drift), 5 known-false negative canaries must all be
 REJECTED (catches any future unsound axiom), and the min/max family must still prove — the exact
 regression that would have caught this in 2020 had the verifier been wired into CI.
+
+## `taso`: `export_op` has no case for the added EW_SUB/MAX/MIN ops → crashes on export (2026-08-31)
+
+We extended TASO's generator + core enums with the elementwise `EW_SUB`/`EW_MAX`/`EW_MIN`
+ops (types 26/27/28) to produce the PWL/min-max rewrite family. `Graph::export_op`
+(`src/core/ops.cc`) was never given cases for them: it routes ops through a big shared
+`case` block (`OP_EW_ADD`/`OP_EW_MUL`/`OP_RELU`/…, all "no special params → write op+inputs")
+and a `default:` at line ~1031 that prints `op.ptr->type` and `assert(false)`. So the moment
+an extracted graph contains an `ewmin`/`ewmax`/`ewsub` node, `--export_model` aborts with
+`Assertion 'false' failed`, printing the bare op-type int (e.g. `28`) first.
+
+This stayed hidden until now because the earlier min/max experiments extracted *pure-max*
+maxout forms whose exported ops happened to be covered; the `1097` core's min/max
+**distributivity** rules (`max(x,min(y,z)) = min(max,max)`) introduce `ewmin` nodes into
+maxout's saturated e-graph, so the diverse/verif_cost extraction produced a form containing an
+`ewmin` and export died on it (op type 28). The CPU-taso saturation, extraction, and cost were
+all fine — only the *serializer* was missing the ops.
+
+**Fix:** add `OP_EW_SUB`/`OP_EW_MAX`/`OP_EW_MIN` to the shared elementwise `case` block in
+`export_op` (they serialize identically to `EW_ADD` — op type + inputs, no params). After the
+fix all forms export cleanly.
+
+Build note: `taso/build` (the CPU, `USE_CUDA=OFF` lib that tensat loads for GPU-free
+saturation/export) was originally configured with a host cmake (`toolchain-tensat/miniconda3`,
+now broken — its `share/cmake-*` modules dir is missing), so `make` fails with "Could not find
+CMAKE_ROOT". Rebuilt the one object directly instead: recompile `ops.cc` with the flags from
+`CMakeFiles/taso_runtime.dir/flags.make` and relink via `CMakeFiles/taso_runtime.dir/link.txt`
+(both use `/usr/bin/c++`). Separately, `taso/build_gpu` still fails `Cuda failure 35` at
+`ops_cudnn.cu:24` (cuDNN init) even though the bare CUDA runtime now works — so the CPU lib is
+the right one for the shape-only saturation/export path anyway.
+
+## `taso`: python C-ext `core.*.so` has DT_RPATH hardcoded to `build_gpu`, so reconstruct always loads the GPU libtaso and dies on cuDNN init (2026-08-31)
+
+**Symptom:** Every attempt to *reconstruct* a tensat-extracted `.model` back to ONNX
+(`reconstruct_generic.py`, which does `import taso`) aborted at import with
+`Cuda failure: 35 … taso/src/cudnn/ops_cudnn.cu:24 … Aborting`, **even on an L40S GPU node**
+and even with `LD_LIBRARY_PATH=taso/build` (the CPU, cuda-free lib) explicitly set. The
+verif_cost/diverse *extraction* stages (pure tensat, no taso-python) were fine; only the
+reconstruct step crashed, silently zeroing out the downstream alpha-CROWN bound.
+
+**Cause:** the compiled extension `taso/python/taso/core.cpython-314-…so` carries a
+`DT_RPATH` (not `DT_RUNPATH`) of
+`/opt/conda/lib:<repo>/taso/build_gpu`. **`DT_RPATH` is searched *before* `LD_LIBRARY_PATH`**,
+so the loader always resolves `libtaso_runtime.so` to the *GPU* build, which `NEEDED`s
+`libcudnn.so.9`/`libcudart.so.12` and runs cuDNN handle-init at load — failing with Cuda-35
+(the persistent `build_gpu` cuDNN bug) the instant `import taso` runs. `LD_LIBRARY_PATH` can
+never win against `DT_RPATH`, which is why every "run it on a GPU node / set LD_LIBRARY_PATH"
+attempt failed. Reconstruction needs **zero** GPU compute (it only rebuilds the graph and
+serializes ONNX), so loading the GPU lib is both unnecessary and fatal.
+
+**Fix (applied):** the CPU lib name (`taso/build`) is exactly 4 chars shorter than
+`taso/build_gpu`, so patch the RPATH string *in place, same length* — no `patchelf`
+(unavailable here) and no relink needed:
+```python
+b = bytearray(open(SO,'rb').read())
+b = b.replace(b"/taso/build_gpu\x00", b"/taso/build\x00\x00\x00\x00\x00")  # 16->16 bytes; 1st NUL terminates
+open(SO,'wb').write(b)   # RPATH becomes .../taso/build ; verify: readelf -d SO | grep RPATH
+```
+The CPU `libtaso_runtime.so` has no cuda `NEEDED`s, so `import taso` then succeeds on any node
+(no GPU), and reconstruct + bound run CPU-only. Validated: import OK, ONNX exported, numeric
+gate ~1e-6, bounds reproduce recorded baselines to 4 dp (rules out an ABI mismatch from the
+Aug-22 ext vs the Aug-31 CPU-lib rebuild). Backup of the original ext: `core.*.so.gpubak`.
+
+**Durable fix (not yet done):** `taso/python/setup.py` links the ext against `build_gpu`; point
+it at `taso/build` (or emit `DT_RUNPATH` so `LD_LIBRARY_PATH` can override). **Any rebuild of the
+cython ext silently restores RPATH→`build_gpu` and Cuda-35 returns with no obvious cause.**

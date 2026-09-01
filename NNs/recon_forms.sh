@@ -5,7 +5,7 @@
 #   export_prefix: e.g. lattice_out  (matches tensat/tmp/<prefix>_diverse*.model)
 set -u
 REPO="$1"; PREFIX="$2"; WN="$3"; SUB="$4"; cd "$REPO"
-export LD_LIBRARY_PATH=$PWD/taso/build_gpu:/opt/conda/lib:${LD_LIBRARY_PATH:-}
+export LD_LIBRARY_PATH=$PWD/taso/build:/opt/conda/lib:${LD_LIBRARY_PATH:-}
 export PYTHONPATH=$PWD/NNs:/mmfs1/gscratch/scrubbed/sgvtc/toolchain-tensat/pycontainer/lib/python3.14/site-packages
 export PYTHONPATH=$PWD/taso/python:$PYTHONPATH
 PY=/opt/conda/bin/python3

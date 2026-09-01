@@ -30,8 +30,14 @@ sub, ref_onnx, wbx = sys.argv[1], sys.argv[2], sys.argv[3]
 env = (float(sys.argv[4]), float(sys.argv[5])) if len(sys.argv) > 5 else None
 d = np.load(os.path.join(REPO, wbx)); x0, eps = d["x0"], float(d["eps"])
 dev = "cuda" if torch.cuda.is_available() else "cpu"
-x0t = torch.tensor(x0, dtype=torch.float32, device=dev).view(1, -1)
-xs = (x0 + np.random.default_rng(3).uniform(-eps, eps, size=(64, x0.shape[0]))).astype(np.float32)
+# x0 rank-aware: flat-vector models (maxout/lattice) view as [1, D]; models whose input
+# retains image rank (e.g. mnist_tiny_mlp, x0 stored as [C,H,W]) keep their shape + batch dim.
+if x0.ndim > 1:
+    x0t = torch.tensor(x0, dtype=torch.float32, device=dev).unsqueeze(0)
+    xs = (x0[None] + np.random.default_rng(3).uniform(-eps, eps, size=(64,) + x0.shape)).astype(np.float32)
+else:
+    x0t = torch.tensor(x0, dtype=torch.float32, device=dev).view(1, -1)
+    xs = (x0 + np.random.default_rng(3).uniform(-eps, eps, size=(64, x0.shape[0]))).astype(np.float32)
 
 def load(p):
     return onnx2pytorch.ConvertModel(onnx.load(p), experimental=True).to(dev).eval()
