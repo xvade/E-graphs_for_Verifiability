@@ -75,8 +75,13 @@ works — trust it over reading code.
 - **Design note:** the op must have well-defined bottom-up metadata. The const ops
   (`Cpool`/`Iconv`/`Imatmul`/`Iewmul`) are `MagicConst` — shape-polymorphic, channels
   filled by the *consuming* op — so a standalone `Cpool(3,3)` has no sound metadata.
-  That is why they were left `todo!()`; supporting them needs new taso const-tensor
-  APIs, not just a match arm.
+  That is why they were left `todo!()`. **Resolved for the identity consts** via a
+  `DataKind::Const` marker + consumer resolution: `make(const)` emits a marker (no
+  tensor), and the approved consumer (e.g. `ewmul` for `Iewmul`, since
+  `ewmul(x,ones)==x`) returns the *other* operand's data. A central applier guard
+  declines any non-approved parent of a Const child. See `Iewmul` in
+  `../tensat/MODIFICATIONS.md` for the worked pattern (`Imatmul`/`Iconv` mirror it;
+  `Cpool` still needs real materialization since it's `==poolavg`, not `==x`).
 
 ### 6. tensat apply — build the op during rewrite application  (Rust) — REQUIRED
 - **Edit:** `tensat/src/rewrites.rs` — the tensor-building match (the one ending in

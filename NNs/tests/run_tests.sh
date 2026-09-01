@@ -155,8 +155,8 @@ CFIX="$REPO/NNs/tests/const_fixture.pb"
 CDSTATS=$($PY "$REPO/NNs/pb2egg.py" "$CFIX" "$TMP/const_def.txt" 2>&1)
 cdef=$(grep -c "=>" "$TMP/const_def.txt" 2>/dev/null)
 cskip=$(echo "$CDSTATS" | grep -oE "unapplicable ops\): [0-9]+" | grep -oE "[0-9]+$")
-assert_eq "${cdef:-X}"  "0"  "const rules gated by default (0 emitted)"
-assert_eq "${cskip:-X}" "24" "24 const rules counted tensat-unapplicable"
+assert_eq "${cdef:-X}"  "6"  "Iewmul rules now emit by default (applicable in tensat)"
+assert_eq "${cskip:-X}" "18" "18 non-Iewmul const rules still tensat-unapplicable (gated)"
 CEGG="$TMP/const_egg.txt"
 CSTATS=$($PY "$REPO/NNs/pb2egg.py" "$CFIX" "$CEGG" --emit-unapplicable 2>&1)
 cnonclean=$(echo "$CSTATS" | grep -oE "non-clean ops\):[ ]*[0-9]+" | grep -oE "[0-9]+$")
@@ -188,7 +188,7 @@ apply_probe '(relu ?input_1)=>(matmul 0 (relu ?input_1) (relu ?input_1))'       
 apply_probe '(relu ?input_1)=>(ewmax (relu ?input_1) (relu ?input_1))'          "ewmax"  ok
 apply_probe '(relu ?input_1)=>(ewmul (relu ?input_1) (relu ?input_1))'          "ewmul"  ok
 apply_probe '(relu ?input_1)=>(transpose (transpose (relu ?input_1) 1_0 0) 1_0 0)' "transpose (gated)" panic
-apply_probe '(relu ?input_1)=>(ewmul (relu ?input_1) (Iewmul))'                 "const Iewmul (gated)" panic
+apply_probe '(relu ?input_1)=>(ewmul (relu ?input_1) (Iewmul))'                 "const Iewmul (now applicable)" ok
 
 rm -rf "$TMP"
 echo "======================================"

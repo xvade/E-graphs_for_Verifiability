@@ -180,7 +180,7 @@ rules — its only tier-2 loss is 13 two-output split rules, already preserved i
 single-output dirty rules — transpose 9,203, enlarge 8,239, const_* ~3,844,
 reshape 0.
 
-### ⚠ THE TENSAT APPLICATION GAP (open — to be addressed soon)
+### ⚠ THE TENSAT APPLICATION GAP (Iewmul resolved; rest open)
 Emitting a rule and *applying* it are different. tensat's apply path
 (`rewrites.rs`, the tensor-building match) supports only a subset of ops and ends
 in `other => { println!(...); todo!() }` — so a rule that uses any other op
@@ -189,25 +189,48 @@ time**. Confirmed empirically (2-iter saturation probes on `mnist_tiny_mlp`):
 
 - **Apply-safe** (build without panic): `conv2d`, `concat` (binary), `matmul`,
   `ewadd/ewmul/ewsub/ewmax/ewmin`, `relu`, `sigmoid`, `tanh`, `enlarge`,
-  `split/split_0/split_1`, `merge`.
-- **Apply-UNsafe** (panic on apply): `smul`, `poolmax`, `poolavg`, `transpose`,
-  `Cpool`/`Iconv`/`Imatmul`/`Iewmul`, `concat3/4/5`.
+  `split/split_0/split_1`, `merge`, and **`Iewmul`** (resolved 2026-09-01, below).
+- **Apply-UNsafe** (still panic on apply): `smul`, `poolmax`, `poolavg`,
+  `transpose`, `Cpool`/`Iconv`/`Imatmul`, `concat3/4/5`.
 
-**pb2egg now gates on this:** by default it emits only apply-safe rules;
+**pb2egg gates on this:** by default it emits only apply-safe rules;
 `--emit-unapplicable` keeps the full parse-valid set for consumers that never
 apply rules (Z3 corpus studies via `z3_verify_egg.py`). Guarded permanently by
 `run_tests.sh` **Test 12** (apply-smoke: guaranteed-fire rules through a real
 saturation — apply-safe ops must not panic, gated ops must). The tracked-pb
 corpus is unaffected (its 116 rules are all apply-safe).
 
-**Why this is left open, and the fix:** making the gated ops applicable is a
-tensat core change (a `make()` arm *and* an apply arm per op, plus — for the
-const family — new taso C++ const-tensor APIs). It is not "add match arms":
-`validate_axioms.py` models the const ops as `MagicConst`, shape-polymorphic with
-channel dims supplied by the *consuming* op, so a standalone `Cpool(3,3)` has no
-sound bottom-up metadata — which is exactly why the authors left `todo!()`.
-Buildable (offline cargo, §3) but a real design problem. See `docs/ADD_AN_OP.md`
-for the full op-addition contract this gap illustrates.
+**Iewmul resolved — the const-application pattern (2026-09-01).** The
+constant-tensor ops are `MagicConst` (`validate_axioms.py`): shape-polymorphic,
+channel dims supplied by the *consuming* op, so a standalone const has no sound
+bottom-up metadata — which is why the authors left `todo!()`. The fix that avoids
+materializing a tensor at all: a **`DataKind::Const` marker** + **consumer
+resolution**. `make(Iewmul)`/`apply(Iewmul)` emit a Const marker (identity in
+`name`); the approved consumer `ewmul` detects a Const child and returns the
+*other* operand's metadata directly (`ewmul(x, ones) == x`), so no tensor is
+built. A **central applier guard** declines to build any *non*-approved parent of
+a Const child (so a bare-variable rule can't panic `make()`). `get_self_cost`
+charges the wrapper a small positive cost so extraction strictly prefers the bare
+`x` — meaning the const also vanishes from extracted forms, and `reconstruct` is
+untouched. (tensat `model.rs`/`rewrites.rs`/`optimize.rs`; `tensat/MODIFICATIONS.md`.)
+Iewmul is now emitted by default and passes the apply-smoke.
+
+**Remaining (open):**
+- **`Imatmul`/`Iconv`** are the same "= x" identity shape, so the *same* marker +
+  consumer-resolution pattern applies (consumers `matmul` / `conv2d`), with a
+  `dtype`/`numDim` guard (`Imatmul` is 2-D only; `Iconv` needs `conv2d(1,1,SAME,
+  NONE,·)` and odd kernels). Mechanical follow-ups of Iewmul.
+- **`Cpool`** is the hard one: `conv2d(x, Cpool) == poolavg(...)`, *not* `== x`, so
+  it must actually materialize (avg-pool result) — needs the shape-derived
+  construction and a taso path.
+- **Tier A (cheap, unrelated to consts):** `transpose`/`poolmax`/`poolavg`/`smul`
+  already have `make()` arms; they lack only the `rewrites.rs` apply arm (a
+  mechanical mirror of make()). Adding those un-gates the 9,093 transpose rules.
+- **Gate is over-conservative:** egg matches the LHS against existing enodes (no
+  building), so a rule like `(poolavg …)=>(conv2d … (Cpool 3 3))` needs only its
+  *RHS* apply-safe. Relaxing the gate to RHS-only would let pool-as-conv rules
+  through once Cpool lands. Not yet done.
+See `docs/ADD_AN_OP.md` for the full op-addition contract.
 
 **Process lesson:** the transpose and const increments below shipped rules that
 panic tensat on application, because every test (emission counts, `parse_check`,
