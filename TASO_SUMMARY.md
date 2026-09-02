@@ -28,7 +28,7 @@ pipeline; extraction is tensat's job, driven by verifiability (VerifCost), so op
 |---|---|
 | `include/taso/ops.h` | The one core header: `OpType` enum, `Tensor`/`TensorHandle`, `OpBase` & `Op`, **`Graph`** (dataflow graph + builders + `optimize`), **`Model`** (op factory + cost + backend dispatch), `SplitInfo`. |
 | `include/taso/substitution.h` | `GraphXfer` — the source→target pattern rewrite engine. |
-| `src/core/*.cc` (29) | Per-op **shape inference + `collect_costs`** (`conv2d.cc`, `matmul.cc`, `element.cc`, `pool2d.cc`, `mul.cc`, …), plus `ops.cc` (Graph/Model glue, attr accessors), `substitution.cc` (`GraphXfer::run`, `Graph::optimize`, `Graph::export_to_file`). Backend-independent. |
+| `src/core/*.cc` (29) | Per-op **shape inference + `collect_costs`** (`conv2d.cc`, `matmul.cc`, `element.cc`, `pool2d.cc`, `mul.cc`, …), plus `ops.cc` (Graph/Model glue, attr accessors), `substitution.cc` (`GraphXfer::run`, `Graph::optimize`, `Graph::export_to_file`). Backend-independent. **Spec + per-op shape table: [`taso/src/core/README.md`](taso/src/core/README.md).** |
 | `src/cudnn/*.cu` (26) | GPU backend: real cuDNN/cuBLAS **kernels + `measure_*_cost`** (executes and times each op). Compiled only when `USE_CUDA=ON`. |
 | `src/cpu/*.cc` (3) | CPU backend (`USE_CUDA=OFF`): `execution_stubs_cpu.cc` (no real exec), `ops_cpu.cc`, **`measure_cost_cpu.cc`** (analytic cost — now force-zeroed). |
 | `src/generator/` | The rule generator (`generator.cc`) + build scripts (`compile*.sh`) + the produced corpus `graph_subst.pb`. Own docs in `src/generator/README.md`. |
