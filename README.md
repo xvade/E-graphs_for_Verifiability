@@ -5,15 +5,20 @@ built on TASO) affects neural network *verifiability* -- specifically, how
 much tighter/looser the bounds alpha-beta-CROWN can compute get, before vs.
 after TENSAT optimizes a network, under a fixed compute budget.
 
-Start with `TENSAT_SUMMARY.md` for the technical deep-dive (paper summary,
-build internals) and `PROGRESS.md` for a chronological log of what's been
-done. `BUGS.md` catalogs bugs found in vanilla TASO/tensat along the way.
+Start with `TENSAT_SUMMARY.md` and `TASO_SUMMARY.md` for the technical
+deep-dive (paper summary, whole-codebase architecture, build internals) and
+`PROGRESS.md` for a chronological log of what's been done. `BUGS.md` catalogs
+bugs found in vanilla TASO/tensat along the way. The `taso/` and `tensat/`
+submodules are **forks we own** — their entire codebases are in scope for our
+documentation, specification, and testing, not just the changed files.
 
 ## Documentation map
 
 - **`NNs/README.md`** — the pipeline code, indexed by stage (model builders →
   converters → rule-gen → reconstruct → bounds). The place to start for "what
   does this script do".
+- **`TASO_SUMMARY.md`** — the whole TASO fork mapped at architecture altitude
+  (core / backends / generator / python bindings) with a doc-spec-test index.
 - **`taso/MODIFICATIONS.md`** + **`taso/src/generator/README.md`** — this fork's
   delta from upstream TASO, and the generator's flag semantics
   (`RELAX_*`/`GEN_COMMUTE`, the presence-check gotcha, the 2 GB trap).

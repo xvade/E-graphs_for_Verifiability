@@ -351,3 +351,24 @@ is not, by design.
 against them — `-m parse_check` (tensat) is the authoritative current-format
 oracle instead (`NNs/tests/run_tests.sh` test 2). Noted here so no future test
 pins the stale files.
+
+## 11. [gap — half-applied] TASO op-cost zeroing covers only the CPU build
+This project never uses TASO's runtime op cost (extraction is verifiability-driven,
+not runtime-driven), so cost measurement was **force-zeroed** — but *only in the CPU
+backend*. `src/cpu/measure_cost_cpu.cc`'s `estimate_runtime` returns 0 (guarded by an
+opt-in `TASO_ENABLE_COST_MEASUREMENT`), zeroing every `op->runtime` for the
+`USE_CUDA=OFF` build we actually ship. Verified by `NNs/tests/run_tests.sh` **Test 13**
+(`Best cost: 0.0`, greedy still extracts) and `taso/MODIFICATIONS.md`.
+
+**The gap:** the **20 cuDNN `measure_*_cost` functions** in `src/cudnn/*_kernel.cu`
+(the `USE_CUDA=ON` build) are **not** guarded. So a GPU build still runs real
+cost measurement at op-creation time — including `measure_matmul_cost`'s cuBLAS SGEMM,
+which **aborts on small-N matmuls** (the tll width-1/2/4 output layers; worked around
+with the width-≥8 "vector trick", see `BUGS.md`). To make "our TASO never uses cost"
+true for *both* build configs, the same `TASO_ENABLE_COST_MEASUREMENT` guard (early
+`op->runtime = 0; return;`) belongs at the top of each of those 20 functions.
+
+**Why deferred, not done:** `.cu` files can't be compiled or tested in-repo (no nvcc /
+GPU here, PROBLEMATIC.md #1/#5), so editing them is blind — higher risk than the CPU
+change, and the small-N hazard is already worked around. Tracked here so the invariant's
+scope is explicit and the follow-up is unambiguous. See `TASO_SUMMARY.md` §5.
