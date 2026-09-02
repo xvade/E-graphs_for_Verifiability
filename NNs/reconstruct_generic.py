@@ -79,6 +79,41 @@ def add_larger_first(graph, a, b):
     return graph.add(b, a)
 
 
+def mul_larger_first(graph, a, b):
+    """Same in-place broadcast concern as add_larger_first, for Mul: put the
+    larger (broadcast-target) operand first. Mul is symmetric, so free. For a
+    scalar mul the tensor is larger, so it lands first -- matching the ONNX
+    `Mul(tensor, scalar)` shape onnx2pytorch expects. (graph.mul is TASO's
+    element OP_EW_MUL, which broadcasts a 0-D scalar; see reconstruct_op_names.)"""
+    if volume(a) >= volume(b):
+        return graph.mul(a, b)
+    return graph.mul(b, a)
+
+
+def reconstruct_op_names(op_table):
+    """TASO's `op_table` (int -> ONNX-ish name) is INCOMPLETE: OP_MUL -- the
+    scalar-multiply enum tensat's `make(Smul)` emits, a DISTINCT enum from
+    OP_EW_MUL (which is the one mapped to "Mul") -- has no entry, so a bare
+    `op_table[int]` KeyErrors on any smul node. Rather than hardcode an absolute
+    enum value (fragile if TASO's `enum OpType` is renumbered), derive OP_MUL's
+    int from OP_MATMUL's: the enum order is `... OP_MATMUL, OP_MUL, OP_ENLARGE ...`
+    (taso/include/xflow/ops.h), so OP_MUL == OP_MATMUL + 1. Hard-assert the
+    neighbour (OP_ENLARGE) so a future reordering fails loudly here instead of
+    silently misreading an op. Returns an extended {int: name} that reads the
+    scalar Mul as "Mul" -- the same reconstruct arm handles it and OP_EW_MUL,
+    since both rebuild to a native ONNX Mul."""
+    matmul_int = next(k for k, v in op_table.items() if v == "Matmul")
+    op_mul_int = matmul_int + 1
+    assert op_table.get(op_mul_int + 1) == "Enlarge", (
+        f"TASO OpType enum layout changed: expected OP_ENLARGE at int "
+        f"{op_mul_int + 1} (right after OP_MUL), got {op_table.get(op_mul_int + 1)!r}. "
+        f"Re-derive OP_MUL before trusting this mapping."
+    )
+    names = dict(op_table)
+    names.setdefault(op_mul_int, "Mul")
+    return names
+
+
 def parse_and_build(model_path, named_weights, weight_names_map):
     graph = ts.new_graph()
     nodes = {}
@@ -92,6 +127,7 @@ def parse_and_build(model_path, named_weights, weight_names_map):
     # second ONNX output.
     created = set()
     consumed = set()
+    op_names = reconstruct_op_names(ts.op_table)
 
     with open(model_path) as f:
         lines = f.read().splitlines()
@@ -103,7 +139,7 @@ def parse_and_build(model_path, named_weights, weight_names_map):
         params = [int(p) for p in lines[i].split(",") if p.strip() != ""]; i += 1
         consumed.update(deps)
 
-        optype = ts.op_table[op]
+        optype = op_names.get(op)
         if optype == "Input":
             node = [graph.new_input(dims=tuple(params))]
         elif optype == "Weight":
@@ -145,11 +181,18 @@ def parse_and_build(model_path, named_weights, weight_names_map):
         elif optype == "Transpose":
             ndim = params[0]
             perm = tuple(params[1:1 + ndim])
-            src_guid = deps[0][0]
-            assert src_guid in weight_arrays, "Transpose of a non-weight tensor not handled here"
-            arr = np.transpose(weight_arrays[src_guid], perm)
-            weight_arrays[guid] = arr
-            node = [graph.new_weight(dims=arr.shape, data=arr)]
+            src_guid, src_idx = deps[0]
+            if src_guid in weight_arrays:
+                # weight transpose: fold in numpy, emit a constant (no runtime op).
+                arr = np.transpose(weight_arrays[src_guid], perm)
+                weight_arrays[guid] = arr
+                node = [graph.new_weight(dims=arr.shape, data=arr)]
+            else:
+                # activation transpose: emit a real op. ab-CROWN bounds Transpose
+                # exactly (a pure axis permutation). shuffle=True is REQUIRED --
+                # TASO's Transpose ctor asserts it (it's value-invariant: transpose.cc
+                # only reorders strides), and tensat's make/apply force it likewise.
+                node = [graph.transpose(nodes[src_guid][src_idx], perm=perm, shuffle=True)]
         elif optype == "Enlarge":
             w1_guid, w2_guid = deps[0][0], deps[1][0]
             assert w1_guid in weight_arrays and w2_guid in weight_arrays
@@ -190,10 +233,38 @@ def parse_and_build(model_path, named_weights, weight_names_map):
             node = [fn(conv_out) if fn else conv_out]
         elif optype == "Matmul":
             node = [graph.matmul(nodes[deps[0][0]][deps[0][1]], nodes[deps[1][0]][deps[1][1]])]
+        elif optype == "Mul":
+            # Covers OP_EW_MUL (ewmul) AND OP_MUL (smul -- tensat's scalar mul; see
+            # reconstruct_op_names). Multiply is linear in each operand given the
+            # other, so when one side is a constant (weight/scalar) ab-CROWN bounds
+            # it EXACTLY; a bilinear activation*activation Mul is handled natively by
+            # BoundMul. Either way emit a native ONNX Mul -- no ReLU lowering (that's
+            # only needed for Max/Min, whose native relaxation differs in topology).
+            a_guid, b_guid = deps[0][0], deps[1][0]
+            if a_guid in weight_arrays and b_guid in weight_arrays:
+                # both constant: fold (numpy broadcasts a 0-D scalar against a tensor).
+                arr = weight_arrays[a_guid] * weight_arrays[b_guid]
+                weight_arrays[guid] = arr
+                node = [graph.new_weight(dims=arr.shape, data=arr)]
+            else:
+                # graph.mul is TASO's element OP_EW_MUL, which broadcasts a 0-D scalar
+                # (broadcastable() min(N,0)=0 loop is vacuous). If the reconstruct env's
+                # element kernel ever chokes on a 0-D operand at cost-measurement time,
+                # the one-line fallback is to materialize the scalar as np.full over the
+                # activation's dims and do a same-shape mul.
+                a = nodes[deps[0][0]][deps[0][1]]
+                b = nodes[deps[1][0]][deps[1][1]]
+                node = [mul_larger_first(graph, a, b)]
         elif optype == "Add":
             node = [add_larger_first(graph, nodes[deps[0][0]][deps[0][1]], nodes[deps[1][0]][deps[1][1]])]
         elif optype == "Relu":
             node = [graph.relu(nodes[deps[0][0]][deps[0][1]])]
+        elif optype == "Sigmoid":
+            # standalone activation (also reachable fused into Conv, line ~activation_fns).
+            # ab-CROWN bounds Sigmoid natively. ffnnSIGMOID and similar MLPs need this.
+            node = [graph.sigmoid(nodes[deps[0][0]][deps[0][1]])]
+        elif optype == "Tanh":
+            node = [graph.tanh(nodes[deps[0][0]][deps[0][1]])]
         elif optype == "Sub":
             # linear; ab-CROWN bounds Sub exactly. Emit native.
             a = nodes[deps[0][0]][deps[0][1]]; b = nodes[deps[1][0]][deps[1][1]]
@@ -226,7 +297,9 @@ def parse_and_build(model_path, named_weights, weight_names_map):
                                      padding=PADDING_MODE[params[9]],
                                      activation=ACTIVATION_MODE[params[10]])]
         else:
-            raise NotImplementedError(f"op type {optype} not handled by this script")
+            raise NotImplementedError(
+                f"op type int {op} (name {optype!r}) not handled by this script"
+            )
         nodes[guid] = node
         for idx in range(len(node)):
             created.add((guid, idx))

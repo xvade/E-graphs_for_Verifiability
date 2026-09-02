@@ -262,6 +262,28 @@ Un-gates **43,952** previously-gated single-output rules (≈56% more than the 7
 that emitted before). Guarded by Test 9 (fixture now 20/20, 0 gated) + Test 12
 (poolavg/poolmax/smul apply-smoke). See `tensat/MODIFICATIONS.md`.
 
+**Reconstruct parity (2026-09-01).** Applying an op in tensat is only half the loop
+— `reconstruct_generic.py` (TASO `.model` → ONNX → ab-CROWN) must rebuild whatever
+extraction emits. Extended it to the newly-applicable set:
+- **`Mul`** — a single arm now covers `OP_EW_MUL` (ewmul) *and* `OP_MUL` (smul).
+  taso's `op_table` has **no `OP_MUL` entry** (only `OP_EW_MUL`→"Mul"), so a bare
+  `op_table[int]` KeyErrors on an smul node; `reconstruct_op_names` derives `OP_MUL`
+  from `OP_MATMUL+1` (enum order in `taso/.../ops.h`) with a loud `OP_ENLARGE`
+  neighbour assert. Rebuilt as native ONNX `Mul` via `graph.mul` (= element
+  `OP_EW_MUL`, which broadcasts a 0-D scalar) — linear/exact in ab-CROWN when one
+  side is constant, native `BoundMul` otherwise; no ReLU lowering (that's Max/Min-only).
+  Weight×weight folds in numpy.
+- **`Transpose`** — generalized from weight-only (it used to `assert` a non-weight
+  source) to activations too (`graph.transpose(..., shuffle=True)`; the ctor asserts
+  shuffle).
+- **`Sigmoid`/`Tanh`** — standalone arms (previously only reachable *fused into Conv*),
+  so plain sigmoid/tanh MLPs like **ffnnSIGMOID** reconstruct.
+
+taso is unrunnable in-repo (host stub; container onnx, #5), so a numeric round-trip
+is deferred to the reconstruct env (where tll ran). The **dispatch** is guarded
+env-independently by `NNs/tests/test_reconstruct_arms.py` (16 asserts, mocks taso —
+Mul-int resolution, fold-vs-live, `shuffle=True`, the enum-shift guard).
+
 **Remaining (open):** `concat3/4/5`, `enlarge` (build-time synthesis), `split` on
 the RHS. See `docs/ADD_AN_OP.md` for the full op-addition contract.
 
