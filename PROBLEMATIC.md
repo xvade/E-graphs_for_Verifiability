@@ -180,7 +180,7 @@ rules — its only tier-2 loss is 13 two-output split rules, already preserved i
 single-output dirty rules — transpose 9,203, enlarge 8,239, const_* ~3,844,
 reshape 0.
 
-### ⚠ THE TENSAT APPLICATION GAP (Iewmul resolved; rest open)
+### ⚠ THE TENSAT APPLICATION GAP (identity consts resolved; Cpool + tier-A open)
 Emitting a rule and *applying* it are different. tensat's apply path
 (`rewrites.rs`, the tensor-building match) supports only a subset of ops and ends
 in `other => { println!(...); todo!() }` — so a rule that uses any other op
@@ -189,9 +189,10 @@ time**. Confirmed empirically (2-iter saturation probes on `mnist_tiny_mlp`):
 
 - **Apply-safe** (build without panic): `conv2d`, `concat` (binary), `matmul`,
   `ewadd/ewmul/ewsub/ewmax/ewmin`, `relu`, `sigmoid`, `tanh`, `enlarge`,
-  `split/split_0/split_1`, `merge`, and **`Iewmul`** (resolved 2026-09-01, below).
+  `split/split_0/split_1`, `merge`, and the identity consts **`Iewmul`/`Imatmul`/
+  `Iconv`** (resolved 2026-09-01, below).
 - **Apply-UNsafe** (still panic on apply): `smul`, `poolmax`, `poolavg`,
-  `transpose`, `Cpool`/`Iconv`/`Imatmul`, `concat3/4/5`.
+  `transpose`, `Cpool`, `concat3/4/5`.
 
 **pb2egg gates on this:** by default it emits only apply-safe rules;
 `--emit-unapplicable` keeps the full parse-valid set for consumers that never
@@ -200,26 +201,25 @@ apply rules (Z3 corpus studies via `z3_verify_egg.py`). Guarded permanently by
 saturation — apply-safe ops must not panic, gated ops must). The tracked-pb
 corpus is unaffected (its 116 rules are all apply-safe).
 
-**Iewmul resolved — the const-application pattern (2026-09-01).** The
+**Identity consts resolved — Iewmul/Imatmul/Iconv (2026-09-01).** The
 constant-tensor ops are `MagicConst` (`validate_axioms.py`): shape-polymorphic,
 channel dims supplied by the *consuming* op, so a standalone const has no sound
-bottom-up metadata — which is why the authors left `todo!()`. The fix that avoids
+bottom-up metadata — which is why the authors left `todo!()`. The fix avoids
 materializing a tensor at all: a **`DataKind::Const` marker** + **consumer
-resolution**. `make(Iewmul)`/`apply(Iewmul)` emit a Const marker (identity in
-`name`); the approved consumer `ewmul` detects a Const child and returns the
-*other* operand's metadata directly (`ewmul(x, ones) == x`), so no tensor is
-built. A **central applier guard** declines to build any *non*-approved parent of
-a Const child (so a bare-variable rule can't panic `make()`). `get_self_cost`
-charges the wrapper a small positive cost so extraction strictly prefers the bare
-`x` — meaning the const also vanishes from extracted forms, and `reconstruct` is
-untouched. (tensat `model.rs`/`rewrites.rs`/`optimize.rs`; `tensat/MODIFICATIONS.md`.)
-Iewmul is now emitted by default and passes the apply-smoke.
+resolution**. `make`/`apply` of a const emit a Const marker (its type tagged in
+`val`/`name`); its **approved consumer** — `ewmul` for `Iewmul`, `matmul` for
+`Imatmul`, `conv2d(1,1,SAME,NONE)` for `Iconv`, each an identity `== x` — detects
+the Const child and returns the *other* operand's metadata directly, so no tensor
+is built. A **central applier guard** declines any *non*-approved parent of a
+Const child, and each consumer arm resolves only *its* const (checking the `val`
+tag) and declines a mismatched one or a non-identity conv config (soundness).
+`get_self_cost` charges the wrapper a small positive cost so extraction strictly
+prefers the bare `x` — so the const also vanishes from extracted forms and
+`reconstruct` is untouched. (tensat `model.rs`/`rewrites.rs`/`optimize.rs`;
+`tensat/MODIFICATIONS.md`.) All three emit by default and pass the apply-smoke
+(`run_tests.sh` Test 12).
 
 **Remaining (open):**
-- **`Imatmul`/`Iconv`** are the same "= x" identity shape, so the *same* marker +
-  consumer-resolution pattern applies (consumers `matmul` / `conv2d`), with a
-  `dtype`/`numDim` guard (`Imatmul` is 2-D only; `Iconv` needs `conv2d(1,1,SAME,
-  NONE,·)` and odd kernels). Mechanical follow-ups of Iewmul.
 - **`Cpool`** is the hard one: `conv2d(x, Cpool) == poolavg(...)`, *not* `== x`, so
   it must actually materialize (avg-pool result) — needs the shape-derived
   construction and a taso path.

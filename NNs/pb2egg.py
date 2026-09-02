@@ -143,7 +143,10 @@ def build(tensor, ops):
 # has an apply arm), so they are excluded here by name.
 APPLY_SAFE_EGG_OPS = {
     "relu", "ewadd", "ewmul", "ewsub", "ewmax", "ewmin", "matmul", "conv2d", "concat",
-    "Iewmul",   # const all-ones: tensat make/apply resolve it via its ewmul consumer
+    # identity consts: tensat make/apply resolve them via their consumer (== x)
+    "Iewmul",    # all-ones, via ewmul
+    "Imatmul",   # identity matrix, via matmul
+    "Iconv",     # identity conv kernel, via conv2d(1,1,SAME,NONE)
 }
 _EGG_OP = re.compile(r"\(([A-Za-z][A-Za-z0-9_]*)")   # op name = token right after "("
 
