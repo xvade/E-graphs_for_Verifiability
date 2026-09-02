@@ -202,6 +202,20 @@ apply_probe '(relu ?input_1)=>(matmul 0 (relu ?input_1) (Imatmul))'             
 apply_probe '(relu ?input_1)=>(conv2d 1 1 0 0 (relu ?input_1) (Iconv 3 3))'     "const Iconv (applicable)" ok
 apply_probe '(relu ?input_1)=>(conv2d 1 1 0 0 (relu ?input_1) (Cpool 3 3))'     "const Cpool via conv2d (applicable)" ok
 
+echo "== Test 13: TASO op cost is force-zeroed (this project never uses runtime cost) =="
+# taso's src/cpu/measure_cost_cpu.cc zeroes every op->runtime (extraction is
+# verifiability-driven, not runtime-driven). This asserts the invariant end-to-end AND
+# that zero-cost extraction still works (greedy reads op->runtime -- runtime=0 must not
+# panic or divide-by-zero). "Best cost: 0.0" is direct proof no op contributed a cost.
+# Run from tensat/ so the optimize mode's incidental target/*.svg graphviz dump resolves
+# (cwd-relative, unrelated to cost); the export_model path stays absolute.
+printf '' > "$TMP/norules.txt"
+GOUT=$(cd "$REPO/tensat" && "$TENSAT" -r "$TMP/norules.txt" -s greedy --model_file "$M" \
+       --n_iter 1 --n_sec 5 --no_cycle --no_runtime_report --export_model "$TMP/gout" 2>&1)
+echo "$GOUT" | grep -qaE "todo|not yet implemented|panicked" && bad "greedy extraction must not panic" || ok "greedy extraction completes without panic (zero cost is safe)"
+echo "$GOUT" | grep -qaE "Best cost: 0(\.0+)?\b" && ok "extraction Best cost is 0.0 (every op->runtime zeroed -- cost feature removed)" || bad "expected 'Best cost: 0.0' (cost not zeroed?)"
+[ -s "$TMP/gout_optimized.model" ] && ok "greedy extraction still exports a valid model" || bad "greedy extraction produced no model"
+
 rm -rf "$TMP"
 echo "======================================"
 echo "TESTS: $PASS passed, $FAIL failed"
