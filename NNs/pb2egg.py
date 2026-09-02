@@ -25,7 +25,7 @@ Two filters gate emission:
      transpose). Currently apply-UNsafe (gated): concat3/4/5, enlarge, split.
      See PROBLEMATIC.md #8 and docs/ADD_AN_OP.md.
 
-Usage: pb2egg.py <graph_subst.pb> <out_rules.txt> [--bidir] [--multi-out <path.pb>]
+Usage: pb2egg.py <graph_subst.pb | shard_dir | glob> <out_rules.txt> [--bidir] [--multi-out <path.pb>]
 Requires rules_pb2 (regenerate from taso/src/core/rules.proto with the container's
 protoc; see companion invocation).
 
@@ -175,10 +175,34 @@ def main():
         multi_out = sys.argv[sys.argv.index("--multi-out") + 1]
     else:  # default sidecar: strip a trailing .txt, append .multi.pb
         multi_out = (outp[:-4] if outp.endswith(".txt") else outp) + ".multi.pb"
-    sys.path.insert(0, os.path.dirname(os.path.abspath(inp)))
+    # Input may be a single .pb, a glob pattern, or a directory of generator shards
+    # (graph_subst_*.pb -- the byte-bounded shards the generator writes when the
+    # combined RuleCollection would exceed protobuf's 2 GB message ceiling). Read the
+    # whole shard set and union it; the single/multi-output split below is unchanged,
+    # so multi-output rules still land in the .multi.pb sidecar regardless of sharding.
+    import glob as _glob
+    if os.path.isdir(inp):
+        shard_paths = sorted(_glob.glob(os.path.join(inp, "graph_subst_*.pb")))
+        if not shard_paths:  # any .pb that isn't one of our .multi.pb sidecars
+            shard_paths = sorted(p for p in _glob.glob(os.path.join(inp, "*.pb"))
+                                 if not p.endswith(".multi.pb"))
+        pb_dir = os.path.abspath(inp)
+    elif any(ch in inp for ch in "*?["):
+        shard_paths = sorted(_glob.glob(inp))
+        pb_dir = os.path.dirname(os.path.abspath(shard_paths[0])) if shard_paths else os.getcwd()
+    else:
+        shard_paths = [inp]
+        pb_dir = os.path.dirname(os.path.abspath(inp))
+    assert shard_paths, "no rule .pb files found for input %r" % inp
+    sys.path.insert(0, pb_dir)
     import rules_pb2
     rules = rules_pb2.RuleCollection()
-    rules.ParseFromString(open(inp, "rb").read())
+    for _sp in shard_paths:
+        _c = rules_pb2.RuleCollection()
+        _c.ParseFromString(open(_sp, "rb").read())
+        rules.MergeFrom(_c)
+    if len(shard_paths) > 1:
+        print("    loaded %d shards -> %d rules total" % (len(shard_paths), len(rules.rule)))
 
     total = len(rules.rule)
     emitted, skipped_dirty, skipped_multi, skipped_ident, skipped_unbound = [], 0, 0, 0, 0
