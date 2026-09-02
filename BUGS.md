@@ -652,6 +652,29 @@ illegal value" on small-N matmuls (tll's width-1/2/4 output layers). The vector 
 cost measurement) for small N, since the measured runtime is irrelevant to the tensat
 pipeline. Blocks mechanical import of scalar-output FC nets until fixed.
 
+## TASO ONNX importer: `Sigmoid`/`Tanh` unregistered -> skipped (2026-09-01)
+
+**Same bug class as the `MatMul` casing above, and the ACTUAL ffnnSIGMOID barrier.**
+`xf_operators` had no `Sigmoid` (or `Tanh`) entry, so `load_onnx` skipped every Sigmoid
+node -- degenerating any sigmoid MLP exactly like the MatMul skip degenerated tll.
+Re-scoping the ffnnSIGMOID (6x200 MNIST) retry showed its ops are
+`{Constant, Sub, Div, Flatten, Gemm x7, Sigmoid x6}` -- and Sub/Div/Flatten/Gemm are ALL
+already registered, so the **MatMul-casing fix is irrelevant here** (ffnnSIGMOID uses
+`Gemm`, not bare `MatMul`); `Sigmoid` was the sole missing op. Its Gemm widths are >= 10,
+so the small-N SGEMM abort above does not apply either. Fix: added `_sigmoid`/`_tanh`
+builders (mirror `_relu`, calling `graph.sigmoid`/`graph.tanh` which already exist in
+`core.pyx`) + `xf_operators['Sigmoid'|'Tanh']`. Pairs with the standalone Sigmoid/Tanh
+arms added to `NNs/reconstruct_generic.py` the same day, so a sigmoid/tanh MLP now has a
+path through BOTH ingestion and reconstruct.
+
+**NOT YET RUN.** The taso python + onnx combination is unavailable in-repo (taso is
+compiled for python 3.14 = the container only; the container's onnx is currently broken;
+the only working onnx is in the 3.10 `taso_py` host env, which can't load the 3.14 taso
+`.so`). Verified by inspection (mirrors the known-correct `_relu`) and `py_compile`;
+end-to-end ingestion must be run in a taso+onnx env (see the memory note
+`taso-python-unrunnable-in-repo-envs`). Expected result once run: ffnnSIGMOID ingests to a
+non-degenerate `Gemm x7 / Sigmoid x6` graph.
+
 ## `tensat`: `-m verify` axiom set (`rules()`) bit-rotted against the `Mdl` language for ~6 years (2026-08-31)
 
 `rewrites.rs::rules()` is the axiom set the GPU-free axiom verifier (`-m verify` /
