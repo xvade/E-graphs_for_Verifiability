@@ -21,8 +21,9 @@ Two filters gate emission:
      matched against existing enodes, never built (so `poolavg(x)=>conv2d(x,Cpool)`
      is fine). `--emit-unapplicable` keeps the full set for consumers that never
      apply rules (Z3 corpus studies). Apply-safe set: see APPLY_SAFE_EGG_OPS (now
-     includes the const family Iewmul/Imatmul/Iconv/Cpool). Currently apply-UNsafe
-     (gated): smul, poolmax/avg, transpose, concat3/4/5. See PROBLEMATIC.md #8 and docs/ADD_AN_OP.md.
+     includes the const family Iewmul/Imatmul/Iconv/Cpool, smul, poolmax/avg, and
+     transpose). Currently apply-UNsafe (gated): concat3/4/5, enlarge, split.
+     See PROBLEMATIC.md #8 and docs/ADD_AN_OP.md.
 
 Usage: pb2egg.py <graph_subst.pb> <out_rules.txt> [--bidir] [--multi-out <path.pb>]
 Requires rules_pb2 (regenerate from taso/src/core/rules.proto with the container's
@@ -137,8 +138,8 @@ def build(tensor, ops):
 # whose egg form uses any op OUTSIDE this set parses (parse_check) and Z3-verifies fine
 # but PANICS tensat at application time (rewrites.rs `other => todo!()`), so it is unsafe
 # to feed to `tensat --rules`. Confirmed empirically (2-iter saturation probes):
-# matmul/ewadd/... saturate; smul/poolmax/poolavg/transpose/Cpool/Iconv/Imatmul/Iewmul/
-# concat3/4/5 panic. By DEFAULT pb2egg emits only apply-safe rules; `--emit-unapplicable`
+# matmul/ewadd/smul/poolmax/poolavg/transpose/Cpool/Iconv/Imatmul/Iewmul/... all build;
+# concat3/4/5, enlarge, split panic. By DEFAULT pb2egg emits only apply-safe rules; `--emit-unapplicable`
 # emits the full parse-valid set for consumers that never apply rules (e.g. Z3 corpus
 # studies via z3_verify_egg.py). See PROBLEMATIC.md #8 and docs/ADD_AN_OP.md.
 # NOTE: "concat" (binary) is apply-safe; concat3/concat4/concat5 are NOT (only Mdl::Concat
@@ -146,6 +147,9 @@ def build(tensor, ops):
 APPLY_SAFE_EGG_OPS = {
     "relu", "ewadd", "ewmul", "ewsub", "ewmax", "ewmin", "matmul", "conv2d", "concat",
     "transpose",   # tensat make/apply build it (shuffle forced true; value-invariant)
+    "smul",        # scalar mul: make/apply build the real taso Mul (OP_MUL); applier gates on a 0-D scalar
+    "poolmax",     # 3x3 stride-1 SAME pool preserves shape; make builds real pool, apply reuses input shape
+    "poolavg",     # (all corpus pools are this config)
     # const-tensor ops: tensat make/apply resolve them via their consumer
     "Iewmul",    # all-ones, via ewmul (== x)
     "Imatmul",   # identity matrix, via matmul (== x)

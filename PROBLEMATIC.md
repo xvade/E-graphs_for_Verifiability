@@ -180,7 +180,7 @@ rules — its only tier-2 loss is 13 two-output split rules, already preserved i
 single-output dirty rules — transpose 9,203, enlarge 8,239, const_* ~3,844,
 reshape 0.
 
-### ⚠ THE TENSAT APPLICATION GAP (const family + transpose resolved; pool/smul open)
+### ⚠ THE TENSAT APPLICATION GAP (const family + transpose + pool/smul resolved; concat3+/enlarge/split open)
 Emitting a rule and *applying* it are different. tensat's apply path
 (`rewrites.rs`, the tensor-building match) supports only a subset of ops and ends
 in `other => { println!(...); todo!() }` — so a rule that uses any other op
@@ -189,10 +189,11 @@ time**. Confirmed empirically (2-iter saturation probes on `mnist_tiny_mlp`):
 
 - **Apply-safe** (build without panic): `conv2d`, `concat` (binary), `matmul`,
   `ewadd/ewmul/ewsub/ewmax/ewmin`, `relu`, `sigmoid`, `tanh`, `enlarge`,
-  `split/split_0/split_1`, `merge`, `transpose` (tier A, resolved 2026-09-01),
-  and the whole const family **`Iewmul`/`Imatmul`/`Iconv`/`Cpool`**.
-- **Apply-UNsafe** (still panic on apply): `smul`, `poolmax`, `poolavg`,
-  `concat3/4/5`.
+  `split/split_0/split_1`, `merge`, `transpose`, `smul`, `poolmax`, `poolavg`
+  (tier A, all resolved 2026-09-01), and the whole const family
+  **`Iewmul`/`Imatmul`/`Iconv`/`Cpool`**.
+- **Apply-UNsafe** (still panic on apply): `concat3/4/5`, `enlarge` (its
+  build-time synthesis; matched-only is fine), `split` on the RHS.
 
 **pb2egg gates on this (RHS-only):** by default it emits a rule only if its
 **RHS** is apply-safe — the LHS is *matched* against existing enodes, never built,
@@ -241,12 +242,28 @@ value-invariant, #6, and taso's `Transpose` ctor asserts it — `make()` was fix
 to force it too, else a rule-emitted `shuffle 0` panics). **Un-gates the 9,093
 transpose rules.**
 
-**Remaining (open):**
-- **`poolmax`/`poolavg`/`smul` (tier A):** also need `rewrites.rs` apply arms, but
-  pool's is less trivial — `get_or_create_pool2d` takes a kernel *weight* tensor
-  (the Cpool `poolavg` shortcut doesn't help: these are matched/built as real pools,
-  not synthesized from a conv). `smul` needs its scalar-mul API. Smaller rule counts.
-See `docs/ADD_AN_OP.md` for the full op-addition contract.
+**`poolmax`/`poolavg`/`smul` — resolved (tier A, 2026-09-01).**
+- **`smul`** builds the **real taso `Mul` (`OP_MUL`)** in `make` (via `g.mul`, like
+  `make(Ewmul)`'s `g.element`) — *not* a shape shortcut, because `save_model`
+  serializes the taso graph, so a build-nothing `make` would silently drop the
+  multiply on export. taso's `Mul` asserts a **0-D** 2nd operand; the applier
+  **gates on `numDim==0` and declines** (never aborts) a non-scalar, so only genuine
+  scalar-muls apply. 0 cost (cheap, and sound now `make` is faithful). Export
+  round-trip is un-testable in-container (needs a taso model with a scalar; onnx
+  unimportable, #5) → covered by the no-panic probe + the `make(Ewmul)` parallel.
+- **`poolmax`/`poolavg`** already built the real pool in `make()`; only the applier
+  arm was missing. Every corpus pool is 3×3 **stride-1 SAME-pad** (`sh=sw=1,pad=0`),
+  which preserves shape, so the applier reuses the input's shape-metadata **iff
+  `sh==1 && sw==1 && pad==0`** (declines other configs) — the transient apply shape
+  then agrees with `make()`'s real pool, and pool stays a genuine extractable op
+  (`reconstruct` rebuilds from op+params).
+
+Un-gates **43,952** previously-gated single-output rules (≈56% more than the 79,001
+that emitted before). Guarded by Test 9 (fixture now 20/20, 0 gated) + Test 12
+(poolavg/poolmax/smul apply-smoke). See `tensat/MODIFICATIONS.md`.
+
+**Remaining (open):** `concat3/4/5`, `enlarge` (build-time synthesis), `split` on
+the RHS. See `docs/ADD_AN_OP.md` for the full op-addition contract.
 
 **Process lesson:** the transpose and const increments below shipped rules that
 panic tensat on application, because every test (emission counts, `parse_check`,
@@ -261,8 +278,8 @@ never reached lane 2): perm folded into the op identity (lane 1 congruence), lan
 2 maps the 2-D swap to `transpose_0`, other perms to their own uninterpreted
 function (`transpose_0`'s 2-D-only axioms can't misfire — guarded by a
 non-involutive `1_2_0` canary). Application resolved (tier A, above), so these
-rules now **emit by default** (18/20 of the fixture; the 2 with an apply-unsafe
-`smul` on the RHS stay gated). Tests: `run_tests.sh` Test 9 + Test 12
+rules now **emit by default** (20/20 of the fixture — its 2 `smul` rules now apply
+too). Tests: `run_tests.sh` Test 9 + Test 12
 (apply-smoke), `test_z3_axioms.sh` (involution flip + 3-cycle canary).
 
 **Shuffle invariance (found while verifying the transpose fixture).**
