@@ -145,6 +145,7 @@ def build(tensor, ops):
 # has an apply arm), so they are excluded here by name.
 APPLY_SAFE_EGG_OPS = {
     "relu", "ewadd", "ewmul", "ewsub", "ewmax", "ewmin", "matmul", "conv2d", "concat",
+    "transpose",   # tensat make/apply build it (shuffle forced true; value-invariant)
     # const-tensor ops: tensat make/apply resolve them via their consumer
     "Iewmul",    # all-ones, via ewmul (== x)
     "Imatmul",   # identity matrix, via matmul (== x)

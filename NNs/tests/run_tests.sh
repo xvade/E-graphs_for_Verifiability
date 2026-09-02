@@ -124,15 +124,15 @@ assert_eq "${redground:-X}" "2" "both PWL rules recognized as groundable"
 assert_ge "${redpruned:-0}" "1" "the renamed-duplicate rule is pruned as redundant"
 assert_eq "$redkept" "1" "exactly one representative kept"
 
-echo "== Test 9: transpose emission -- GATED by default (apply-unsafe), PROBLEMATIC.md #8 =="
-# transpose parses + Z3-verifies but tensat can't apply it (rewrites.rs todo!()), so it is
-# apply-UNsafe and pb2egg drops it by default. --emit-unapplicable keeps it (Z3 studies).
+echo "== Test 9: transpose emission -- now APPLICABLE (tensat make/apply), PROBLEMATIC.md #8 =="
+# transpose is now apply-safe (its make/apply build it, shuffle forced true), so its rules
+# emit by default; only the 2 with an apply-unsafe smul on the RHS stay gated.
 FIX="$REPO/NNs/tests/transpose_fixture.pb"
 DSTATS=$($PY "$REPO/NNs/pb2egg.py" "$FIX" "$TMP/tp_def.txt" 2>&1)
 tpdef=$(grep -c "=>" "$TMP/tp_def.txt" 2>/dev/null)
 tpskip=$(echo "$DSTATS" | grep -oE "unapplicable ops\): [0-9]+" | grep -oE "[0-9]+$")
-assert_eq "${tpdef:-X}"  "0"  "transpose rules gated by default (0 emitted)"
-assert_eq "${tpskip:-X}" "20" "20 transpose rules counted tensat-unapplicable"
+assert_eq "${tpdef:-X}"  "18" "transpose rules now emit by default (applicable)"
+assert_eq "${tpskip:-X}" "2"  "2 rules still gated (smul on the RHS -- smul not yet applicable)"
 TEGG="$TMP/tp_egg.txt"
 TPSTATS=$($PY "$REPO/NNs/pb2egg.py" "$FIX" "$TEGG" --emit-unapplicable 2>&1)
 tpnonclean=$(echo "$TPSTATS" | grep -oE "non-clean ops\):[ ]*[0-9]+" | grep -oE "[0-9]+$")
@@ -187,7 +187,8 @@ apply_probe '(relu ?input_1)=>(ewadd (relu ?input_1) (relu ?input_1))'          
 apply_probe '(relu ?input_1)=>(matmul 0 (relu ?input_1) (relu ?input_1))'       "matmul" ok
 apply_probe '(relu ?input_1)=>(ewmax (relu ?input_1) (relu ?input_1))'          "ewmax"  ok
 apply_probe '(relu ?input_1)=>(ewmul (relu ?input_1) (relu ?input_1))'          "ewmul"  ok
-apply_probe '(relu ?input_1)=>(transpose (transpose (relu ?input_1) 1_0 0) 1_0 0)' "transpose (gated)" panic
+apply_probe '(relu ?input_1)=>(transpose (transpose (relu ?input_1) 1_0 0) 1_0 0)' "transpose (applicable)" ok
+apply_probe '(relu ?input_1)=>(poolavg (relu ?input_1) 3 3 1 1 0 0)'             "poolavg (still gated -- tier-A remaining)" panic
 apply_probe '(relu ?input_1)=>(ewmul (relu ?input_1) (Iewmul))'                 "const Iewmul (applicable)" ok
 apply_probe '(relu ?input_1)=>(matmul 0 (relu ?input_1) (Imatmul))'             "const Imatmul (applicable)" ok
 apply_probe '(relu ?input_1)=>(conv2d 1 1 0 0 (relu ?input_1) (Iconv 3 3))'     "const Iconv (applicable)" ok

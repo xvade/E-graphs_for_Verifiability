@@ -180,7 +180,7 @@ rules — its only tier-2 loss is 13 two-output split rules, already preserved i
 single-output dirty rules — transpose 9,203, enlarge 8,239, const_* ~3,844,
 reshape 0.
 
-### ⚠ THE TENSAT APPLICATION GAP (const family resolved; tier-A open)
+### ⚠ THE TENSAT APPLICATION GAP (const family + transpose resolved; pool/smul open)
 Emitting a rule and *applying* it are different. tensat's apply path
 (`rewrites.rs`, the tensor-building match) supports only a subset of ops and ends
 in `other => { println!(...); todo!() }` — so a rule that uses any other op
@@ -189,10 +189,10 @@ time**. Confirmed empirically (2-iter saturation probes on `mnist_tiny_mlp`):
 
 - **Apply-safe** (build without panic): `conv2d`, `concat` (binary), `matmul`,
   `ewadd/ewmul/ewsub/ewmax/ewmin`, `relu`, `sigmoid`, `tanh`, `enlarge`,
-  `split/split_0/split_1`, `merge`, and the whole const family **`Iewmul`/
-  `Imatmul`/`Iconv`/`Cpool`** (resolved 2026-09-01, below).
+  `split/split_0/split_1`, `merge`, `transpose` (tier A, resolved 2026-09-01),
+  and the whole const family **`Iewmul`/`Imatmul`/`Iconv`/`Cpool`**.
 - **Apply-UNsafe** (still panic on apply): `smul`, `poolmax`, `poolavg`,
-  `transpose`, `concat3/4/5`.
+  `concat3/4/5`.
 
 **pb2egg gates on this (RHS-only):** by default it emits a rule only if its
 **RHS** is apply-safe — the LHS is *matched* against existing enodes, never built,
@@ -234,17 +234,25 @@ apply-smoke (`run_tests.sh` Test 12).
 builds it), so pb2egg now gates on the **RHS** only — which is what lets
 `poolavg(x) => conv2d(x, Cpool)` through (poolavg on the LHS is merely matched).
 
+**transpose — DONE (tier A, 2026-09-01).** Added the `rewrites.rs` apply arm: the
+perm is read from the `perm_name` `Var` child via the egraph (`results[i].1` is its
+egraph Id — `TData` has no `name`), and `shuffle` is forced `true` (it's
+value-invariant, #6, and taso's `Transpose` ctor asserts it — `make()` was fixed
+to force it too, else a rule-emitted `shuffle 0` panics). **Un-gates the 9,093
+transpose rules.**
+
 **Remaining (open):**
-- **Tier A (cheap):** `transpose`/`poolmax`/`poolavg`/`smul` already have `make()`
-  arms; they lack only the `rewrites.rs` apply arm (a mechanical mirror of make()).
-  Adding those un-gates the 9,093 transpose rules — the biggest remaining chunk.
+- **`poolmax`/`poolavg`/`smul` (tier A):** also need `rewrites.rs` apply arms, but
+  pool's is less trivial — `get_or_create_pool2d` takes a kernel *weight* tensor
+  (the Cpool `poolavg` shortcut doesn't help: these are matched/built as real pools,
+  not synthesized from a conv). `smul` needs its scalar-mul API. Smaller rule counts.
 See `docs/ADD_AN_OP.md` for the full op-addition contract.
 
 **Process lesson:** the transpose and const increments below shipped rules that
 panic tensat on application, because every test (emission counts, `parse_check`,
 the two Z3 lanes) ran *before* application. Test 12 closes that class.
 
-### transpose — emission + verification done; application-blocked (gated)
+### transpose — emission + verification + application all done
 `pb2egg.py` decodes `PM_PERM` (inverse of `transpose.cc::permutation_to_index`,
 validated to be a real permutation) and emits `(transpose input perm_name
 shuffle)` — the `Name`-leaf form tensat parses. **9,093** single-output rules use
@@ -252,10 +260,10 @@ only transpose. Both verifier lanes learned it (they previously *errored*, so it
 never reached lane 2): perm folded into the op identity (lane 1 congruence), lane
 2 maps the 2-D swap to `transpose_0`, other perms to their own uninterpreted
 function (`transpose_0`'s 2-D-only axioms can't misfire — guarded by a
-non-involutive `1_2_0` canary). **But transpose is apply-UNsafe, so these rules
-are gated by default** and only materialize under `--emit-unapplicable`. Tests:
-`run_tests.sh` Test 9 (gated by default; emits 20/20 + parse_check under the
-flag), `test_z3_axioms.sh` (involution flip + 3-cycle canary).
+non-involutive `1_2_0` canary). Application resolved (tier A, above), so these
+rules now **emit by default** (18/20 of the fixture; the 2 with an apply-unsafe
+`smul` on the RHS stay gated). Tests: `run_tests.sh` Test 9 + Test 12
+(apply-smoke), `test_z3_axioms.sh` (involution flip + 3-cycle canary).
 
 **Shuffle invariance (found while verifying the transpose fixture).**
 `transpose.cc:102` shows the `shuffle` flag changes only output *strides*, never
