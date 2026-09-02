@@ -155,8 +155,8 @@ CFIX="$REPO/NNs/tests/const_fixture.pb"
 CDSTATS=$($PY "$REPO/NNs/pb2egg.py" "$CFIX" "$TMP/const_def.txt" 2>&1)
 cdef=$(grep -c "=>" "$TMP/const_def.txt" 2>/dev/null)
 cskip=$(echo "$CDSTATS" | grep -oE "unapplicable ops\): [0-9]+" | grep -oE "[0-9]+$")
-assert_eq "${cdef:-X}"  "18" "Iewmul/Imatmul/Iconv rules now emit by default (applicable)"
-assert_eq "${cskip:-X}" "6"  "6 Cpool-only rules still tensat-unapplicable (gated)"
+assert_eq "${cdef:-X}"  "24" "all 4 const ops now applicable -> all fixture rules emit by default"
+assert_eq "${cskip:-X}" "0"  "0 const rules gated (Cpool now applicable too)"
 CEGG="$TMP/const_egg.txt"
 CSTATS=$($PY "$REPO/NNs/pb2egg.py" "$CFIX" "$CEGG" --emit-unapplicable 2>&1)
 cnonclean=$(echo "$CSTATS" | grep -oE "non-clean ops\):[ ]*[0-9]+" | grep -oE "[0-9]+$")
@@ -191,7 +191,7 @@ apply_probe '(relu ?input_1)=>(transpose (transpose (relu ?input_1) 1_0 0) 1_0 0
 apply_probe '(relu ?input_1)=>(ewmul (relu ?input_1) (Iewmul))'                 "const Iewmul (applicable)" ok
 apply_probe '(relu ?input_1)=>(matmul 0 (relu ?input_1) (Imatmul))'             "const Imatmul (applicable)" ok
 apply_probe '(relu ?input_1)=>(conv2d 1 1 0 0 (relu ?input_1) (Iconv 3 3))'     "const Iconv (applicable)" ok
-apply_probe '(relu ?input_1)=>(ewmul (relu ?input_1) (Cpool 3 3))'              "const Cpool (still gated)" panic
+apply_probe '(relu ?input_1)=>(conv2d 1 1 0 0 (relu ?input_1) (Cpool 3 3))'     "const Cpool via conv2d (applicable)" ok
 
 rm -rf "$TMP"
 echo "======================================"

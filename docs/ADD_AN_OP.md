@@ -75,13 +75,15 @@ works — trust it over reading code.
 - **Design note:** the op must have well-defined bottom-up metadata. The const ops
   (`Cpool`/`Iconv`/`Imatmul`/`Iewmul`) are `MagicConst` — shape-polymorphic, channels
   filled by the *consuming* op — so a standalone `Cpool(3,3)` has no sound metadata.
-  That is why they were left `todo!()`. **Resolved for the identity consts** via a
-  `DataKind::Const` marker + consumer resolution: `make(const)` emits a marker (no
-  tensor), and the approved consumer (e.g. `ewmul` for `Iewmul`, since
-  `ewmul(x,ones)==x`) returns the *other* operand's data. A central applier guard
-  declines any non-approved parent of a Const child. See `Iewmul` in
-  `../tensat/MODIFICATIONS.md` for the worked pattern (`Imatmul`/`Iconv` mirror it;
-  `Cpool` still needs real materialization since it's `==poolavg`, not `==x`).
+  That is why they were left `todo!()`. **Resolved for the whole const family** via
+  a `DataKind::Const` marker + consumer resolution: `make(const)` emits a marker (no
+  tensor), and the approved consumer resolves it — the identity consts (`Iewmul` via
+  ewmul, `Imatmul` via matmul, `Iconv` via conv2d) return the *other* operand's data
+  (`== x`); `Cpool` returns the input's shape via conv2d (`conv2d(x,Cpool)==poolavg`,
+  and every rule is stride-1 SAME so the shape matches) with a large extraction cost
+  so the equivalent `poolavg` is what's extracted. A central applier guard declines
+  any non-approved parent of a Const child, and each consumer checks the const's
+  `val` tag. See `../tensat/MODIFICATIONS.md`.
 
 ### 6. tensat apply — build the op during rewrite application  (Rust) — REQUIRED
 - **Edit:** `tensat/src/rewrites.rs` — the tensor-building match (the one ending in

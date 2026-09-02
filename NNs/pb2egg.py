@@ -14,13 +14,15 @@ Two filters gate emission:
      from PM_PERM), and the const_* family (Cpool/Iconv/Imatmul/Iewmul). Still
      un-emittable: enlarge (kernel-based pb vs ref-input-based egg -- a semantic
      mismatch) and split (multi-OUTPUT -> the .multi.pb multi-pattern lane).
-  2. APPLY-safe (DEFAULT): the op is one tensat can BUILD during saturation
-     (rewrites.rs). A rule using any other op parses and Z3-verifies but PANICS
-     tensat when it applies (`todo!()`), so by default such rules are dropped
-     (skipped_unapplicable). `--emit-unapplicable` keeps them for consumers that
-     never apply rules (Z3 corpus studies). Apply-safe set: see APPLY_SAFE_EGG_OPS.
-     Currently apply-UNsafe (gated by default): smul, poolmax/avg, transpose,
-     const_*, concat3/4/5. See PROBLEMATIC.md #8 and docs/ADD_AN_OP.md.
+  2. APPLY-safe (DEFAULT, RHS-only): the op is one tensat can BUILD during
+     saturation (rewrites.rs). A rule whose RHS uses any other op parses and
+     Z3-verifies but PANICS tensat when it applies (`todo!()`), so by default such
+     rules are dropped (skipped_unapplicable). Only the RHS is checked -- the LHS is
+     matched against existing enodes, never built (so `poolavg(x)=>conv2d(x,Cpool)`
+     is fine). `--emit-unapplicable` keeps the full set for consumers that never
+     apply rules (Z3 corpus studies). Apply-safe set: see APPLY_SAFE_EGG_OPS (now
+     includes the const family Iewmul/Imatmul/Iconv/Cpool). Currently apply-UNsafe
+     (gated): smul, poolmax/avg, transpose, concat3/4/5. See PROBLEMATIC.md #8 and docs/ADD_AN_OP.md.
 
 Usage: pb2egg.py <graph_subst.pb> <out_rules.txt> [--bidir] [--multi-out <path.pb>]
 Requires rules_pb2 (regenerate from taso/src/core/rules.proto with the container's
@@ -143,10 +145,11 @@ def build(tensor, ops):
 # has an apply arm), so they are excluded here by name.
 APPLY_SAFE_EGG_OPS = {
     "relu", "ewadd", "ewmul", "ewsub", "ewmax", "ewmin", "matmul", "conv2d", "concat",
-    # identity consts: tensat make/apply resolve them via their consumer (== x)
-    "Iewmul",    # all-ones, via ewmul
-    "Imatmul",   # identity matrix, via matmul
-    "Iconv",     # identity conv kernel, via conv2d(1,1,SAME,NONE)
+    # const-tensor ops: tensat make/apply resolve them via their consumer
+    "Iewmul",    # all-ones, via ewmul (== x)
+    "Imatmul",   # identity matrix, via matmul (== x)
+    "Iconv",     # identity conv kernel, via conv2d(1,1,SAME,NONE) (== x)
+    "Cpool",     # avg-pool kernel, via conv2d(1,1,SAME) (== poolavg; extraction picks poolavg)
 }
 _EGG_OP = re.compile(r"\(([A-Za-z][A-Za-z0-9_]*)")   # op name = token right after "("
 
@@ -207,8 +210,11 @@ def main():
             skipped_unbound += 1; continue
         for a, b in cand:
             line = "{}=>{}".format(a, b)
-            if not emit_unapplicable and not (is_apply_safe(a) and is_apply_safe(b)):
-                skipped_unapplicable += 1; continue   # would panic tensat at apply time
+            # Only the RHS is BUILT during application; the LHS is matched against existing
+            # enodes (no build), so only the RHS must be apply-safe. This lets rules like
+            # poolavg(x) => conv2d(x, Cpool) through (poolavg on the LHS is only matched).
+            if not emit_unapplicable and not is_apply_safe(b):
+                skipped_unapplicable += 1; continue   # RHS would panic tensat at apply time
             if line not in seen:
                 seen.add(line); emitted.append(line)
                 if "ewmax" in line or "ewmin" in line:
