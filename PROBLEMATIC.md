@@ -372,3 +372,25 @@ true for *both* build configs, the same `TASO_ENABLE_COST_MEASUREMENT` guard (ea
 GPU here, PROBLEMATIC.md #1/#5), so editing them is blind — higher risk than the CPU
 change, and the small-N hazard is already worked around. Tracked here so the invariant's
 scope is explicit and the follow-up is unambiguous. See `TASO_SUMMARY.md` §5.
+
+## 12. [barriers surfaced 2026-09-02, once the taso+onnx env worked]
+Standing up the working env ([[taso-env-working]] / `NNs/tests/in_taso_env.sh`) let the
+real ingest/reconstruct paths run and immediately surfaced three concrete issues:
+
+- **`export_op` (`src/core/ops.cc`) has no `OP_EW_DIV` case.** ffnnSIGMOID's input
+  normalization `(x−mean)/std` builds a `Div` node; `load_onnx` handles it fine
+  (ingestion is non-degenerate — 6 Sigmoid / 7 Matmul, `test_ingest_taso.py`), but
+  `export_to_file` → `export_op` hits `assert(false)` on the `Div`, so the model can't
+  reach tensat. And tensat has no `div` op even if exported. **Fix:** fold the Sub/Div
+  input-norm into the first Gemm (`W' = W/std`, `b' = b − (W/std)·mean`) as a
+  pre-ingest pass, dropping Sub/Div entirely (they're preprocessing, not compute).
+- **`export_op` also lacks `OP_MUL`** (the scalar `Mul` tensat's `make(Smul)` emits).
+  A tensat extraction containing `smul` would abort on `save_model` → `export_op`. Add a
+  case (reconstruct already reads it — `reconstruct_op_names`). Smaller than the Div work.
+- **`reconstruct_generic.py`'s weight-names sidecar format is inconsistent between
+  producers.** It expects list-valued `{"guid": ["name", …]}` (tensat's
+  `save_model_with_provenance`), but `derive_weight_names_baseline.py` writes
+  string-valued `{"guid": "name"}`, tripping the `len(names)==1` assert. Normalize one
+  producer to the other (wrap-in-list is the trivial patch). Reconstruct otherwise runs
+  end-to-end to a loadable ONNX; `onnx.checker`'s SSA rule flags the multi-branch tll
+  model reusing input name `data` (cosmetic; ab-CROWN accepts it).
