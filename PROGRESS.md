@@ -1154,3 +1154,42 @@ is CROWN-neutral, and "min/max reassociation is the only CROWN door."
 - **Artifacts** (untracked in `reassoc_results`, per convention): the demonstrator
   `NNs/reassoc_results/crown_redundancy_collapse.py` and writeup
   `NNs/reassoc_results/CROWN_REDUNDANCY_RESULT.md`.
+
+## 2026-09-02 (cont.) — CReLU-collapse: the CROWN improvement replicated on REAL trained nets
+
+Followed the redundancy-collapse toy with the hard version: a **real** (not hand-crafted)
+model, **no min/max**, improving **full CROWN-Optimized**, and — the anti-cheat constraint —
+**replicating across independent trainings** so coincidental weight values can't be abused.
+
+- **The vehicle is forced.** An exact non-min/max rewrite needs redundant ReLU structure, and
+  standard training destroys *exact* redundancy — so no off-the-shelf plain-ReLU benchmark can
+  satisfy the goal; the redundancy must be **architectural**. **CReLU** (Concatenated ReLU,
+  Shang et al. ICML 2016; `CReLU(z)=[relu(z),relu(−z)]`, motivated by nets naturally learning
+  opposite-phase filter pairs) is the canonical published activation with it — present in every
+  training regardless of weights/task, which is exactly what makes the improvement replicate.
+- **The rewrite** (exact, pure ReLU algebra, no min/max): per CReLU layer,
+  `W₊·relu(z)+W₋·relu(−z) = (W₊+W₋)·relu(z) − W₋·z` (since `relu(−z)=relu(z)−z`) → **half** the
+  unstable ReLUs + cascading DenseNet-style linear skips. CROWN relaxes the baseline's two copies
+  independently (`(|W₊|+|W₋|)·gap`) vs the collapsed `|W₊+W₋|·gap`.
+- **Measured** on real auto_LiRPA (CROWN-Optimized margin-lb spec), MLP
+  784→CReLU(64)→CReLU(64)→10, 100 correctly-classified test images per training:
+
+  | training | test acc | verified base→coll | mean per-img margin Δ (min) | 100% improved |
+  |---|---|---|---|---|
+  | MNIST seed 0/1/2 (ε=0.05) | 0.94 | 20→29, 19→25, 24→33 | +0.99/+1.15/+1.07 (min +0.24–0.38) | ✓✓✓ |
+  | FashionMNIST 0/1/2 (ε=0.03) | 0.84 | 59→62, 49→54, 56→61 | +0.21/+0.24/+0.22 (min +0.03) | ✓✓✓ |
+
+  **All 600 per-image CROWN-Optimized bounds are strictly tighter** (min Δ>0 in every training);
+  verified accuracy rises in all 6. Exact float64 gate (~3e-7); 256→128 BoundRelu coordinates
+  (auto_LiRPA does *not* share the pairs — the false-neutrality trap is dead); per-layer
+  cancellation `|W₊+W₋|/(|W₊|+|W₋|)` ~0.63–0.70 (near the 0.71 random expectation, slightly below
+  — the mechanism trace). Pilot confirmed the same under plain CROWN and that the delta grows with ε.
+- **Constraints, checked:** (1) real — genuinely trained (81–94% acc), weights never hand-set;
+  (2) no min/max — `relu(−z)=relu(z)−z`; (3) full CROWN-Optimized — the reported metric; (4)
+  replicates across 6 independent trainings (2 tasks × 3 seeds) ⇒ architectural, not a
+  coincidental-weight artifact. **Honest scope:** not a CROWN *theorem* (the measured 600/600
+  distribution is the evidence); MLP only (CNN is the follow-on); the architecture was *chosen
+  because* it instantiates the mechanism (surfaced, not hidden — the induction forces it, and
+  constraint 4's replication is the direct answer to the weight-coincidence concern).
+- **Artifacts** (untracked in `reassoc_results`): `NNs/reassoc_results/crelu_pilot.py`,
+  `crelu_replicate.py`, writeup `CRELU_CROWN_RESULT.md`.
