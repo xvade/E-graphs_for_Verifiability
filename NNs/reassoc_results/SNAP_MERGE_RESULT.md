@@ -55,6 +55,34 @@ slack requires proportionality to actually hold, so a pair pays only around **re
 order of magnitude below the ~0.4 real-training floor. *On standard MLPs the technique does not fire:
 the required structure is absent.*
 
+## Finding 1b (CNN interpreted as an MLP): the negative is robust
+
+Does unrolling a conv net to its dense equivalent surface snappable structure? Probe
+`snap_merge_cnn_probe.py` (small CNN, MNIST, 96–97% acc) measures two distinct structures:
+
+- **(A) unrolled dense rows** (im2col/Toeplitz). Shifted kernels have near-disjoint supports, so
+  these are *not* proportional: min residual 0.45–0.88. Conv's real redundancy is weight *sharing*
+  (equal-up-to-shift), a different door than the proportional-row rule opens.
+- **(B) channel kernels** (`kernel_j ≈ β·kernel_i` ⇒ proportional feature maps everywhere ⇒ an
+  exact **channel merge** collapsing H·W ReLUs at once — high leverage *if* it occurs):
+
+| layer | kernel dim | min channel-kernel residual |
+|---|---|---|
+| conv1, 16 ch | 9 | 0.454 |
+| conv1, 32 ch (wide) | 9 | 0.451 |
+| conv1, 16 ch, wd 1e-3 | 9 | 0.416 |
+| conv2, 32 ch | 144 | 0.711 |
+| conv2, 64 ch | 288 | 0.653 |
+
+Kernels are low-dimensional (9-D for conv1), which *a priori* should make near-proportional pairs
+likelier than 784-D MLP rows — but the floor is still ~0.42, essentially the dense-MLP floor
+(res 0.42 ⇔ cosine ≈0.9; snapping still perturbs the channel by ~40% of its scale). Two reasons the
+low dimension doesn't rescue it: (i) fewer channels = far fewer pairs to get lucky with (~120 pairs
+for 16 channels — too few to find a near-proportional one by chance in 9-D; widening to 32/64 didn't
+move the floor), and (ii) training decorrelates channels just as it decorrelates neurons.
+**Interpreting a CNN as an MLP does not flip Finding 1.** The channel-merge mechanism is real and
+high-leverage but needs proportional channels, which standard training does not produce.
+
 ## Finding 2 (POSITIVE, machinery): where proportional pairs exist, the merge certifiably tightens full CROWN
 
 To test the pipeline itself (constraint: not achievable on a stock net, so structure is **planted**
