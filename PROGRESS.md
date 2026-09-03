@@ -1103,3 +1103,54 @@ for one GPU-free verifier. So: for conv/matmul use `-m verify`, not the uninterp
   regenerable via the driver. A tracked `.multi.pb.README` records the path, count, and load recipe.
 - Fix folded in: the driver's PYTHONPATH now includes `toolchain-tensat/z3pkg` (the first rerun
   failed stage 4 on `ModuleNotFoundError: z3`).
+
+## 2026-09-02 — Second CROWN door: a min/max-FREE exact rewrite that tightens full CROWN
+
+Goal: manually rewrite a plain-ReLU network — **no min/max** — so its **full CROWN** bound
+(not just IBP) gets tighter. This directly challenges the prior finding
+(`plain-relu-rewrites-cant-move-crown-bound`): rearranging a plain-ReLU net's linear skeleton
+is CROWN-neutral, and "min/max reassociation is the only CROWN door."
+
+- **The hole in the neutrality induction.** That argument fixes the *neuron set* (up to
+  nonneg-monomial relabeling). It says nothing about equivalent nets with a **different number
+  of ReLU nodes whose pre-activations are linearly dependent** — i.e. **redundant ReLU
+  structure**. Collapsing that redundancy is exact, min/max-free, and *does* move a CROWN bound.
+- **Mechanism.** CROWN relaxes each unstable ReLU independently, with slack `|coeff|·gap`. Two
+  duplicated neurons sharing pre-activation `z` but feeding the output with coeffs `c1, c2` cost
+  `(|c1|+|c2|)·gap`; the merged single neuron (coeff `c1+c2`) costs `|c1+c2|·gap` — strictly less
+  iff `sign(c1)≠sign(c2)` (a coefficient cancellation the duplicated form can't see). Survives
+  **CROWN-Optimized**: the loosening lives in the ReLU chord's constant offset `−lu/(u−l)`, which
+  α doesn't control (α narrows the gap but can't close it).
+- **Two exact rules** (both demonstrated):
+  1. **Merge proportional neurons** — rows `w`, `βw` (β>0) feeding `c1, c2` → one neuron, coeff
+     `c1+βc2`. (This is what e-graph hashconsing does for free.)
+  2. **Collapse complementary pairs** — `relu(−z)=relu(z)−z`, so
+     `c1·relu(z)+c2·relu(−z) = (c1+c2)·relu(z) − c2·z`: two unstable ReLUs → **one ReLU + a linear
+     (skip) correction**. The natural case (a two-sided feature), no artificial duplication.
+- **Measured on the real verifier** (auto_LiRPA in the abcrown venv, 2-hidden MLP 8→16→·→1,
+  ε=1.0; downstream coeffs **pinned moderate** cA=1.0, cB=∓0.8 → net 0.2, ratio 0.111, identical
+  across pairs — deliberately not drawn, so no pair gets a near-zero net coeff that would inflate
+  the headline):
+
+  | rule | full **CROWN-Optimized** (opposite-sign) | same-sign control |
+  |---|---|---|
+  | 1 merge proportional | 88.6 → 44.8 = **−49.5%** | exactly neutral |
+  | 2 collapse complementary | 124.9 → 98.9 = **−20.8%** | CROWN exactly neutral |
+
+  (IBP/CROWN also tighter: rule 1 −62.3%/−59.4%, rule 2 −26.5%/−33.4%.) Forms function-identical
+  on 50 samples; planted neurons genuinely unstable (pre-act gaps ~8–26); duplicates are **distinct
+  rows** (IBP's large gap confirms no auto_LiRPA node-sharing). The **same-sign controls being
+  exactly CROWN-neutral** is the load-bearing evidence that the effect is coefficient cancellation,
+  not net-shrinking. Rule 2's same-sign IBP is *looser* (skip re-boxing) but CROWN-exact —
+  confirming a genuine CROWN-relaxation effect, not an IBP artifact.
+- **Honest scope.** The net is *constructed* to contain the redundancy compiled/exported nets
+  exhibit (the `tll` lift's ~48% gain was de-compiling exactly this), then rewritten — a manual
+  mechanism demonstration, not a rewrite found on an off-the-shelf model. Rule 2 is
+  syntactically detectable (rows `w` and `−w` in a layer) and Z3-verifiable → a clean bridge to
+  tensat automation (a rewrite rule + a CROWN-gap extraction cost), **not done here**.
+- **Refines** `plain-relu-rewrites-cant-move-crown-bound`: "min/max is the only door" held only
+  for *canonical/irreducible* nets; **redundancy-collapse is the second CROWN door**, min/max the
+  first. Same "claim holds, with a named exception" pattern as the un-fusion correction.
+- **Artifacts** (untracked in `reassoc_results`, per convention): the demonstrator
+  `NNs/reassoc_results/crown_redundancy_collapse.py` and writeup
+  `NNs/reassoc_results/CROWN_REDUNDANCY_RESULT.md`.
