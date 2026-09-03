@@ -1193,3 +1193,47 @@ model, **no min/max**, improving **full CROWN-Optimized**, and — the anti-chea
   constraint 4's replication is the direct answer to the weight-coincidence concern).
 - **Artifacts** (untracked in `reassoc_results`): `NNs/reassoc_results/crelu_pilot.py`,
   `crelu_replicate.py`, writeup `CRELU_CROWN_RESULT.md`.
+
+## 2026-09-03 — Certified neuron-merging by row-proportionality snapping (the 7-step recipe)
+
+User recipe: (1) MLP, (2) verify CROWN, (3) find near-proportional weight-row pairs
+`row_j≈β·row_i`, (4) **snap** to exact proportionality, (5) **merge** the two now-proportional
+ReLU neurons in the next layer, (6) reverify, (7) **certify** the snap changed nothing significant.
+Executed end-to-end; `NNs/reassoc_results/snap_merge_pipeline.py` (+ probes `snap_merge_probe.py`,
+`snap_merge_probe2.py`), real auto_LiRPA CROWN-Optimized. Writeup `SNAP_MERGE_RESULT.md`.
+
+- **Three nets, exact algebra:** `orig →(lossy snap A1[j]:=β·A1[i])→ snapped →(exact merge:
+  drop j, A2[:,i]+=β·A2[:,j])→ merged`; for β>0 `relu(βz)=β·relu(z)` so snapped≡merged (float64
+  gate ≤1e-8). **Step-7 = a composed certificate for the ORIGINAL net:** the snap perturbs only
+  `z_j`, bounded over the ε-box by `d_j=|r·c+r_b|+Σρ_k|r_k|` (r=residual row); 1-Lipschitz ReLU
+  propagation gives `δ_m ≤ d_j·(|C||A3||A2[:,j]|)_m`; since `margin_orig ≥ margin_snap−δ` pointwise,
+  **`lb_merged − δ` is a sound lower bound for the unmodified original net**. Headline metric =
+  `(lb_merged−δ)` vs direct `CROWN-Opt(orig)`. δ-soundness **empirically validated**: 1000 random
+  box points/image give `max|Δmargin|−δ ≤ 0` everywhere (worst +0.000).
+
+- **Finding 1 (real nets, NEGATIVE — the answer to the recipe on a real net).** Min row-pair
+  residual `‖row_j−β·row_i‖/‖row_j‖` across training regimes never drops below ~0.40: vanilla
+  0.66 (H=64/128/256 all ~0.66–0.70), dropout-0.5 0.45–0.55, wd-1e-3 0.61, dropout+wd 0.40–0.45,
+  long/small 0.62. Width doesn't help (near-orthogonal high-dim rows); dropout/wd help marginally.
+  Full pipeline on vanilla: **0 snap-candidates (res<0.20) at every ε** — the "best" pair only
+  prunes a low-impact neuron (β≈0.009). Crossover: a pair pays only around **res ≲ 0.02**, ~20×
+  below the real-training floor. **On standard MLPs the technique does not fire: the required
+  structure is absent.**
+
+- **Finding 2 (POSITIVE, pipeline machinery).** On a net with structure *planted* (soft
+  proportionality penalty, labelled a pipeline existence proof — NOT a real-net claim), 4 pairs at
+  res=0.001/β≈1.0. The merge tightens full CROWN on average at every ε (step-5 isolation mean >0;
+  per-image min >0 for ε≥0.05, −0.0000 α-noise at ε=0.03), δ negligible (~0.009), and the composed
+  certificate **beats direct CROWN on the ORIGINAL net on 57/60 images at ε=0.08** (mean +0.0275),
+  growing with ε. Caveats (honest): δ adds linearly per pair so at small ε fewer pairs pay (ε=0.03:
+  1 pair 36/60 net-positive, 4 pairs 19/60 net-negative — tune pair count to ε); images where
+  cert<lb_orig stay sound via `max(lb_orig,cert)`.
+
+- **Relation to prior work:** the approximate / certified-surrogate cousin of the exact
+  CReLU-collapse (`CRELU_CROWN_RESULT.md`) — same CROWN door (collapsing linearly-dependent
+  unstable ReLUs), but the proportionality is inexact and the function change is **certified** and
+  folded back into a valid bound for the unmodified original model (the delta over the
+  compression/merging literature, which accepts uncertified error). δ uses the sound-but-loose
+  1-Lipschitz `|W|` propagation; a tighter δ widens the crossover but not the ~20× to reach 0.4.
+- **Artifacts** (untracked in `reassoc_results`): `snap_merge_pipeline.py`, `snap_merge_probe.py`,
+  `snap_merge_probe2.py`, writeup `SNAP_MERGE_RESULT.md`.
