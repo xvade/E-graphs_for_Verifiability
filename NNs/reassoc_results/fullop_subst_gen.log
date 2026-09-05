@@ -1,0 +1,39 @@
+START 12:39:47 on g3109 alloc 39459033
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+[19:39:52] [0/3] protobuf bindings
+[19:39:54] [1/3] generator (FULL op set, depth 3, subgraph/supergraph/varorder relaxed; SUBST dedup ON, no commute)
+===================== Generated 48498 Transfers =====================
+  shard 0: 24526 rules, ~5919580 bytes -> graph_subst_000.pb
+===================== Generated 24526 Transfers in 1 shard(s) =====================
+[20:10:30] pb size: 0	total
+[20:10:30] [2/3] pb2egg (+ multi-output save)
+    total rules in pb:        24526
+    saved multi-output -> /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/reassoc_results/fullop_subst_d3_egg.multi.pb: 16878
+    skipped (multi-output):   16878
+    skipped (non-clean ops):  452
+    skipped (identity):       1148
+    skipped (unbound RHS var):620
+    skipped (tensat-unapplicable ops): 0
+    emitted egg rules:        5248
+      of which min/max rules: 1903
+[20:10:40] [3/3] pre-dedup (alpha-equivalence)
+    pre-dedup: 5248 -> 4433 unique (exact + alpha-equivalence)
+[20:10:40] DONE (through dedup). Op histogram of dedup set:
+   5421 ewsub
+   3765 ewadd
+   2383 ewmax
+   2336 ewmul
+   2327 ewmin
+   1918 smul
+   1904 conv2d
+   1655 matmul
+   1469 concat
+   1306 transpose
+   1026 relu
+    632 poolavg
+    386 poolmax
+   5247 /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/reassoc_results/fullop_subst_d3_egg.txt
+   4432 /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/reassoc_results/fullop_subst_d3_dedup.txt
+   9679 total
+[20:10:40] NEXT: verify (conv->-m verify, pwl->z3) + prune -> core
+EXIT 0 13:10:40

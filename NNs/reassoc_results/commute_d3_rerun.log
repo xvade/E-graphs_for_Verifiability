@@ -1,0 +1,4 @@
+[09:31:30] [0/5] protobuf python binding
+[09:31:30] [1/5] generator (PWL, depth 3, GEN_COMMUTE + subgraph/supergraph/varorder; RELAX_SUBST OFF)
+Source Graph: Transpose_10[0]{input0(EWMin[0]{input0(w1)input1(w2)})} | EWAdd[0]{input0(x1)input1(x2)} | 
+Target Graph: Transpose_10[0]{in

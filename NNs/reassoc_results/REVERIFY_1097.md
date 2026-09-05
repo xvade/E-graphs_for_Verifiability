@@ -1,5 +1,13 @@
 # Reverify all models with the 1097 PWL+matmul core (relaxed_d3_core.txt)
 
+> **RESOLVED 2026-09-01 — the `--n_diverse` "regression" below is not a
+> regression.** Bisect shows `e9b139a` == HEAD byte-for-byte on the identical
+> maxout invocation; a 6× budget increase doesn't help; and `pwl_rules_ac.txt`
+> is dated Aug-30, so the Aug-29 depths-10–18 run never used it (this doc
+> conflated the verif_cost win's rules with the diverse run's). The collapse is
+> `DiverseCost`'s penalize-only design ceiling × a ~279-enode reachable e-graph.
+> Full write-up: `../../PROBLEMATIC.md` #2. Use `--verif_cost` / `ArchDiverseCost`.
+
 Status: IN PROGRESS. This records the run so far + the diagnosis. (2026-08-31)
 
 ## Result of the first pass (1097 core, n_diverse 20, n_iter 12, n_sec 120)

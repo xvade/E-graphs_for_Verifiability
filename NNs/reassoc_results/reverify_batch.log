@@ -1,0 +1,221 @@
+==== reverify with 1097 core  Mon Aug 31 15:18:02 PDT 2026 ====
+venv torch 2.11.0+cu130 cuda True
+############### REVERIFY: maxout  (rules=relaxed_d3_core.txt) ###############
+=== [1] tensat forms (CPU taso) ===
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+--- n_diverse 20 ---
+Diverse sample 15 (seed 15): cost 154000000.0, extraction took 1.078178809s, 0 new enodes added to the used set (total 233)
+Diverse sample 16 (seed 16): cost 154000000.0, extraction took 1.079303412s, 0 new enodes added to the used set (total 233)
+Diverse sample 17 (seed 17): cost 154000000.0, extraction took 1.078378679s, 0 new enodes added to the used set (total 233)
+Diverse sample 18 (seed 18): cost 154000000.0, extraction took 1.077281697s, 0 new enodes added to the used set (total 233)
+Diverse sample 19 (seed 19): cost 154000000.0, extraction took 1.080024472s, 0 new enodes added to the used set (total 233)
+diverse forms exported: 20
+--- verif_cost steered ---
+verif-cost: 0 sensitivity weights loaded
+verif-cost: 16/16 leaf intervals matched an e-class weight-name set
+verif-cost extraction: gap-cost 35482788.0, 132 nodes, took 267.40596ms
+=== [2] reconstruct forms -> ONNX ===
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by bash)
+reconstructed: 20 / 20
+depths:      19 8       1 11 
+RECON_DONE
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+=== [3] alpha-CROWN bounds (abcrown venv, GPU) ===
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/torch/jit/_script.py:1488: DeprecationWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/convert/layer.py:29: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  layer.weight.data = torch.from_numpy(numpy_helper.to_array(weight))
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/convert/model.py:151: UserWarning: Using experimental implementation that allows 'batch_size > 1'.Batchnorm layers could potentially produce false outputs.
+  warnings.warn(
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/bound_forms.py:65: ResourceWarning: unclosed file <_io.TextIOWrapper name='/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/reassoc_results/maxout_core_forms/manifest.txt' mode='r' encoding='UTF-8'>
+  man = [l.split() for l in open(os.path.join(REPO, "NNs/reassoc_results", sub, "manifest.txt")) if "onnx" in l]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py:3023: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+form depth cert_ub  unstable  numchk
+   1     8  12.0257  14/120   9.5e-07
+  10     8  12.0257  14/120   9.5e-07
+  11     8  12.0257  14/120   9.5e-07
+  12     8  12.0257  14/120   9.5e-07
+  13     8  12.0257  14/120   9.5e-07
+  14     8  12.0257  14/120   9.5e-07
+  15     8  12.0257  14/120   9.5e-07
+  16     8  12.0257  14/120   9.5e-07
+  17     8  12.0257  14/120   9.5e-07
+  18     8  12.0257  14/120   9.5e-07
+  19     8  12.0257  14/120   9.5e-07
+   2     8  12.0257  14/120   9.5e-07
+   3     8  12.0257  14/120   9.5e-07
+   4     8  12.0257  14/120   9.5e-07
+   5     8  12.0257  14/120   9.5e-07
+   6     8  12.0257  14/120   9.5e-07
+   7     8  12.0257  14/120   9.5e-07
+   8     8  12.0257  14/120   9.5e-07
+   9     8  12.0257  14/120   9.5e-07
+   0    11  12.0257  14/120   9.5e-07
+
+numeric-gate failures: 0 []
+tensat forms: ub range [12.0257, 12.0257] (n=20)
+depth vs cert_ub corr = +nan
+############### maxout DONE ###############
+############### REVERIFY: lattice  (rules=relaxed_d3_core.txt) ###############
+=== [1] tensat forms (CPU taso) ===
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+--- n_diverse 20 ---
+Diverse sample 15 (seed 15): cost 146000000.0, extraction took 1.384926437s, 0 new enodes added to the used set (total 230)
+Diverse sample 16 (seed 16): cost 146000000.0, extraction took 1.381570855s, 0 new enodes added to the used set (total 230)
+Diverse sample 17 (seed 17): cost 146000000.0, extraction took 1.383356007s, 0 new enodes added to the used set (total 230)
+Diverse sample 18 (seed 18): cost 146000000.0, extraction took 1.382825432s, 0 new enodes added to the used set (total 230)
+Diverse sample 19 (seed 19): cost 146000000.0, extraction took 1.382326726s, 0 new enodes added to the used set (total 230)
+diverse forms exported: 20
+--- verif_cost steered ---
+verif-cost: 0 sensitivity weights loaded
+verif-cost: 16/16 leaf intervals matched an e-class weight-name set
+verif-cost extraction: gap-cost 35482788.0, 132 nodes, took 209.189253ms
+=== [2] reconstruct forms -> ONNX ===
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by bash)
+reconstructed: 20 / 20
+depths:      19 8       1 10 
+RECON_DONE
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+=== [3] alpha-CROWN bounds (abcrown venv, GPU) ===
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/torch/jit/_script.py:1488: DeprecationWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/convert/layer.py:29: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  layer.weight.data = torch.from_numpy(numpy_helper.to_array(weight))
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/convert/model.py:151: UserWarning: Using experimental implementation that allows 'batch_size > 1'.Batchnorm layers could potentially produce false outputs.
+  warnings.warn(
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/bound_forms.py:65: ResourceWarning: unclosed file <_io.TextIOWrapper name='/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/reassoc_results/lattice_core_forms/manifest.txt' mode='r' encoding='UTF-8'>
+  man = [l.split() for l in open(os.path.join(REPO, "NNs/reassoc_results", sub, "manifest.txt")) if "onnx" in l]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py:3023: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+form depth cert_ub  unstable  numchk
+   1     8   8.5019  14/120   4.8e-07
+  10     8   8.5019  14/120   4.8e-07
+  11     8   8.5019  14/120   4.8e-07
+  12     8   8.5019  14/120   4.8e-07
+  13     8   8.5019  14/120   4.8e-07
+  14     8   8.5019  14/120   4.8e-07
+  15     8   8.5019  14/120   4.8e-07
+  16     8   8.5019  14/120   4.8e-07
+  17     8   8.5019  14/120   4.8e-07
+  18     8   8.5019  14/120   4.8e-07
+  19     8   8.5019  14/120   4.8e-07
+   2     8   8.5019  14/120   4.8e-07
+   3     8   8.5019  14/120   4.8e-07
+   4     8   8.5019  14/120   4.8e-07
+   5     8   8.5019  14/120   4.8e-07
+   6     8   8.5019  14/120   4.8e-07
+   7     8   8.5019  14/120   4.8e-07
+   8     8   8.5019  14/120   4.8e-07
+   9     8   8.5019  14/120   4.8e-07
+   0    10   8.5019  14/120   7.2e-07
+
+numeric-gate failures: 0 []
+tensat forms: ub range [8.5019, 8.5019] (n=20)
+depth vs cert_ub corr = +nan
+############### lattice DONE ###############
+############### REVERIFY: mnist_tiny_mlp  (rules=relaxed_d3_core.txt) ###############
+=== [1] tensat forms (CPU taso) ===
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+--- n_diverse 20 ---
+Diverse sample 15 (seed 15): cost 25000000.0, extraction took 329.945051ms, 0 new enodes added to the used set (total 22)
+Diverse sample 16 (seed 16): cost 25000000.0, extraction took 328.825045ms, 0 new enodes added to the used set (total 22)
+Diverse sample 17 (seed 17): cost 25000000.0, extraction took 328.143415ms, 0 new enodes added to the used set (total 22)
+Diverse sample 18 (seed 18): cost 25000000.0, extraction took 329.884771ms, 0 new enodes added to the used set (total 22)
+Diverse sample 19 (seed 19): cost 25000000.0, extraction took 329.161499ms, 0 new enodes added to the used set (total 22)
+diverse forms exported: 20
+=== [2] reconstruct forms -> ONNX ===
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by bash)
+reconstructed: 20 / 20
+depths:      20 6 
+RECON_DONE
+=== [3] alpha-CROWN bounds (abcrown venv, GPU) ===
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/torch/jit/_script.py:1488: DeprecationWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/convert/layer.py:29: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  layer.weight.data = torch.from_numpy(numpy_helper.to_array(weight))
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/convert/model.py:151: UserWarning: Using experimental implementation that allows 'batch_size > 1'.Batchnorm layers could potentially produce false outputs.
+  warnings.warn(
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/bound_forms.py:65: ResourceWarning: unclosed file <_io.TextIOWrapper name='/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/reassoc_results/mnist_tiny_mlp_core_forms/manifest.txt' mode='r' encoding='UTF-8'>
+  man = [l.split() for l in open(os.path.join(REPO, "NNs/reassoc_results", sub, "manifest.txt")) if "onnx" in l]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/operations/reshape.py:36: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if shape[0] == 1 and len(shape) in [2, 3, 4, 5] and self.quirks.get("fix_batch_size") is True:
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/operations/reshape.py:36: TracerWarning: Using len to get tensor shape might cause the trace to be incorrect. Recommended usage would be tensor.shape[0]. Passing a tensor of different shape might lead to errors or silently give incorrect results.
+  if shape[0] == 1 and len(shape) in [2, 3, 4, 5] and self.quirks.get("fix_batch_size") is True:
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/operations/reshape.py:54: TracerWarning: torch.tensor results are registered as constants in the trace. You can safely ignore this warning if you use this function to create tensors out of constant variables that would be the same every time you call this function. In any other case, this might cause the trace to be incorrect.
+  if (torch.prod(torch.tensor(input.shape)) != torch.prod(shape) and len(input.size()) == len(shape) + 1
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/onnx2pytorch/operations/reshape.py:58: TracerWarning: Iterating over a tensor might cause the trace to be incorrect. Passing a tensor of different shape won't change the number of iterations executed (and might lead to errors or silently give incorrect results).
+  shape = [x if x != 0 else input.size(i) for i, x in enumerate(shape)]
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+Early stop at 15th iter due to 10 iterations no improvement!
+Early stop at 17th iter due to 10 iterations no improvement!
+form depth cert_ub  unstable  numchk
+   0     6   0.9710   2/20   1.3e-06
+   1     6   0.9710   2/20   1.3e-06
+  10     6   0.9710   2/20   1.3e-06
+  11     6   0.9710   2/20   1.3e-06
+  12     6   0.9710   2/20   1.3e-06
+  13     6   0.9710   2/20   1.3e-06
+  14     6   0.9710   2/20   1.3e-06
+  15     6   0.9710   2/20   1.3e-06
+  16     6   0.9710   2/20   1.3e-06
+  17     6   0.9710   2/20   1.3e-06
+  18     6   0.9710   2/20   1.3e-06
+  19     6   0.9710   2/20   1.3e-06
+   2     6   0.9710   2/20   1.3e-06
+   3     6   0.9710   2/20   1.3e-06
+   4     6   0.9710   2/20   1.3e-06
+   5     6   0.9710   2/20   1.3e-06
+   6     6   0.9710   2/20   1.3e-06
+   7     6   0.9710   2/20   1.3e-06
+   8     6   0.9710   2/20   1.3e-06
+   9     6   0.9710   2/20   1.3e-06
+
+numeric-gate failures: 0 []
+tensat forms: ub range [0.9710, 0.9710] (n=20)
+depth vs cert_ub corr = +nan
+############### mnist_tiny_mlp DONE ###############
+==== BATCH DONE Mon Aug 31 15:32:32 PDT 2026 ====

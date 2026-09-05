@@ -1,0 +1,36 @@
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+[16:27:15] [0/5] protobuf binding
+[16:27:16] [1/5] generator (PWL, depth 3, all relaxations + GEN_COMMUTE)
+[libprotobuf ERROR google/protobuf/message_lite.cc:402] GraphSubst.RuleCollection exceeded maximum protobuf size of 2GB: 3218085979
+Target Graph: Transpose_10[0]{input0(TransposeShuffle_10[0]{input0(w2)})} | TransposeShuffle_10[0]{input0(w3)} | 
+===================== Generated 14409379 Transfers =====================
+[16:36:13] [2/5] pb2egg (+ multi-output save)
+    total rules in pb:        0
+    saved multi-output:       0 (none present)
+    skipped (multi-output):   0
+    skipped (non-clean ops):  0
+    skipped (identity):       0
+    skipped (unbound RHS var):0
+    emitted egg rules:        0
+      of which min/max rules: 0
+[16:36:14] [3/5] pre-dedup (alpha-equivalence)
+    pre-dedup: 0 -> 0 unique (exact + alpha-equivalence)
+[16:36:14] [4/5] Z3 verify -> commute_d3_verified.txt (PRE-PRUNE, retained)
+    total rules:   0
+    VERIFIED:      0  (min/max: 0)
+    REJECTED:      0   (provably NOT equivalences -- random-test false positives)
+    UNKNOWN:       0   (z3 timeout/incomplete)
+    parse-errored: 0
+[16:36:15] [5/5] redundancy prune -> commute_d3_core.txt
+Running mode is: redundancy
+redundancy: 0 rules, 0 groundable (elementwise/PWL), budget 4 iters
+redundancy: pruned 0 redundant, kept 0 (0 non-groundable kept as-is)
+redundancy: wrote 0 kept rules to /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/reassoc_results/commute_d3_core.txt
+[16:36:16] DONE. Counts + commutativity check:
+0 /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/reassoc_results/commute_d3_egg.txt
+0 /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/reassoc_results/commute_d3_dedup.txt
+0 /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/reassoc_results/commute_d3_verified.txt
+0 /mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/reassoc_results/commute_d3_core.txt
+0 total
+bare ewmax/ewmin commutativity rules in core (2-leaf a<->b swaps):
+0

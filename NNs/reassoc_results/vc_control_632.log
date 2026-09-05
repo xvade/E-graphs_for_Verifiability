@@ -1,0 +1,8 @@
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+  Stopped: TimeLimit(150.977660446)
+  Number of iterations: 19
+verif-cost: 0 sensitivity weights loaded
+verif-cost: 16/16 leaf intervals matched an e-class weight-name set
+verif-cost extraction: gap-cost 12807726.0, 132 nodes, took 3.637782264s
+exported NNs/reassoc_results/maxout_ac632_forms/recon_vc.onnx OK
+CONTROL verif form depth 18

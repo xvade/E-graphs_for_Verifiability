@@ -1,0 +1,148 @@
+Running mode is: optimize
+Number of canonicalized 11
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (ewadd ?i_0 (ewadd ?i_1 ?i_2))  ->  1 eclasses matched, 1 total substs
+DEBUG multi-pattern canonical[3] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[5] = (ewsub ?i_0 (ewadd ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[6] = (smul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[7] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[8] = (ewmax ?i_0 (ewmax ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[9] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[10] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[1] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_8 (ewadd ?input_7 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 0) running_total=(2, 2, 2, 0)
+DEBUG multi-pattern rule[5] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(17, 17, 2, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(23, 17, 2, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (23, 17, 2, 0)
+DEBUG rewrite-witness total=0 per-rule(rule_index:count)={}
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (ewadd ?i_0 (ewadd ?i_1 ?i_2))  ->  3 eclasses matched, 5 total substs
+DEBUG multi-pattern canonical[3] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[5] = (ewsub ?i_0 (ewadd ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[6] = (smul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[7] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[8] = (ewmax ?i_0 (ewmax ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[9] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[10] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[1] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_8 (ewadd ?input_7 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(10, 10, 10, 0) running_total=(10, 10, 10, 0)
+DEBUG multi-pattern rule[5] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(25, 25, 10, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(31, 25, 10, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (31, 25, 10, 0)
+DEBUG rewrite-witness total=0 per-rule(rule_index:count)={}
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (ewadd ?i_0 (ewadd ?i_1 ?i_2))  ->  3 eclasses matched, 16 total substs
+DEBUG multi-pattern canonical[3] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[5] = (ewsub ?i_0 (ewadd ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[6] = (smul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[7] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[8] = (ewmax ?i_0 (ewmax ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[9] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[10] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[1] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_8 (ewadd ?input_7 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 0) running_total=(32, 32, 32, 0)
+DEBUG multi-pattern rule[5] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(47, 47, 32, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(53, 47, 32, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (53, 47, 32, 0)
+DEBUG rewrite-witness total=0 per-rule(rule_index:count)={}
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (ewadd ?i_0 (ewadd ?i_1 ?i_2))  ->  3 eclasses matched, 36 total substs
+DEBUG multi-pattern canonical[3] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[5] = (ewsub ?i_0 (ewadd ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[6] = (smul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[7] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[8] = (ewmax ?i_0 (ewmax ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[9] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[10] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[1] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_8 (ewadd ?input_7 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(72, 72, 72, 0) running_total=(72, 72, 72, 0)
+DEBUG multi-pattern rule[5] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(87, 87, 72, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(93, 87, 72, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (93, 87, 72, 0)
+DEBUG rewrite-witness total=0 per-rule(rule_index:count)={}
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (ewadd ?i_0 (ewadd ?i_1 ?i_2))  ->  7 eclasses matched, 64 total substs
+DEBUG multi-pattern canonical[3] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[5] = (ewsub ?i_0 (ewadd ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[6] = (smul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[7] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[8] = (ewmax ?i_0 (ewmax ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[9] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[10] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[1] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_8 (ewadd ?input_7 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(128, 128, 128, 0) running_total=(128, 128, 128, 0)
+DEBUG multi-pattern rule[5] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(143, 143, 128, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(149, 143, 128, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (149, 143, 128, 0)
+DEBUG rewrite-witness total=0 per-rule(rule_index:count)={}
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (ewadd ?i_0 (ewadd ?i_1 ?i_2))  ->  9 eclasses matched, 88 total substs
+DEBUG multi-pattern canonical[3] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[5] = (ewsub ?i_0 (ewadd ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[6] = (smul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[7] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[8] = (ewmax ?i_0 (ewmax ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[9] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[10] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[1] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_8 (ewadd ?input_7 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(176, 176, 176, 0) running_total=(176, 176, 176, 0)
+DEBUG multi-pattern rule[5] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(191, 191, 176, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(197, 191, 176, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (197, 191, 176, 0)
+DEBUG rewrite-witness total=0 per-rule(rule_index:count)={}
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (ewadd ?i_0 (ewadd ?i_1 ?i_2))  ->  5 eclasses matched, 96 total substs
+DEBUG multi-pattern canonical[3] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[5] = (ewsub ?i_0 (ewadd ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[6] = (smul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[7] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[8] = (ewmax ?i_0 (ewmax ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[9] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[10] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[1] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_8 (ewadd ?input_7 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(192, 192, 192, 0) running_total=(192, 192, 192, 0)
+DEBUG multi-pattern rule[5] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(207, 207, 192, 0)
+DEBUG multi-pattern rule[8] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(213, 207, 192, 0)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (213, 207, 192, 0)
+DEBUG rewrite-witness total=0 per-rule(rule_index:count)={}
+Done one
+Number of nodes added: 0
+Runner complete!
+  Nodes: 183
+  Classes: 112
+  Stopped: Saturated
+  Time taken: 54.91459ms
+  Number of iterations: 7
+  Average nodes per class: 1.6339285
+  Number of edges: 323
+  Number of programs: 16.04029
+Extractor complete!
+  Time taken: 1.154784ms
+  Best cost: 0.47043005
+Skipping full graph runtime evaluation (--no_runtime_report)

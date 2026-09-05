@@ -1,0 +1,22 @@
+==== verif_cost reverify (1097 core) Mon Aug 31 17:10:44 PDT 2026 ====
+### maxout (verif_cost, 1097 core) ###
+  Stopped: TimeLimit(150.096053309)
+  Number of iterations: 13
+verif-cost: 0 sensitivity weights loaded
+verif-cost: 16/16 leaf intervals matched an e-class weight-name set
+verif-cost extraction: gap-cost 35482788.0, 132 nodes, took 273.842059ms
+Cuda failure: 35
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/taso/src/cudnn/ops_cudnn.cu:24
+Aborting...
+verif form depth 7, reconstructed
+### lattice (verif_cost, 1097 core) ###
+  Stopped: TimeLimit(150.257697555)
+  Number of iterations: 15
+verif-cost: 0 sensitivity weights loaded
+verif-cost: 16/16 leaf intervals matched an e-class weight-name set
+verif-cost extraction: gap-cost 35482788.0, 132 nodes, took 625.476478ms
+Cuda failure: 35
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/taso/src/cudnn/ops_cudnn.cu:24
+Aborting...
+verif form depth 7, reconstructed
+==== DONE Mon Aug 31 17:18:13 PDT 2026. baselines: maxout input 12.0257 (prior verif_cost 9.65); lattice plateau 8.50 ====

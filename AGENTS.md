@@ -16,4 +16,7 @@ When writing new code
 3. Write the tests for the new code, some of them should fail.
 4. Write the new code.
 5. Update the documentation with the current state.
-6. Commit.
+6. Commit and push.
+
+# Record Progress
+Treat `PROGRESS.md` as a diary. You should record all successes, failures, and results in it. It will be the primary source for writing the paper that comes out of this work.

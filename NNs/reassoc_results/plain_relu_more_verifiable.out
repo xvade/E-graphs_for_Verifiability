@@ -1,0 +1,19 @@
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/alpha-beta-CROWN/.venv/lib/python3.11/site-packages/torch/jit/_script.py:1488: DeprecationWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+W0902 17:45:25.706000 732392 torch/utils/cpp_extension.py:140] No CUDA runtime is found, using CUDA_HOME='/usr/local/cuda'
+equivalence: max|f_unfolded - f_folded| = 9.54e-07  (sound rewrite)
+
+  IBP first-ReLU pre-act [unfolded B(Ax) ] lo=[-1. -1.]  hi=[7. 7.]  unstable=2  (UNSTABLE)
+  IBP first-ReLU pre-act [folded (BA)x   ] lo=[1. 1.]  hi=[5. 5.]  unstable=0  (STABLE)
+
+  IBP              out-radius unfolded=[9.275 9.625]  folded=[5.9500003 5.825    ]   -> folded TIGHTER
+  CROWN            out-radius unfolded=[4.528571 4.7     ]  folded=[4.528571 4.7     ]   -> identical
+Early stop at 12th iter due to 10 iterations no improvement!
+Early stop at 10th iter due to 10 iterations no improvement!
+Early stop at 12th iter due to 10 iterations no improvement!
+Early stop at 10th iter due to 10 iterations no improvement!
+  CROWN-Optimized  out-radius unfolded=[4.528571 4.6625  ]  folded=[4.528571 4.6625  ]   -> identical
+
+Read: under IBP the fold flips the first ReLU unstable->stable and shrinks the
+certified output radius -> a MORE VERIFIABLE equivalent form. Under CROWN both
+forms are already tight (fold neutral): the rule is verifier-conditional.

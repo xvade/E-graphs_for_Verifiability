@@ -1,0 +1,8 @@
+/usr/bin/bash: /opt/conda/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
+### FULL tensat output (maxout, 1097 core, n_diverse 5) ###
+Running mode is: optimize
+Number of canonicalized 2
+Cuda failure: 35
+/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/taso/src/cudnn/ops_cudnn.cu:24
+Aborting...
+### exported files ###

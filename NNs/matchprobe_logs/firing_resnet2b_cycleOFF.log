@@ -1,0 +1,777 @@
+Running mode is: optimize
+Number of canonicalized 127
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (ewadd ?i_0 (ewadd ?i_1 ?i_2))  ->  1 eclasses matched, 1 total substs
+DEBUG multi-pattern canonical[3] = (ewmul ?i_0 (ewmul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (ewsub ?i_0 (ewsub ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[5] = (ewsub (ewadd ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[6] = (ewsub ?i_0 (ewadd ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[7] = (conv2d 1 1 0 0 (ewsub ?i_0 ?i_1) (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[8] = (conv2d 1 1 0 2 (ewsub ?i_0 ?i_1) (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[9] = (ewmax ?i_0 (ewmax ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[10] = (ewsub (ewmax ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[11] = (ewsub (ewmax ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[12] = (ewsub ?i_0 (ewmax ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[13] = (ewsub ?i_0 (ewmax ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[14] = (ewmin ?i_0 (ewmin ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[15] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[16] = (poolavg ?i_0 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[17] = (relu (poolavg ?i_0 3 3 1 1 0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[18] = (poolavg (Iconv 3 3) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[19] = (conv2d 1 1 0 2 (Iconv 3 3) (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[20] = (smul (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[21] = (smul (ewmul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[22] = (matmul 0 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[23] = (matmul 0 ?i_0 (smul ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[24] = (smul (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[25] = (smul (poolavg ?i_0 3 3 1 1 0 0) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[26] = (conv2d 1 1 0 2 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[27] = (conv2d 1 1 0 2 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[28] = (ewmul ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[29] = (transpose (smul ?i_0 ?i_1) 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[30] = (transpose (relu ?i_0) 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[31] = (matmul 0 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[32] = (transpose (smul ?i_0 ?i_1) 1_0 1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[33] = (transpose (relu ?i_0) 1_0 1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[34] = (concat 1 2 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[35] = (matmul 0 (transpose ?i_0 1_0 0) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[36] = (concat 0 2 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[37] = (ewadd ?i_0 ?i_1)  ->  10 eclasses matched, 10 total substs
+DEBUG multi-pattern canonical[38] = (ewmul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[39] = (ewsub ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[40] = (ewmax ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[41] = (ewmin ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[42] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[43] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[44] = (poolmax ?i_0 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[45] = (Cpool 3 3)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[46] = (Iconv 3 3)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[47] = Imatmul  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[48] = Iewmul  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[49] = (smul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[50] = (relu ?i_0)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[51] = (concat 1 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[52] = (concat 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[53] = (concat 1 4 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[54] = (concat 0 4 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[55] = (transpose ?i_0 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[56] = (transpose ?i_0 1_0 1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[57] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[58] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[59] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[60] = (ewadd ?i_0 (ewsub ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[61] = (ewsub (ewsub ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[62] = (ewsub ?i_0 (ewadd ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[63] = (ewsub ?i_0 (ewadd ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[64] = (ewsub ?i_0 (ewsub ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[65] = (ewmul ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[66] = (ewadd ?i_0 (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[67] = (ewsub (ewsub ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[68] = (ewadd ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[69] = (ewmul ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[70] = (ewsub ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[71] = (ewsub (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[72] = (ewmax ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[73] = (ewmin ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[74] = (conv2d 1 1 0 0 (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[75] = (conv2d 1 1 0 2 (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[76] = (poolavg (conv2d 1 1 0 0 ?i_0 ?i_1) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[77] = (poolmax (conv2d 1 1 0 0 ?i_0 ?i_1) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[78] = (conv2d 1 1 0 0 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[79] = (concat 1 4 ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[80] = (concat 0 4 ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[81] = (ewadd ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[82] = (conv2d 1 1 0 0 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[83] = (ewsub ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[84] = (ewsub (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[85] = (ewmax ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[86] = (ewmin ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[87] = (conv2d 1 1 0 0 (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[88] = (conv2d 1 1 0 0 (Cpool 3 3) (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[89] = (conv2d 1 1 0 2 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[90] = (conv2d 1 1 0 2 (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[91] = (conv2d 1 1 0 2 (Cpool 3 3) (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[92] = (poolavg (Cpool 3 3) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[93] = (smul (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[94] = (relu (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[95] = (concat 1 4 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[96] = (concat 0 4 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[97] = (ewadd ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[98] = (ewmul ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[99] = (ewsub ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[100] = (ewsub (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[101] = (ewmax ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[102] = (ewmin ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[103] = (conv2d 1 1 0 0 (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[104] = (conv2d 1 1 0 2 (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[105] = (smul (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[106] = (concat 1 4 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[107] = (concat 0 4 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[108] = (matmul 0 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[109] = (ewadd ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[110] = (ewsub ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[111] = (ewsub (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[112] = (ewmax ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[113] = (ewmin ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[114] = (smul (smul ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[115] = (relu (smul ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[116] = (concat 1 2 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[117] = (concat 0 2 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[118] = (ewadd ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[119] = (ewsub ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[120] = (ewsub (relu ?i_0) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[121] = (smul ?i_0 (relu ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[122] = (relu (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[123] = (conv2d 1 1 0 0 (concat 0 4 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[124] = (conv2d 1 1 0 0 (concat 0 4 ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[125] = (conv2d 1 1 0 2 (concat 0 4 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[126] = (conv2d 1 1 0 2 (concat 0 4 ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[1] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_8 (ewadd ?input_7 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(2, 2, 2, 2)
+DEBUG multi-pattern rule[2] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_7 (ewadd ?input_8 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(4, 4, 4, 4)
+DEBUG multi-pattern rule[109] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(9, 0, 0, 0) running_total=(13, 4, 4, 4)
+DEBUG multi-pattern rule[110] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_5 (ewadd ?input_4 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(9, 9, 9, 9) running_total=(22, 13, 13, 13)
+DEBUG multi-pattern rule[111] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(9, 9, 9, 9) running_total=(31, 22, 22, 22)
+DEBUG multi-pattern rule[166] src1=(matmul 0 ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(matmul 0 ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(33, 24, 24, 24)
+DEBUG multi-pattern rule[167] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(matmul 0 ?input_4 ?input_5) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(matmul 0 ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(35, 26, 26, 26)
+DEBUG multi-pattern rule[168] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(ewadd ?input_4 ?input_5) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(ewadd ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(9, 9, 9, 9) running_total=(44, 35, 35, 35)
+DEBUG multi-pattern rule[174] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_10) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_10)  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(47, 38, 38, 38)
+DEBUG multi-pattern rule[176] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_13) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_13)  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(50, 41, 41, 41)
+DEBUG multi-pattern rule[185] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(relu ?input_4) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(relu ?input_4)  (pairs,compatible,valid,cycle_ok) this_rule=(6, 6, 6, 6) running_total=(56, 47, 47, 47)
+DEBUG multi-pattern rule[191] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(transpose ?input_4 1_0 1) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(transpose ?input_4 1_0 1)  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(58, 49, 49, 49)
+DEBUG multi-pattern rule[192] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(9, 9, 9, 9) running_total=(67, 58, 58, 58)
+DEBUG multi-pattern rule[198] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(70, 61, 61, 61)
+DEBUG multi-pattern rule[200] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(73, 64, 64, 64)
+DEBUG multi-pattern rule[209] src1=(relu ?input_4) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(relu ?input_4) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 6, 6, 6) running_total=(79, 70, 70, 70)
+DEBUG multi-pattern rule[215] src1=(transpose ?input_4 1_0 1) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(transpose ?input_4 1_0 1) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(81, 72, 72, 72)
+DEBUG multi-pattern rule[216] src1=(matmul 0 ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(matmul 0 ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(83, 74, 74, 74)
+DEBUG multi-pattern rule[217] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(9, 0, 0, 0) running_total=(92, 74, 74, 74)
+DEBUG multi-pattern rule[218] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(matmul 0 ?input_4 ?input_5) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(matmul 0 ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(94, 76, 76, 76)
+DEBUG multi-pattern rule[219] src1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) src2=(ewadd ?input_1 ?input_2) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(ewadd ?input_1 ?input_2)  (pairs,compatible,valid,cycle_ok) this_rule=(9, 0, 0, 0) running_total=(103, 76, 76, 76)
+DEBUG multi-pattern rule[220] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(ewadd ?input_4 ?input_5) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(ewadd ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(9, 9, 9, 9) running_total=(112, 85, 85, 85)
+DEBUG multi-pattern rule[227] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_10) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_10)  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(115, 88, 88, 88)
+DEBUG multi-pattern rule[229] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_13) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_13)  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(118, 91, 91, 91)
+DEBUG multi-pattern rule[238] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(relu ?input_4) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(relu ?input_4)  (pairs,compatible,valid,cycle_ok) this_rule=(6, 6, 6, 6) running_total=(124, 97, 97, 97)
+DEBUG multi-pattern rule[244] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(transpose ?input_4 1_0 1) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(transpose ?input_4 1_0 1)  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(126, 99, 99, 99)
+DEBUG multi-pattern rule[245] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(9, 9, 9, 9) running_total=(135, 108, 108, 108)
+DEBUG multi-pattern rule[254] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(138, 111, 111, 111)
+DEBUG multi-pattern rule[256] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(141, 114, 114, 114)
+DEBUG multi-pattern rule[265] src1=(relu ?input_4) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(relu ?input_4) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 6, 6, 6) running_total=(147, 120, 120, 120)
+DEBUG multi-pattern rule[271] src1=(transpose ?input_4 1_0 1) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(transpose ?input_4 1_0 1) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(149, 122, 122, 122)
+DEBUG multi-pattern rule[272] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(9, 9, 9, 9) running_total=(158, 131, 131, 131)
+DEBUG multi-pattern rule[273] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(9, 9, 9, 9) running_total=(167, 140, 140, 140)
+DEBUG multi-pattern rule[280] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(9, 9, 9, 9) running_total=(176, 149, 149, 149)
+DEBUG multi-pattern rule[1609] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(179, 152, 152, 152)
+DEBUG multi-pattern rule[1610] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(182, 155, 155, 155)
+DEBUG multi-pattern rule[1779] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(185, 158, 158, 158)
+DEBUG multi-pattern rule[1780] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 3, 3, 3) running_total=(188, 161, 161, 161)
+DEBUG multi-pattern rule[3281] src1=(relu ?input_1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(relu ?input_1) dst2=(ewadd ?input_5 (ewadd ?input_4 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 6, 6, 6) running_total=(194, 167, 167, 167)
+DEBUG multi-pattern rule[3282] src1=(relu ?input_1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(relu ?input_1) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 6, 6, 6) running_total=(200, 173, 173, 173)
+DEBUG multi-pattern rule[3540] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(215, 188, 173, 173)
+DEBUG multi-pattern rule[3549] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(216, 188, 173, 173)
+DEBUG multi-pattern rule[3552] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(217, 188, 173, 173)
+DEBUG multi-pattern rule[3599] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 0 (relu (concat 0 2 ?input_1 ?input_2)))) dst2=(split_1 (split 0 (relu (concat 0 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 0, 0) running_total=(232, 203, 173, 173)
+DEBUG multi-pattern rule[3665] src1=(relu ?input_10) src2=(relu ?input_11) dst1=(split_0 (split 1 (relu (concat 1 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (relu (concat 1 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 6) running_total=(247, 218, 179, 179)
+DEBUG multi-pattern rule[3692] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_8 ?input_10) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(250, 218, 179, 179)
+DEBUG multi-pattern rule[3695] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(conv2d 1 1 0 0 ?input_8 ?input_13) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_13))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_13)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(253, 218, 179, 179)
+DEBUG multi-pattern rule[3729] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_7 ?input_11) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(256, 218, 179, 179)
+DEBUG multi-pattern rule[3731] src1=(relu ?input_10) src2=(relu ?input_11) dst1=(split_0 (split 0 (relu (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 0 (relu (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(15, 15, 6, 6) running_total=(271, 233, 185, 185)
+DEBUG multi-pattern rule[3732] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(conv2d 1 1 0 0 ?input_7 ?input_14) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_13 ?input_14)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_13 ?input_14))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(274, 233, 185, 185)
+DEBUG multi-pattern rule[3929] src1=(transpose ?input_1 1_0 1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(transpose ?input_1 1_0 1) dst2=(ewadd ?input_5 (ewadd ?input_4 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(276, 235, 187, 187)
+DEBUG multi-pattern rule[3930] src1=(transpose ?input_1 1_0 1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(transpose ?input_1 1_0 1) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(2, 2, 2, 2) running_total=(278, 237, 189, 189)
+DEBUG multi-pattern rule[4258] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(284, 237, 189, 189)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (284, 237, 189, 189)
+DEBUG rewrite-witness total=0 per-rule(rule_index:count)={}
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (ewadd ?i_0 (ewadd ?i_1 ?i_2))  ->  3 eclasses matched, 16 total substs
+DEBUG multi-pattern canonical[3] = (ewmul ?i_0 (ewmul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (ewsub ?i_0 (ewsub ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[5] = (ewsub (ewadd ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[6] = (ewsub ?i_0 (ewadd ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[7] = (conv2d 1 1 0 0 (ewsub ?i_0 ?i_1) (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[8] = (conv2d 1 1 0 2 (ewsub ?i_0 ?i_1) (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[9] = (ewmax ?i_0 (ewmax ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[10] = (ewsub (ewmax ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[11] = (ewsub (ewmax ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[12] = (ewsub ?i_0 (ewmax ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[13] = (ewsub ?i_0 (ewmax ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[14] = (ewmin ?i_0 (ewmin ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[15] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[16] = (poolavg ?i_0 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[17] = (relu (poolavg ?i_0 3 3 1 1 0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[18] = (poolavg (Iconv 3 3) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[19] = (conv2d 1 1 0 2 (Iconv 3 3) (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[20] = (smul (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[21] = (smul (ewmul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[22] = (matmul 0 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[23] = (matmul 0 ?i_0 (smul ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[24] = (smul (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[25] = (smul (poolavg ?i_0 3 3 1 1 0 0) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[26] = (conv2d 1 1 0 2 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[27] = (conv2d 1 1 0 2 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[28] = (ewmul ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[29] = (transpose (smul ?i_0 ?i_1) 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[30] = (transpose (relu ?i_0) 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[31] = (matmul 0 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[32] = (transpose (smul ?i_0 ?i_1) 1_0 1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[33] = (transpose (relu ?i_0) 1_0 1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[34] = (concat 1 2 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[35] = (matmul 0 (transpose ?i_0 1_0 0) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[36] = (concat 0 2 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[37] = (ewadd ?i_0 ?i_1)  ->  19 eclasses matched, 28 total substs
+DEBUG multi-pattern canonical[38] = (ewmul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[39] = (ewsub ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[40] = (ewmax ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[41] = (ewmin ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[42] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[43] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[44] = (poolmax ?i_0 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[45] = (Cpool 3 3)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[46] = (Iconv 3 3)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[47] = Imatmul  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[48] = Iewmul  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[49] = (smul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[50] = (relu ?i_0)  ->  18 eclasses matched, 18 total substs
+DEBUG multi-pattern canonical[51] = (concat 1 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[52] = (concat 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[53] = (concat 1 4 ?i_0 ?i_1)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[54] = (concat 0 4 ?i_0 ?i_1)  ->  6 eclasses matched, 6 total substs
+DEBUG multi-pattern canonical[55] = (transpose ?i_0 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[56] = (transpose ?i_0 1_0 1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[57] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[58] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[59] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[60] = (ewadd ?i_0 (ewsub ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[61] = (ewsub (ewsub ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[62] = (ewsub ?i_0 (ewadd ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[63] = (ewsub ?i_0 (ewadd ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[64] = (ewsub ?i_0 (ewsub ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[65] = (ewmul ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[66] = (ewadd ?i_0 (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[67] = (ewsub (ewsub ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[68] = (ewadd ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[69] = (ewmul ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[70] = (ewsub ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[71] = (ewsub (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[72] = (ewmax ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[73] = (ewmin ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[74] = (conv2d 1 1 0 0 (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[75] = (conv2d 1 1 0 2 (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[76] = (poolavg (conv2d 1 1 0 0 ?i_0 ?i_1) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[77] = (poolmax (conv2d 1 1 0 0 ?i_0 ?i_1) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[78] = (conv2d 1 1 0 0 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[79] = (concat 1 4 ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[80] = (concat 0 4 ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[81] = (ewadd ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[82] = (conv2d 1 1 0 0 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[83] = (ewsub ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[84] = (ewsub (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[85] = (ewmax ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[86] = (ewmin ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[87] = (conv2d 1 1 0 0 (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[88] = (conv2d 1 1 0 0 (Cpool 3 3) (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[89] = (conv2d 1 1 0 2 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[90] = (conv2d 1 1 0 2 (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[91] = (conv2d 1 1 0 2 (Cpool 3 3) (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[92] = (poolavg (Cpool 3 3) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[93] = (smul (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[94] = (relu (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[95] = (concat 1 4 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[96] = (concat 0 4 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[97] = (ewadd ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[98] = (ewmul ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[99] = (ewsub ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[100] = (ewsub (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[101] = (ewmax ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[102] = (ewmin ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[103] = (conv2d 1 1 0 0 (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[104] = (conv2d 1 1 0 2 (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[105] = (smul (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[106] = (concat 1 4 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[107] = (concat 0 4 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[108] = (matmul 0 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[109] = (ewadd ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[110] = (ewsub ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[111] = (ewsub (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[112] = (ewmax ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[113] = (ewmin ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[114] = (smul (smul ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[115] = (relu (smul ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[116] = (concat 1 2 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[117] = (concat 0 2 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[118] = (ewadd ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[119] = (ewsub ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[120] = (ewsub (relu ?i_0) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[121] = (smul ?i_0 (relu ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[122] = (relu (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[123] = (conv2d 1 1 0 0 (concat 0 4 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[124] = (conv2d 1 1 0 0 (concat 0 4 ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[125] = (conv2d 1 1 0 2 (concat 0 4 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[126] = (conv2d 1 1 0 2 (concat 0 4 ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[1] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_8 (ewadd ?input_7 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(32, 32, 32, 32)
+DEBUG multi-pattern rule[2] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_7 (ewadd ?input_8 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(64, 64, 64, 64)
+DEBUG multi-pattern rule[109] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(370, 14, 14, 14) running_total=(434, 78, 78, 78)
+DEBUG multi-pattern rule[110] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_5 (ewadd ?input_4 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(370, 370, 370, 370) running_total=(804, 448, 448, 448)
+DEBUG multi-pattern rule[111] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(370, 370, 370, 370) running_total=(1174, 818, 818, 818)
+DEBUG multi-pattern rule[166] src1=(matmul 0 ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(matmul 0 ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(1206, 850, 850, 850)
+DEBUG multi-pattern rule[167] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(matmul 0 ?input_4 ?input_5) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(matmul 0 ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(1238, 882, 882, 882)
+DEBUG multi-pattern rule[168] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(ewadd ?input_4 ?input_5) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(ewadd ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(370, 370, 370, 370) running_total=(1608, 1252, 1252, 1252)
+DEBUG multi-pattern rule[174] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_10) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_10)  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(1656, 1300, 1300, 1300)
+DEBUG multi-pattern rule[176] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_13) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_13)  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(1704, 1348, 1348, 1348)
+DEBUG multi-pattern rule[185] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(relu ?input_4) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(relu ?input_4)  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(1992, 1636, 1636, 1636)
+DEBUG multi-pattern rule[188] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 1 4 ?input_7 ?input_8) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(concat 1 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(2088, 1732, 1732, 1732)
+DEBUG multi-pattern rule[189] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 0 4 ?input_7 ?input_8) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(concat 0 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(2184, 1828, 1828, 1828)
+DEBUG multi-pattern rule[191] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(transpose ?input_4 1_0 1) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(transpose ?input_4 1_0 1)  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(2216, 1860, 1860, 1860)
+DEBUG multi-pattern rule[192] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(370, 370, 370, 370) running_total=(2586, 2230, 2230, 2230)
+DEBUG multi-pattern rule[198] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(2634, 2278, 2278, 2278)
+DEBUG multi-pattern rule[200] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(2682, 2326, 2326, 2326)
+DEBUG multi-pattern rule[209] src1=(relu ?input_4) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(relu ?input_4) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(2970, 2614, 2614, 2614)
+DEBUG multi-pattern rule[212] src1=(concat 1 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 1 4 ?input_7 ?input_8) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(3066, 2710, 2710, 2710)
+DEBUG multi-pattern rule[213] src1=(concat 0 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 0 4 ?input_7 ?input_8) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(3162, 2806, 2806, 2806)
+DEBUG multi-pattern rule[215] src1=(transpose ?input_4 1_0 1) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(transpose ?input_4 1_0 1) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(3194, 2838, 2838, 2838)
+DEBUG multi-pattern rule[216] src1=(matmul 0 ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(matmul 0 ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(3226, 2870, 2870, 2870)
+DEBUG multi-pattern rule[217] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(370, 14, 14, 14) running_total=(3596, 2884, 2884, 2884)
+DEBUG multi-pattern rule[218] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(matmul 0 ?input_4 ?input_5) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(matmul 0 ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(3628, 2916, 2916, 2916)
+DEBUG multi-pattern rule[219] src1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) src2=(ewadd ?input_1 ?input_2) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(ewadd ?input_1 ?input_2)  (pairs,compatible,valid,cycle_ok) this_rule=(370, 14, 14, 14) running_total=(3998, 2930, 2930, 2930)
+DEBUG multi-pattern rule[220] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(ewadd ?input_4 ?input_5) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(ewadd ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(370, 370, 370, 370) running_total=(4368, 3300, 3300, 3300)
+DEBUG multi-pattern rule[227] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_10) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_10)  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(4416, 3348, 3348, 3348)
+DEBUG multi-pattern rule[229] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_13) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_13)  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(4464, 3396, 3396, 3396)
+DEBUG multi-pattern rule[238] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(relu ?input_4) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(relu ?input_4)  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(4752, 3684, 3684, 3684)
+DEBUG multi-pattern rule[241] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 1 4 ?input_7 ?input_8) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(concat 1 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(4848, 3780, 3780, 3780)
+DEBUG multi-pattern rule[242] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 0 4 ?input_7 ?input_8) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(concat 0 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(4944, 3876, 3876, 3876)
+DEBUG multi-pattern rule[244] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(transpose ?input_4 1_0 1) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(transpose ?input_4 1_0 1)  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(4976, 3908, 3908, 3908)
+DEBUG multi-pattern rule[245] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(370, 370, 370, 370) running_total=(5346, 4278, 4278, 4278)
+DEBUG multi-pattern rule[254] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(5394, 4326, 4326, 4326)
+DEBUG multi-pattern rule[256] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(5442, 4374, 4374, 4374)
+DEBUG multi-pattern rule[265] src1=(relu ?input_4) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(relu ?input_4) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(5730, 4662, 4662, 4662)
+DEBUG multi-pattern rule[268] src1=(concat 1 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 1 4 ?input_7 ?input_8) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(5826, 4758, 4758, 4758)
+DEBUG multi-pattern rule[269] src1=(concat 0 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 0 4 ?input_7 ?input_8) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(5922, 4854, 4854, 4854)
+DEBUG multi-pattern rule[271] src1=(transpose ?input_4 1_0 1) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(transpose ?input_4 1_0 1) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(5954, 4886, 4886, 4886)
+DEBUG multi-pattern rule[272] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(370, 370, 370, 370) running_total=(6324, 5256, 5256, 5256)
+DEBUG multi-pattern rule[273] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(370, 370, 370, 370) running_total=(6694, 5626, 5626, 5626)
+DEBUG multi-pattern rule[280] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(370, 370, 370, 370) running_total=(7064, 5996, 5996, 5996)
+DEBUG multi-pattern rule[1609] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(7112, 6044, 6044, 6044)
+DEBUG multi-pattern rule[1610] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(7160, 6092, 6092, 6092)
+DEBUG multi-pattern rule[1779] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(7208, 6140, 6140, 6140)
+DEBUG multi-pattern rule[1780] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(48, 48, 48, 48) running_total=(7256, 6188, 6188, 6188)
+DEBUG multi-pattern rule[3281] src1=(relu ?input_1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(relu ?input_1) dst2=(ewadd ?input_5 (ewadd ?input_4 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(7544, 6476, 6476, 6476)
+DEBUG multi-pattern rule[3282] src1=(relu ?input_1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(relu ?input_1) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(7832, 6764, 6764, 6764)
+DEBUG multi-pattern rule[3540] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(153, 153, 0, 0) running_total=(7985, 6917, 6764, 6764)
+DEBUG multi-pattern rule[3549] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(7986, 6917, 6764, 6764)
+DEBUG multi-pattern rule[3552] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(7987, 6917, 6764, 6764)
+DEBUG multi-pattern rule[3599] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 0 (relu (concat 0 2 ?input_1 ?input_2)))) dst2=(split_1 (split 0 (relu (concat 0 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(153, 153, 0, 0) running_total=(8140, 7070, 6764, 6764)
+DEBUG multi-pattern rule[3610] src1=(concat 1 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 1 4 ?input_7 ?input_8) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(8236, 7166, 6860, 6860)
+DEBUG multi-pattern rule[3611] src1=(concat 1 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 1 4 ?input_7 ?input_8) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(8332, 7262, 6956, 6956)
+DEBUG multi-pattern rule[3665] src1=(relu ?input_10) src2=(relu ?input_11) dst1=(split_0 (split 1 (relu (concat 1 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (relu (concat 1 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(153, 153, 60, 60) running_total=(8485, 7415, 7016, 7016)
+DEBUG multi-pattern rule[3668] src1=(concat 0 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 0 4 ?input_7 ?input_8) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(8581, 7511, 7112, 7112)
+DEBUG multi-pattern rule[3669] src1=(concat 0 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 0 4 ?input_7 ?input_8) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(96, 96, 96, 96) running_total=(8677, 7607, 7208, 7208)
+DEBUG multi-pattern rule[3692] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_8 ?input_10) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(8680, 7607, 7208, 7208)
+DEBUG multi-pattern rule[3695] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(conv2d 1 1 0 0 ?input_8 ?input_13) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_13))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_13)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(8683, 7607, 7208, 7208)
+DEBUG multi-pattern rule[3729] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_7 ?input_11) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(8686, 7607, 7208, 7208)
+DEBUG multi-pattern rule[3731] src1=(relu ?input_10) src2=(relu ?input_11) dst1=(split_0 (split 0 (relu (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 0 (relu (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(153, 153, 60, 60) running_total=(8839, 7760, 7268, 7268)
+DEBUG multi-pattern rule[3732] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(conv2d 1 1 0 0 ?input_7 ?input_14) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_13 ?input_14)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_13 ?input_14))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(8842, 7760, 7268, 7268)
+DEBUG multi-pattern rule[3929] src1=(transpose ?input_1 1_0 1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(transpose ?input_1 1_0 1) dst2=(ewadd ?input_5 (ewadd ?input_4 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(8874, 7792, 7300, 7300)
+DEBUG multi-pattern rule[3930] src1=(transpose ?input_1 1_0 1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(transpose ?input_1 1_0 1) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(32, 32, 32, 32) running_total=(8906, 7824, 7332, 7332)
+DEBUG multi-pattern rule[4258] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(8912, 7824, 7332, 7332)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (8912, 7824, 7332, 7332)
+DEBUG rewrite-witness total=0 per-rule(rule_index:count)={}
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (ewadd ?i_0 (ewadd ?i_1 ?i_2))  ->  5 eclasses matched, 72 total substs
+DEBUG multi-pattern canonical[3] = (ewmul ?i_0 (ewmul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (ewsub ?i_0 (ewsub ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[5] = (ewsub (ewadd ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[6] = (ewsub ?i_0 (ewadd ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[7] = (conv2d 1 1 0 0 (ewsub ?i_0 ?i_1) (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[8] = (conv2d 1 1 0 2 (ewsub ?i_0 ?i_1) (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[9] = (ewmax ?i_0 (ewmax ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[10] = (ewsub (ewmax ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[11] = (ewsub (ewmax ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[12] = (ewsub ?i_0 (ewmax ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[13] = (ewsub ?i_0 (ewmax ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[14] = (ewmin ?i_0 (ewmin ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[15] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[16] = (poolavg ?i_0 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[17] = (relu (poolavg ?i_0 3 3 1 1 0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[18] = (poolavg (Iconv 3 3) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[19] = (conv2d 1 1 0 2 (Iconv 3 3) (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[20] = (smul (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[21] = (smul (ewmul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[22] = (matmul 0 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[23] = (matmul 0 ?i_0 (smul ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[24] = (smul (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[25] = (smul (poolavg ?i_0 3 3 1 1 0 0) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[26] = (conv2d 1 1 0 2 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[27] = (conv2d 1 1 0 2 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[28] = (ewmul ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[29] = (transpose (smul ?i_0 ?i_1) 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[30] = (transpose (relu ?i_0) 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[31] = (matmul 0 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[32] = (transpose (smul ?i_0 ?i_1) 1_0 1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[33] = (transpose (relu ?i_0) 1_0 1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[34] = (concat 1 2 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[35] = (matmul 0 (transpose ?i_0 1_0 0) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[36] = (concat 0 2 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[37] = (ewadd ?i_0 ?i_1)  ->  40 eclasses matched, 91 total substs
+DEBUG multi-pattern canonical[38] = (ewmul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[39] = (ewsub ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[40] = (ewmax ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[41] = (ewmin ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[42] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[43] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[44] = (poolmax ?i_0 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[45] = (Cpool 3 3)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[46] = (Iconv 3 3)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[47] = Imatmul  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[48] = Iewmul  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[49] = (smul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[50] = (relu ?i_0)  ->  122 eclasses matched, 122 total substs
+DEBUG multi-pattern canonical[51] = (concat 1 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[52] = (concat 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[53] = (concat 1 4 ?i_0 ?i_1)  ->  60 eclasses matched, 60 total substs
+DEBUG multi-pattern canonical[54] = (concat 0 4 ?i_0 ?i_1)  ->  60 eclasses matched, 60 total substs
+DEBUG multi-pattern canonical[55] = (transpose ?i_0 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[56] = (transpose ?i_0 1_0 1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[57] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[58] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[59] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[60] = (ewadd ?i_0 (ewsub ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[61] = (ewsub (ewsub ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[62] = (ewsub ?i_0 (ewadd ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[63] = (ewsub ?i_0 (ewadd ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[64] = (ewsub ?i_0 (ewsub ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[65] = (ewmul ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[66] = (ewadd ?i_0 (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[67] = (ewsub (ewsub ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[68] = (ewadd ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  5 eclasses matched, 5 total substs
+DEBUG multi-pattern canonical[69] = (ewmul ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[70] = (ewsub ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[71] = (ewsub (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[72] = (ewmax ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[73] = (ewmin ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[74] = (conv2d 1 1 0 0 (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[75] = (conv2d 1 1 0 2 (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[76] = (poolavg (conv2d 1 1 0 0 ?i_0 ?i_1) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[77] = (poolmax (conv2d 1 1 0 0 ?i_0 ?i_1) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[78] = (conv2d 1 1 0 0 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[79] = (concat 1 4 ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[80] = (concat 0 4 ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[81] = (ewadd ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[82] = (conv2d 1 1 0 0 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[83] = (ewsub ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[84] = (ewsub (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[85] = (ewmax ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[86] = (ewmin ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[87] = (conv2d 1 1 0 0 (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[88] = (conv2d 1 1 0 0 (Cpool 3 3) (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[89] = (conv2d 1 1 0 2 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[90] = (conv2d 1 1 0 2 (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[91] = (conv2d 1 1 0 2 (Cpool 3 3) (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[92] = (poolavg (Cpool 3 3) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[93] = (smul (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[94] = (relu (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[95] = (concat 1 4 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[96] = (concat 0 4 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[97] = (ewadd ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[98] = (ewmul ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[99] = (ewsub ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[100] = (ewsub (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[101] = (ewmax ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[102] = (ewmin ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[103] = (conv2d 1 1 0 0 (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[104] = (conv2d 1 1 0 2 (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[105] = (smul (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[106] = (concat 1 4 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[107] = (concat 0 4 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[108] = (matmul 0 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[109] = (ewadd ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[110] = (ewsub ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[111] = (ewsub (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[112] = (ewmax ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[113] = (ewmin ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[114] = (smul (smul ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[115] = (relu (smul ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[116] = (concat 1 2 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[117] = (concat 0 2 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[118] = (ewadd ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[119] = (ewsub ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[120] = (ewsub (relu ?i_0) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[121] = (smul ?i_0 (relu ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[122] = (relu (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[123] = (conv2d 1 1 0 0 (concat 0 4 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[124] = (conv2d 1 1 0 0 (concat 0 4 ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[125] = (conv2d 1 1 0 2 (concat 0 4 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[126] = (conv2d 1 1 0 2 (concat 0 4 ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[1] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_8 (ewadd ?input_7 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(144, 144, 144, 144)
+DEBUG multi-pattern rule[2] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_7 (ewadd ?input_8 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(288, 288, 288, 288)
+DEBUG multi-pattern rule[109] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 68, 68, 68) running_total=(4864, 356, 356, 356)
+DEBUG multi-pattern rule[110] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_5 (ewadd ?input_4 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 4576, 4576, 4576) running_total=(9440, 4932, 4932, 4932)
+DEBUG multi-pattern rule[111] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 4576, 4576, 4576) running_total=(14016, 9508, 9508, 9508)
+DEBUG multi-pattern rule[166] src1=(matmul 0 ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(matmul 0 ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(14160, 9652, 9652, 9652)
+DEBUG multi-pattern rule[167] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(matmul 0 ?input_4 ?input_5) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(matmul 0 ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(14304, 9796, 9796, 9796)
+DEBUG multi-pattern rule[168] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(ewadd ?input_4 ?input_5) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(ewadd ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 4576, 4576, 4576) running_total=(18880, 14372, 14372, 14372)
+DEBUG multi-pattern rule[174] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_10) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_10)  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(19096, 14588, 14588, 14588)
+DEBUG multi-pattern rule[176] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_13) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_13)  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(19312, 14804, 14804, 14804)
+DEBUG multi-pattern rule[185] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(relu ?input_4) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(relu ?input_4)  (pairs,compatible,valid,cycle_ok) this_rule=(8784, 8784, 8784, 8784) running_total=(28096, 23588, 23588, 23588)
+DEBUG multi-pattern rule[188] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 1 4 ?input_7 ?input_8) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(concat 1 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(32416, 27908, 27908, 27908)
+DEBUG multi-pattern rule[189] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 0 4 ?input_7 ?input_8) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(concat 0 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(36736, 32228, 32228, 32228)
+DEBUG multi-pattern rule[191] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(transpose ?input_4 1_0 1) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(transpose ?input_4 1_0 1)  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(36880, 32372, 32372, 32372)
+DEBUG multi-pattern rule[192] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 4576, 4576, 4576) running_total=(41456, 36948, 36948, 36948)
+DEBUG multi-pattern rule[198] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(41672, 37164, 37164, 37164)
+DEBUG multi-pattern rule[200] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(41888, 37380, 37380, 37380)
+DEBUG multi-pattern rule[209] src1=(relu ?input_4) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(relu ?input_4) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(8784, 8784, 8784, 8784) running_total=(50672, 46164, 46164, 46164)
+DEBUG multi-pattern rule[212] src1=(concat 1 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 1 4 ?input_7 ?input_8) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(54992, 50484, 50484, 50484)
+DEBUG multi-pattern rule[213] src1=(concat 0 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 0 4 ?input_7 ?input_8) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(59312, 54804, 54804, 54804)
+DEBUG multi-pattern rule[215] src1=(transpose ?input_4 1_0 1) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(transpose ?input_4 1_0 1) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(59456, 54948, 54948, 54948)
+DEBUG multi-pattern rule[216] src1=(matmul 0 ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(matmul 0 ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(59600, 55092, 55092, 55092)
+DEBUG multi-pattern rule[217] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 68, 68, 68) running_total=(64176, 55160, 55160, 55160)
+DEBUG multi-pattern rule[218] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(matmul 0 ?input_4 ?input_5) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(matmul 0 ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(64320, 55304, 55304, 55304)
+DEBUG multi-pattern rule[219] src1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) src2=(ewadd ?input_1 ?input_2) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(ewadd ?input_1 ?input_2)  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 68, 68, 68) running_total=(68896, 55372, 55372, 55372)
+DEBUG multi-pattern rule[220] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(ewadd ?input_4 ?input_5) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(ewadd ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 4576, 4576, 4576) running_total=(73472, 59948, 59948, 59948)
+DEBUG multi-pattern rule[227] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_10) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_10)  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(73688, 60164, 60164, 60164)
+DEBUG multi-pattern rule[229] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_13) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_13)  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(73904, 60380, 60380, 60380)
+DEBUG multi-pattern rule[238] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(relu ?input_4) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(relu ?input_4)  (pairs,compatible,valid,cycle_ok) this_rule=(8784, 8784, 8784, 8784) running_total=(82688, 69164, 69164, 69164)
+DEBUG multi-pattern rule[241] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 1 4 ?input_7 ?input_8) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(concat 1 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(87008, 73484, 73484, 73484)
+DEBUG multi-pattern rule[242] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 0 4 ?input_7 ?input_8) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(concat 0 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(91328, 77804, 77804, 77804)
+DEBUG multi-pattern rule[244] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(transpose ?input_4 1_0 1) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(transpose ?input_4 1_0 1)  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(91472, 77948, 77948, 77948)
+DEBUG multi-pattern rule[245] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 4576, 4576, 4576) running_total=(96048, 82524, 82524, 82524)
+DEBUG multi-pattern rule[254] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(96264, 82740, 82740, 82740)
+DEBUG multi-pattern rule[256] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(96480, 82956, 82956, 82956)
+DEBUG multi-pattern rule[265] src1=(relu ?input_4) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(relu ?input_4) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(8784, 8784, 8784, 8784) running_total=(105264, 91740, 91740, 91740)
+DEBUG multi-pattern rule[268] src1=(concat 1 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 1 4 ?input_7 ?input_8) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(109584, 96060, 96060, 96060)
+DEBUG multi-pattern rule[269] src1=(concat 0 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 0 4 ?input_7 ?input_8) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(113904, 100380, 100380, 100380)
+DEBUG multi-pattern rule[271] src1=(transpose ?input_4 1_0 1) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(transpose ?input_4 1_0 1) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(114048, 100524, 100524, 100524)
+DEBUG multi-pattern rule[272] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 4576, 4576, 4576) running_total=(118624, 105100, 105100, 105100)
+DEBUG multi-pattern rule[273] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 4576, 4576, 4576) running_total=(123200, 109676, 109676, 109676)
+DEBUG multi-pattern rule[280] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(4576, 4576, 4576, 4576) running_total=(127776, 114252, 114252, 114252)
+DEBUG multi-pattern rule[1609] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(127992, 114468, 114468, 114468)
+DEBUG multi-pattern rule[1610] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(128208, 114684, 114684, 114684)
+DEBUG multi-pattern rule[1779] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(128424, 114900, 114900, 114900)
+DEBUG multi-pattern rule[1780] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(216, 216, 216, 216) running_total=(128640, 115116, 115116, 115116)
+DEBUG multi-pattern rule[3281] src1=(relu ?input_1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(relu ?input_1) dst2=(ewadd ?input_5 (ewadd ?input_4 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(8784, 8784, 8784, 8784) running_total=(137424, 123900, 123900, 123900)
+DEBUG multi-pattern rule[3282] src1=(relu ?input_1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(relu ?input_1) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(8784, 8784, 8784, 8784) running_total=(146208, 132684, 132684, 132684)
+DEBUG multi-pattern rule[3540] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(7381, 7381, 0, 0) running_total=(153589, 140065, 132684, 132684)
+DEBUG multi-pattern rule[3549] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(153590, 140065, 132684, 132684)
+DEBUG multi-pattern rule[3552] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(153591, 140065, 132684, 132684)
+DEBUG multi-pattern rule[3599] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 0 (relu (concat 0 2 ?input_1 ?input_2)))) dst2=(split_1 (split 0 (relu (concat 0 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(7381, 7381, 0, 0) running_total=(160972, 147446, 132684, 132684)
+DEBUG multi-pattern rule[3610] src1=(concat 1 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 1 4 ?input_7 ?input_8) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(165292, 151766, 137004, 137004)
+DEBUG multi-pattern rule[3611] src1=(concat 1 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 1 4 ?input_7 ?input_8) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(169612, 156086, 141324, 141324)
+DEBUG multi-pattern rule[3665] src1=(relu ?input_10) src2=(relu ?input_11) dst1=(split_0 (split 1 (relu (concat 1 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (relu (concat 1 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(7381, 7381, 2053, 2053) running_total=(176993, 163467, 143377, 143377)
+DEBUG multi-pattern rule[3668] src1=(concat 0 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 0 4 ?input_7 ?input_8) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(181313, 167787, 147697, 147697)
+DEBUG multi-pattern rule[3669] src1=(concat 0 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 0 4 ?input_7 ?input_8) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(4320, 4320, 4320, 4320) running_total=(185633, 172107, 152017, 152017)
+DEBUG multi-pattern rule[3692] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_8 ?input_10) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_10)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(185636, 172107, 152017, 152017)
+DEBUG multi-pattern rule[3695] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(conv2d 1 1 0 0 ?input_8 ?input_13) dst1=(split_0 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_13))) dst2=(split_1 (split 0 (conv2d 1 1 0 0 (concat 0 4 ?input_7 ?input_8) ?input_13)))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(185639, 172107, 152017, 152017)
+DEBUG multi-pattern rule[3729] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(conv2d 1 1 0 0 ?input_7 ?input_11) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(185642, 172107, 152017, 152017)
+DEBUG multi-pattern rule[3731] src1=(relu ?input_10) src2=(relu ?input_11) dst1=(split_0 (split 0 (relu (concat 0 4 ?input_10 ?input_11)))) dst2=(split_1 (split 0 (relu (concat 0 4 ?input_10 ?input_11))))  (pairs,compatible,valid,cycle_ok) this_rule=(7381, 7381, 2053, 2053) running_total=(193023, 179488, 154070, 154070)
+DEBUG multi-pattern rule[3732] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(conv2d 1 1 0 0 ?input_7 ?input_14) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_13 ?input_14)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_7 (concat 0 4 ?input_13 ?input_14))))  (pairs,compatible,valid,cycle_ok) this_rule=(3, 0, 0, 0) running_total=(193026, 179488, 154070, 154070)
+DEBUG multi-pattern rule[3929] src1=(transpose ?input_1 1_0 1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(transpose ?input_1 1_0 1) dst2=(ewadd ?input_5 (ewadd ?input_4 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(193170, 179632, 154214, 154214)
+DEBUG multi-pattern rule[3930] src1=(transpose ?input_1 1_0 1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(transpose ?input_1 1_0 1) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(144, 144, 144, 144) running_total=(193314, 179776, 154358, 154358)
+DEBUG multi-pattern rule[4258] src1=(conv2d 1 1 0 0 ?input_1 ?input_2) src2=(conv2d 1 1 0 0 ?input_1 ?input_3) dst1=(split_0 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3)))) dst2=(split_1 (split 1 (conv2d 1 1 0 0 ?input_1 (concat 0 4 (enlarge ?input_2 ?input_3) ?input_3))))  (pairs,compatible,valid,cycle_ok) this_rule=(6, 0, 0, 0) running_total=(193320, 179776, 154358, 154358)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (193320, 179776, 154358, 154358)
+DEBUG rewrite-witness total=0 per-rule(rule_index:count)={}
+Done one
+Number of nodes added: 0
+Run one
+DEBUG multi-pattern canonical[0] = (matmul 0 ?i_0 ?i_1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[1] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[2] = (ewadd ?i_0 (ewadd ?i_1 ?i_2))  ->  5 eclasses matched, 96 total substs
+DEBUG multi-pattern canonical[3] = (ewmul ?i_0 (ewmul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[4] = (ewsub ?i_0 (ewsub ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[5] = (ewsub (ewadd ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[6] = (ewsub ?i_0 (ewadd ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[7] = (conv2d 1 1 0 0 (ewsub ?i_0 ?i_1) (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[8] = (conv2d 1 1 0 2 (ewsub ?i_0 ?i_1) (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[9] = (ewmax ?i_0 (ewmax ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[10] = (ewsub (ewmax ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[11] = (ewsub (ewmax ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[12] = (ewsub ?i_0 (ewmax ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[13] = (ewsub ?i_0 (ewmax ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[14] = (ewmin ?i_0 (ewmin ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[15] = (relu (conv2d 1 1 0 0 ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[16] = (poolavg ?i_0 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[17] = (relu (poolavg ?i_0 3 3 1 1 0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[18] = (poolavg (Iconv 3 3) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[19] = (conv2d 1 1 0 2 (Iconv 3 3) (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[20] = (smul (matmul 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[21] = (smul (ewmul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[22] = (matmul 0 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[23] = (matmul 0 ?i_0 (smul ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[24] = (smul (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[25] = (smul (poolavg ?i_0 3 3 1 1 0 0) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[26] = (conv2d 1 1 0 2 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[27] = (conv2d 1 1 0 2 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[28] = (ewmul ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[29] = (transpose (smul ?i_0 ?i_1) 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[30] = (transpose (relu ?i_0) 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[31] = (matmul 0 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[32] = (transpose (smul ?i_0 ?i_1) 1_0 1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[33] = (transpose (relu ?i_0) 1_0 1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[34] = (concat 1 2 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[35] = (matmul 0 (transpose ?i_0 1_0 0) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[36] = (concat 0 2 ?i_0 (transpose ?i_1 1_0 0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[37] = (ewadd ?i_0 ?i_1)  ->  48 eclasses matched, 119 total substs
+DEBUG multi-pattern canonical[38] = (ewmul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[39] = (ewsub ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[40] = (ewmax ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[41] = (ewmin ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[42] = (conv2d 1 1 0 0 ?i_0 ?i_1)  ->  3 eclasses matched, 3 total substs
+DEBUG multi-pattern canonical[43] = (conv2d 1 1 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[44] = (poolmax ?i_0 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[45] = (Cpool 3 3)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[46] = (Iconv 3 3)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[47] = Imatmul  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[48] = Iewmul  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[49] = (smul ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[50] = (relu ?i_0)  ->  4071 eclasses matched, 4071 total substs
+DEBUG multi-pattern canonical[51] = (concat 1 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[52] = (concat 0 2 ?i_0 ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[53] = (concat 1 4 ?i_0 ?i_1)  ->  2056 eclasses matched, 2056 total substs
+DEBUG multi-pattern canonical[54] = (concat 0 4 ?i_0 ?i_1)  ->  2053 eclasses matched, 2053 total substs
+DEBUG multi-pattern canonical[55] = (transpose ?i_0 1_0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[56] = (transpose ?i_0 1_0 1)  ->  2 eclasses matched, 2 total substs
+DEBUG multi-pattern canonical[57] = (matmul 0 (matmul 0 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[58] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[59] = (matmul 0 ?i_0 (matmul 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[60] = (ewadd ?i_0 (ewsub ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[61] = (ewsub (ewsub ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[62] = (ewsub ?i_0 (ewadd ?i_1 ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[63] = (ewsub ?i_0 (ewadd ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[64] = (ewsub ?i_0 (ewsub ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[65] = (ewmul ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[66] = (ewadd ?i_0 (ewsub ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[67] = (ewsub (ewsub ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[68] = (ewadd ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  9 eclasses matched, 9 total substs
+DEBUG multi-pattern canonical[69] = (ewmul ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[70] = (ewsub ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[71] = (ewsub (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[72] = (ewmax ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[73] = (ewmin ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[74] = (conv2d 1 1 0 0 (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[75] = (conv2d 1 1 0 2 (conv2d 1 1 0 0 ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[76] = (poolavg (conv2d 1 1 0 0 ?i_0 ?i_1) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[77] = (poolmax (conv2d 1 1 0 0 ?i_0 ?i_1) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[78] = (conv2d 1 1 0 0 (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[79] = (concat 1 4 ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[80] = (concat 0 4 ?i_0 (conv2d 1 1 0 0 ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[81] = (ewadd ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[82] = (conv2d 1 1 0 0 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[83] = (ewsub ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[84] = (ewsub (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[85] = (ewmax ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[86] = (ewmin ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[87] = (conv2d 1 1 0 0 (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[88] = (conv2d 1 1 0 0 (Cpool 3 3) (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[89] = (conv2d 1 1 0 2 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[90] = (conv2d 1 1 0 2 (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[91] = (conv2d 1 1 0 2 (Cpool 3 3) (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[92] = (poolavg (Cpool 3 3) 3 3 1 1 0 0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[93] = (smul (Cpool 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[94] = (relu (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[95] = (concat 1 4 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[96] = (concat 0 4 ?i_0 (Cpool 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[97] = (ewadd ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[98] = (ewmul ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[99] = (ewsub ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[100] = (ewsub (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[101] = (ewmax ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[102] = (ewmin ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[103] = (conv2d 1 1 0 0 (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[104] = (conv2d 1 1 0 2 (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[105] = (smul (Iconv 3 3) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[106] = (concat 1 4 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[107] = (concat 0 4 ?i_0 (Iconv 3 3))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[108] = (matmul 0 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[109] = (ewadd ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[110] = (ewsub ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[111] = (ewsub (smul ?i_0 ?i_1) ?i_2)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[112] = (ewmax ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[113] = (ewmin ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[114] = (smul (smul ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[115] = (relu (smul ?i_0 ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[116] = (concat 1 2 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[117] = (concat 0 2 ?i_0 (smul ?i_1 ?i_2))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[118] = (ewadd ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[119] = (ewsub ?i_0 (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[120] = (ewsub (relu ?i_0) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[121] = (smul ?i_0 (relu ?i_1))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[122] = (relu (relu ?i_0))  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[123] = (conv2d 1 1 0 0 (concat 0 4 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[124] = (conv2d 1 1 0 0 (concat 0 4 ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[125] = (conv2d 1 1 0 2 (concat 0 4 ?i_0 ?i_1) ?i_0)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern canonical[126] = (conv2d 1 1 0 2 (concat 0 4 ?i_0 ?i_1) ?i_1)  ->  0 eclasses matched, 0 total substs
+DEBUG multi-pattern rule[1] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_8 (ewadd ?input_7 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(192, 192, 192, 192) running_total=(192, 192, 192, 192)
+DEBUG multi-pattern rule[2] src1=(matmul 0 ?input_1 ?input_4) src2=(ewadd ?input_9 (ewadd ?input_7 ?input_8)) dst1=(matmul 0 ?input_1 ?input_4) dst2=(ewadd ?input_7 (ewadd ?input_8 ?input_9))  (pairs,compatible,valid,cycle_ok) this_rule=(192, 192, 192, 192) running_total=(384, 384, 384, 384)
+DEBUG multi-pattern rule[109] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 96, 96, 96) running_total=(7920, 480, 480, 480)
+DEBUG multi-pattern rule[110] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_5 (ewadd ?input_4 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 7536, 7536, 7536) running_total=(15456, 8016, 8016, 8016)
+DEBUG multi-pattern rule[111] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 7536, 7536, 7536) running_total=(22992, 15552, 15552, 15552)
+DEBUG multi-pattern rule[166] src1=(matmul 0 ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(matmul 0 ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(192, 192, 192, 192) running_total=(23184, 15744, 15744, 15744)
+DEBUG multi-pattern rule[167] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(matmul 0 ?input_4 ?input_5) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(matmul 0 ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(192, 192, 192, 192) running_total=(23376, 15936, 15936, 15936)
+DEBUG multi-pattern rule[168] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(ewadd ?input_4 ?input_5) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(ewadd ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 7536, 7536, 7536) running_total=(30912, 23472, 23472, 23472)
+DEBUG multi-pattern rule[174] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_10) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_10)  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(31200, 23760, 23760, 23760)
+DEBUG multi-pattern rule[176] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_13) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_13)  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(31488, 24048, 24048, 24048)
+DEBUG multi-pattern rule[185] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(relu ?input_4) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(relu ?input_4)  (pairs,compatible,valid,cycle_ok) this_rule=(390816, 390816, 390816, 390816) running_total=(422304, 414864, 414864, 414864)
+DEBUG multi-pattern rule[188] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 1 4 ?input_7 ?input_8) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(concat 1 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(197376, 197376, 197376, 197376) running_total=(619680, 612240, 612240, 612240)
+DEBUG multi-pattern rule[189] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 0 4 ?input_7 ?input_8) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(concat 0 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(197088, 197088, 197088, 197088) running_total=(816768, 809328, 809328, 809328)
+DEBUG multi-pattern rule[191] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(transpose ?input_4 1_0 1) dst1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst2=(transpose ?input_4 1_0 1)  (pairs,compatible,valid,cycle_ok) this_rule=(192, 192, 192, 192) running_total=(816960, 809520, 809520, 809520)
+DEBUG multi-pattern rule[192] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 7536, 7536, 7536) running_total=(824496, 817056, 817056, 817056)
+DEBUG multi-pattern rule[198] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(824784, 817344, 817344, 817344)
+DEBUG multi-pattern rule[200] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(825072, 817632, 817632, 817632)
+DEBUG multi-pattern rule[209] src1=(relu ?input_4) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(relu ?input_4) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(390816, 390816, 390816, 390816) running_total=(1215888, 1208448, 1208448, 1208448)
+DEBUG multi-pattern rule[212] src1=(concat 1 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 1 4 ?input_7 ?input_8) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(197376, 197376, 197376, 197376) running_total=(1413264, 1405824, 1405824, 1405824)
+DEBUG multi-pattern rule[213] src1=(concat 0 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 0 4 ?input_7 ?input_8) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(197088, 197088, 197088, 197088) running_total=(1610352, 1602912, 1602912, 1602912)
+DEBUG multi-pattern rule[215] src1=(transpose ?input_4 1_0 1) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(transpose ?input_4 1_0 1) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(192, 192, 192, 192) running_total=(1610544, 1603104, 1603104, 1603104)
+DEBUG multi-pattern rule[216] src1=(matmul 0 ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(matmul 0 ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(192, 192, 192, 192) running_total=(1610736, 1603296, 1603296, 1603296)
+DEBUG multi-pattern rule[217] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 96, 96, 96) running_total=(1618272, 1603392, 1603392, 1603392)
+DEBUG multi-pattern rule[218] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(matmul 0 ?input_4 ?input_5) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(matmul 0 ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(192, 192, 192, 192) running_total=(1618464, 1603584, 1603584, 1603584)
+DEBUG multi-pattern rule[219] src1=(ewadd ?input_2 (ewadd ?input_1 ?input_3)) src2=(ewadd ?input_1 ?input_2) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(ewadd ?input_1 ?input_2)  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 96, 96, 96) running_total=(1626000, 1603680, 1603680, 1603680)
+DEBUG multi-pattern rule[220] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(ewadd ?input_4 ?input_5) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(ewadd ?input_4 ?input_5)  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 7536, 7536, 7536) running_total=(1633536, 1611216, 1611216, 1611216)
+DEBUG multi-pattern rule[227] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_10) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_10)  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(1633824, 1611504, 1611504, 1611504)
+DEBUG multi-pattern rule[229] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(conv2d 1 1 0 0 ?input_7 ?input_13) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(conv2d 1 1 0 0 ?input_7 ?input_13)  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(1634112, 1611792, 1611792, 1611792)
+DEBUG multi-pattern rule[238] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(relu ?input_4) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(relu ?input_4)  (pairs,compatible,valid,cycle_ok) this_rule=(390816, 390816, 390816, 390816) running_total=(2024928, 2002608, 2002608, 2002608)
+DEBUG multi-pattern rule[241] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 1 4 ?input_7 ?input_8) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(concat 1 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(197376, 197376, 197376, 197376) running_total=(2222304, 2199984, 2199984, 2199984)
+DEBUG multi-pattern rule[242] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(concat 0 4 ?input_7 ?input_8) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(concat 0 4 ?input_7 ?input_8)  (pairs,compatible,valid,cycle_ok) this_rule=(197088, 197088, 197088, 197088) running_total=(2419392, 2397072, 2397072, 2397072)
+DEBUG multi-pattern rule[244] src1=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) src2=(transpose ?input_4 1_0 1) dst1=(ewadd ?input_1 (ewadd ?input_2 ?input_3)) dst2=(transpose ?input_4 1_0 1)  (pairs,compatible,valid,cycle_ok) this_rule=(192, 192, 192, 192) running_total=(2419584, 2397264, 2397264, 2397264)
+DEBUG multi-pattern rule[245] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 7536, 7536, 7536) running_total=(2427120, 2404800, 2404800, 2404800)
+DEBUG multi-pattern rule[254] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(2427408, 2405088, 2405088, 2405088)
+DEBUG multi-pattern rule[256] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(2427696, 2405376, 2405376, 2405376)
+DEBUG multi-pattern rule[265] src1=(relu ?input_4) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(relu ?input_4) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(390816, 390816, 390816, 390816) running_total=(2818512, 2796192, 2796192, 2796192)
+DEBUG multi-pattern rule[268] src1=(concat 1 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 1 4 ?input_7 ?input_8) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(197376, 197376, 197376, 197376) running_total=(3015888, 2993568, 2993568, 2993568)
+DEBUG multi-pattern rule[269] src1=(concat 0 4 ?input_7 ?input_8) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(concat 0 4 ?input_7 ?input_8) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(197088, 197088, 197088, 197088) running_total=(3212976, 3190656, 3190656, 3190656)
+DEBUG multi-pattern rule[271] src1=(transpose ?input_4 1_0 1) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(transpose ?input_4 1_0 1) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(192, 192, 192, 192) running_total=(3213168, 3190848, 3190848, 3190848)
+DEBUG multi-pattern rule[272] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 7536, 7536, 7536) running_total=(3220704, 3198384, 3198384, 3198384)
+DEBUG multi-pattern rule[273] src1=(ewadd ?input_4 ?input_5) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(ewadd ?input_4 ?input_5) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 7536, 7536, 7536) running_total=(3228240, 3205920, 3205920, 3205920)
+DEBUG multi-pattern rule[280] src1=(ewadd ?input_1 ?input_2) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(ewadd ?input_1 ?input_2) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(7536, 7536, 7536, 7536) running_total=(3235776, 3213456, 3213456, 3213456)
+DEBUG multi-pattern rule[1609] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(3236064, 3213744, 3213744, 3213744)
+DEBUG multi-pattern rule[1610] src1=(conv2d 1 1 0 0 ?input_7 ?input_10) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_10) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(3236352, 3214032, 3214032, 3214032)
+DEBUG multi-pattern rule[1779] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_2 (ewadd ?input_1 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(3236640, 3214320, 3214320, 3214320)
+DEBUG multi-pattern rule[1780] src1=(conv2d 1 1 0 0 ?input_7 ?input_13) src2=(ewadd ?input_3 (ewadd ?input_1 ?input_2)) dst1=(conv2d 1 1 0 0 ?input_7 ?input_13) dst2=(ewadd ?input_1 (ewadd ?input_2 ?input_3))  (pairs,compatible,valid,cycle_ok) this_rule=(288, 288, 288, 288) running_total=(3236928, 3214608, 3214608, 3214608)
+DEBUG multi-pattern rule[3281] src1=(relu ?input_1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(relu ?input_1) dst2=(ewadd ?input_5 (ewadd ?input_4 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(390816, 390816, 390816, 390816) running_total=(3627744, 3605424, 3605424, 3605424)
+DEBUG multi-pattern rule[3282] src1=(relu ?input_1) src2=(ewadd ?input_6 (ewadd ?input_4 ?input_5)) dst1=(relu ?input_1) dst2=(ewadd ?input_4 (ewadd ?input_5 ?input_6))  (pairs,compatible,valid,cycle_ok) this_rule=(390816, 390816, 390816, 390816) running_total=(4018560, 3996240, 3996240, 3996240)
+DEBUG multi-pattern rule[3540] src1=(relu ?input_1) src2=(relu ?input_2) dst1=(split_0 (split 1 (relu (concat 1 2 ?input_1 ?input_2)))) dst2=(split_1 (split 1 (relu (concat 1 2 ?input_1 ?input_2))))  (pairs,compatible,valid,cycle_ok) this_rule=(8284485, 8284485, 0, 0) running_total=(12303045, 12280725, 3996240, 3996240)
+DEBUG multi-pattern rule[3549] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_1 ?input_5) dst1=(split_0 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5)))) dst2=(split_1 (split 1 (matmul 0 ?input_1 (concat 1 2 ?input_4 ?input_5))))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(12303046, 12280725, 3996240, 3996240)
+DEBUG multi-pattern rule[3552] src1=(matmul 0 ?input_1 ?input_4) src2=(matmul 0 ?input_2 ?input_4) dst1=(split_0 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4))) dst2=(split_1 (split 0 (matmul 0 (concat 0 2 ?input_1 ?input_2) ?input_4)))  (pairs,compatible,valid,cycle_ok) this_rule=(1, 0, 0, 0) running_total=(12303047, 12280725, 3996240, 3996240)
+DEBUG multi-pattern totals (pairs,compatible,valid,cycle_ok) = (18886681, 18864359, 3996240, 3996240)
+DEBUG rewrite-witness total=0 per-rule(rule_index:count)={}
+Done one
+Number of nodes added: 0
+Runner complete!
+  Nodes: 20676
+  Classes: 12349
+  Stopped: Saturated
+  Time taken: 301.753360782s
+  Number of iterations: 4
+  Average nodes per class: 1.6743056
+  Number of edges: 37248
+  Number of programs: 793.18787
+Extractor complete!
+  Time taken: 138.57096ms
+  Best cost: 0.28798196
+Skipping full graph runtime evaluation (--no_runtime_report)
