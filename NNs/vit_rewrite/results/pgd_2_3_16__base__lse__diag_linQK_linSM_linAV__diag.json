@@ -1,0 +1,25 @@
+{
+ "tag": "pgd_2_3_16__base__lse__diag_linQK_linSM_linAV__diag",
+ "model": "pgd_2_3_16",
+ "variant": "base",
+ "softmax": "lse",
+ "diag": [
+  "linQK",
+  "linSM",
+  "linAV"
+ ],
+ "n": 3,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 3,
+   "n_verified_all9": 3,
+   "mean_lb": 2.1936533451080322,
+   "mean_min_lb": 0.5732526183128357,
+   "median_min_lb": 0.7206816077232361,
+   "mean_width": 0.9043081998825073,
+   "mean_time_s": 0.5765732129414877,
+   "mc_max_violation": null
+  }
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "tag": "ibp_3_3_8__base__lse",
+ "model": "ibp_3_3_8",
+ "variant": "base",
+ "softmax": "lse",
+ "diag": [],
+ "n": 100,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 100,
+   "n_verified_all9": 15,
+   "mean_lb": 2.955303192138672,
+   "mean_min_lb": -0.0295837614685297,
+   "median_min_lb": -0.029059529304504395,
+   "mean_width": 1.1555129289627075,
+   "mean_time_s": 1.0464533281326294,
+   "mc_max_violation": -0.23147116601467133
+  }
+ }
+}

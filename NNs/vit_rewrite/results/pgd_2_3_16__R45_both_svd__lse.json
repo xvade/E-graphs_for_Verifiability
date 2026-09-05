@@ -1,0 +1,21 @@
+{
+ "tag": "pgd_2_3_16__R45_both_svd__lse",
+ "model": "pgd_2_3_16",
+ "variant": "R45_both_svd",
+ "softmax": "lse",
+ "diag": [],
+ "n": 100,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 100,
+   "n_verified_all9": 26,
+   "mean_lb": 1.9216053485870361,
+   "mean_min_lb": -0.5251407027244568,
+   "median_min_lb": -0.5958387851715088,
+   "mean_width": 4.089416027069092,
+   "mean_time_s": 0.5485688900947571,
+   "mc_max_violation": -0.9456378817558289
+  }
+ }
+}

@@ -1,0 +1,31 @@
+{
+ "tag": "pgd_2_3_16__R1_rowmean__lse__v3",
+ "model": "pgd_2_3_16",
+ "variant": "R1_rowmean",
+ "softmax": "lse",
+ "diag": [],
+ "n": 3,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 3,
+   "n_verified_all9": 0,
+   "mean_lb": -4.826497554779053,
+   "mean_min_lb": -7.171591281890869,
+   "median_min_lb": -8.238937377929688,
+   "mean_width": 14.246334075927734,
+   "mean_time_s": 1.0272281964619954,
+   "mc_max_violation": -3.328777313232422
+  },
+  "CROWN-Optimized": {
+   "n_ok": 3,
+   "n_verified_all9": 0,
+   "mean_lb": 0.20875680446624756,
+   "mean_min_lb": -1.459551215171814,
+   "median_min_lb": -1.5871976613998413,
+   "mean_width": 4.688521385192871,
+   "mean_time_s": 85.40591398874919,
+   "mc_max_violation": -1.4899325370788574
+  }
+ }
+}

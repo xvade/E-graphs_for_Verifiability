@@ -1,0 +1,21 @@
+{
+ "tag": "ibp_3_3_8__R45_both_svd__lse",
+ "model": "ibp_3_3_8",
+ "variant": "R45_both_svd",
+ "softmax": "lse",
+ "diag": [],
+ "n": 100,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 100,
+   "n_verified_all9": 12,
+   "mean_lb": 2.9530770778656006,
+   "mean_min_lb": -0.031587306410074234,
+   "median_min_lb": -0.031802915036678314,
+   "mean_width": 1.1599525213241577,
+   "mean_time_s": 1.5659895968437194,
+   "mc_max_violation": -0.23221752047538757
+  }
+ }
+}

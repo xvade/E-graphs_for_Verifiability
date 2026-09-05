@@ -1,0 +1,26 @@
+{
+ "tag": "pgd_2_3_16__R1_c10__complex__repro4021",
+ "model": "pgd_2_3_16",
+ "variant": "R1_c10",
+ "softmax": "complex",
+ "n": 1,
+ "bound_opts": "{'softmax': 'complex', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_verified_all9": 0,
+   "mean_lb": -7.032289981842041,
+   "mean_min_lb": -10.648944854736328,
+   "median_min_lb": -10.648944854736328,
+   "mean_time_s": 0.7773034572601318,
+   "mc_max_violation": 0.0
+  },
+  "CROWN-Optimized": {
+   "n_verified_all9": 0,
+   "mean_lb": -244.3556365966797,
+   "mean_min_lb": -301.9248352050781,
+   "median_min_lb": -301.9248352050781,
+   "mean_time_s": 42.35130834579468,
+   "mc_max_violation": 0.0
+  }
+ }
+}

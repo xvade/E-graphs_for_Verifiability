@@ -1,0 +1,23 @@
+{
+ "tag": "pgd_2_3_16__base__lse__diag_linSM__diag",
+ "model": "pgd_2_3_16",
+ "variant": "base",
+ "softmax": "lse",
+ "diag": [
+  "linSM"
+ ],
+ "n": 3,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 3,
+   "n_verified_all9": 2,
+   "mean_lb": 1.4119430780410767,
+   "mean_min_lb": -0.12217525392770767,
+   "median_min_lb": 0.0005327463150024414,
+   "mean_width": 2.433636426925659,
+   "mean_time_s": 0.6150875091552734,
+   "mc_max_violation": null
+  }
+ }
+}

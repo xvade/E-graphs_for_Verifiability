@@ -1,0 +1,23 @@
+{
+ "tag": "pgd_2_3_16__base__lse__diag_linAV__diag",
+ "model": "pgd_2_3_16",
+ "variant": "base",
+ "softmax": "lse",
+ "diag": [
+  "linAV"
+ ],
+ "n": 3,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 3,
+   "n_verified_all9": 2,
+   "mean_lb": 1.6543312072753906,
+   "mean_min_lb": 0.1185980811715126,
+   "median_min_lb": 0.2904677093029022,
+   "mean_width": 1.9562171697616577,
+   "mean_time_s": 0.5712583859761556,
+   "mc_max_violation": null
+  }
+ }
+}

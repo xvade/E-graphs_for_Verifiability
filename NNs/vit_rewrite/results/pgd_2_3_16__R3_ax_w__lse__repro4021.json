@@ -1,0 +1,26 @@
+{
+ "tag": "pgd_2_3_16__R3_ax_w__lse__repro4021",
+ "model": "pgd_2_3_16",
+ "variant": "R3_ax_w",
+ "softmax": "lse",
+ "n": 1,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_verified_all9": 0,
+   "mean_lb": -0.44757258892059326,
+   "mean_min_lb": -2.398409366607666,
+   "median_min_lb": -2.398409366607666,
+   "mean_time_s": 0.665419340133667,
+   "mc_max_violation": 0.0
+  },
+  "CROWN-Optimized": {
+   "n_verified_all9": 0,
+   "mean_lb": -0.4475727081298828,
+   "mean_min_lb": -2.3984100818634033,
+   "median_min_lb": -2.3984100818634033,
+   "mean_time_s": 8.08022952079773,
+   "mc_max_violation": 0.0
+  }
+ }
+}

@@ -1,0 +1,31 @@
+{
+ "tag": "pgd_2_3_16__R45_both_svd__lse__v3",
+ "model": "pgd_2_3_16",
+ "variant": "R45_both_svd",
+ "softmax": "lse",
+ "diag": [],
+ "n": 3,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 3,
+   "n_verified_all9": 0,
+   "mean_lb": 0.6712549924850464,
+   "mean_min_lb": -0.8780297636985779,
+   "median_min_lb": -0.616911768913269,
+   "mean_width": 3.8085451126098633,
+   "mean_time_s": 0.7373807430267334,
+   "mc_max_violation": -1.4975826740264893
+  },
+  "CROWN-Optimized": {
+   "n_ok": 3,
+   "n_verified_all9": 0,
+   "mean_lb": 0.6712556481361389,
+   "mean_min_lb": -0.878028929233551,
+   "median_min_lb": -0.616911768913269,
+   "mean_width": 3.808544635772705,
+   "mean_time_s": 11.885920683542887,
+   "mc_max_violation": -1.5006756782531738
+  }
+ }
+}

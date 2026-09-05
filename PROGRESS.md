@@ -1237,3 +1237,517 @@ Executed end-to-end; `NNs/reassoc_results/snap_merge_pipeline.py` (+ probes `sna
   1-Lipschitz `|W|` propagation; a tighter δ widens the crossover but not the ~20× to reach 0.4.
 - **Artifacts** (untracked in `reassoc_results`): `snap_merge_pipeline.py`, `snap_merge_probe.py`,
   `snap_merge_probe2.py`, writeup `SNAP_MERGE_RESULT.md`.
+
+---
+
+## 2026-09-04 — CROWN cancellation probes, and the "hull-preserving ⇒ plain-CROWN-neutral" wall
+
+Four minimal auto_LiRPA nets (real abcrown `.venv`, methods {IBP, CROWN, CROWN-Optimized}) pin down
+*exactly* when a semantics-preserving rewrite can move a certified bound, and — importantly — expose a
+tie artifact that had briefly made a reparametrization look like a plain-CROWN mover. Scripts are
+ephemeral (session scratchpad); net definitions below reproduce them.
+
+**Net 1 — linear residual `(-I)x + x ≡ 0`, no ReLU.** CROWN exact `[0,0]` at any ε; IBP loose
+`[-2ε, 2ε]`. CROWN carries symbolic input coefficients so `-I + I` cancels before any interval is
+taken; IBP forgets the two `x`'s are one variable. Purely-linear ⇒ CROWN exact.
+
+**Net 2 — twin ReLU `relu(a) - relu(a) ≡ 0` (a ∈ [-2,2]).** Tracer CSE gotcha: the two `torch.relu(a)`
+common-subexpression-eliminate to **one** `BoundRelu` (net backward coeff `+1-1=0`), so CROWN returns
+exact `[0,0]` — *not* by seeing through two ReLUs. Force two independent nodes (route each relu through
+its own identity `nn.Linear`): plain CROWN `[-2,+2]`, CROWN-Opt `[-1,+1]` (α→0.5). This is the minimal
+redundancy-collapse instance: merging the duplicated unstable ReLUs (or BaB-splitting the one neuron)
+recovers `[0,0]`. A "duplicate-ReLU" probe silently collapses under CSE unless nodes are forced apart.
+
+**Net 3 — `c = a - relu(a) = min(a,0)`, true range `[-2,0]`.** On the box `[-2,2]`: IBP `[-4,+2]`,
+plain CROWN `[-2,+2]`, **CROWN-Opt `[-2,0]` exact** (α→1 flattens `c ≤ a-a = 0`). Single-ReLU concave
+function: α-optimization alone recovers exactness, no rewrite needed.
+
+**Net 3b — SAME function, other decomposition.** `min(a,0)` spelled `-relu(-a)` traces to a
+monotone-unary chain (`-a→relu→neg`), exact with no relaxation, so **IBP, CROWN, CROWN-Opt all give
+`[-2,0]`**. So `a-relu(a) ⇝ -relu(-a)` turns an IBP-loose net **IBP-exact** — a genuine IBP win.
+Tooling gotcha: `torch.clamp(x,max=c)` traces to `BoundHardTanh` and crashes at build
+(`forward() missing min_val/max_val`) in this checkout; spell clamps as `minimum` / `-relu(-)`.
+
+**The tie artifact (the reason this section exists).** On the `[-2,2]` box the two spellings of
+`min(a,0)` gave *different* plain-CROWN bounds (`a-relu(a)→[-2,+2]` vs `-relu(-a)→[-2,0]`), which
+looked like a plain-CROWN-moving rewrite and motivated a resnet2b "ReLU-flip" plan
+(`relu(z)=z+relu(-z)`). A 3-box control killed it:
+
+| box (a-range) | IBP `a-relu(a)` vs `-relu(-a)` | plain CROWN | CROWN-Opt |
+|---|---|---|---|
+| `[-2,2]`  (l=−u, tie) | `[-4,2]` vs `[-2,0]` — DIFFER | `[-2,2]` vs `[-2,0]` — **DIFFER** | `[-2,0]` both — SAME |
+| `[-1,2]`  (u>\|l\|)   | `[-3,2]` vs `[-1,0]` — DIFFER | `[-1,0]` both — **SAME**       | `[-1,0]` both — SAME |
+| `[-2,1]`  (\|l\|>u)   | `[-3,1]` vs `[-2,0]` — DIFFER | `[-2,1]` both — **SAME**       | `[-2,0]` both — SAME |
+
+Plain CROWN differs between the spellings **only at the exact tie `l = −u`**, where auto_LiRPA's
+adaptive slope heuristic `α = 1[u > |l|]` returns 0 (the wrong extreme). Off-tie the flip is a plain-
+CROWN **no-op**. IBP, by contrast, differs in every box — its looseness is the correlated subtraction,
+independent of the tie.
+
+**Structural consequence (the wall).** On a fixed network the *only* difference between plain CROWN
+and CROWN-Optimized is the ReLU lower-slope α, and the plain heuristic picks α as a function of each
+neuron's convex hull `[l,u]`. Therefore **any hull-preserving reparametrization — flip
+`relu(z)=z+relu(-z)`, positive scaling, duplicate-and-average — is *exactly* plain-CROWN-neutral off
+the measure-zero tie set**, and CROWN-Opt-neutral always. A real trained net never sits at `l=−u`, so
+there is no reparametrization of stock resnet2b that beats plain CROWN. **To beat plain CROWN a rewrite
+must change the hull** — via multi-neuron cancellation (redundancy-collapse, `CRELU_CROWN_RESULT.md`)
+or a reassociation that changes which intermediate bounds get computed (`REASSOC` results). Both need
+structure resnet2b lacks natively (no duplicated/complementary unstable ReLUs, no min/max trees). This
+retires the "flip beats plain CROWN, ties CROWN-Opt" target as a tie artifact **before** spending a
+compute allocation on it. (Memory: `crown-relu-cancellation-probes`.)
+
+**Addendum — snap-merge Finding 1b (CNN-as-MLP).** Extending the 2026-09-03 snap-merge negative
+(real MLP rows never approach proportionality, residual floor ~0.40) to convolutional structure: an
+im2col/CNN-as-MLP view of a trained conv net shows the same floor (channel-kernel residual ~0.42),
+so the technique does not fire on CNNs either — the absent-structure negative is robust across
+architecture families, not an MLP-specific artifact. (Commit `96e71f7`.)
+
+### Follow-up — the `[-2,1]` box, and locating the *real* (IBP) win
+
+Dissecting the one box where plain CROWN is loose but not at a tie: on `c = a-relu(a)`, `a∈[-2,1]`
+(`l=-2,u=1`), plain CROWN returns `[-2,+1]` (true `[-2,0]`). The loose end is the **upper** bound.
+Neuron slope `α = 1[u>|l|] = 1[1>2] = 0`, so the lower ReLU envelope is the flat line `relu(a)≥0`;
+the upper bound of `c` (coeff `-1` on relu) uses it: `c ≤ a - 0 = a`, `max_{[-2,1]} a = +1`. The `+a`
+identity term has nothing to cancel against because `α=0` flattened the relu term. The heuristic's
+`α=0` is the *area-minimizing* choice for the neuron in isolation, but it is exactly the *wrong* slope
+for the downstream `-1` coefficient — the heuristic can't see that coefficient. CROWN-Opt does, picks
+`α=1`, gets `c ≤ a-a = 0` → `[-2,0]`.
+
+`min(0,a)` (literal `torch.minimum`) and `-relu(-a)` inherit the SAME plain-CROWN `[-2,1]` — the flip
+buys nothing off-tie (verified: all three spellings → plain CROWN `[-2,1]`, CROWN-Opt `[-2,0]`). The
+**only** method the `min`/`-relu(-a)` spelling helps is **IBP**: `a-relu(a)` gives IBP `[-3,1]`, while
+`-relu(-a)` and `min(0,a)` give IBP `[-2,0]` (exact) — the monotone-unary chain has no correlated
+subtraction for interval arithmetic to lose. **So the genuine, tie-independent lever a semantics-
+preserving ReLU rewrite has is IBP, not plain CROWN.** This reframes the resnet2b goal: not "beat plain
+CROWN" (empty for reparametrizations) but **"improve IBP"** — via monotone-unary reshaping and, more
+generally, linear-linear folding `B(Ax)→(BA)x` (tighter because `|BA| ≤ |B||A|` elementwise;
+`plain-relu-rewrites-cant-move-crown-bound` measured ~37% IBP tightening, CROWN-neutral). Stretch
+targets: IBP(rewritten) < CROWN(original) bound-gap, and IBP(rewritten) < CROWN(rewritten).
+
+### resnet2b IBP-rewrite attempt (2026-09-04): no fold site, one neutral rewrite, IBP-vacuity hypothesis
+
+Applying the "improve IBP" lever to stock resnet2b (`CResNet5`, in_planes=8, bn=False, dense).
+Op-by-op, why no IBP-tightening `B(Ax)→(BA)x` fold site exists (every linear op is followed by a
+ReLU or an Add that joins differently-rooted tensors):
+
+| op | kind | what follows | foldable? |
+|---|---|---|---|
+| conv1 (stem) | linear | ReLU | no (ReLU) |
+| conv1_A | linear | ReLU | no |
+| conv2_A | linear | Add(+shortcut_A(s)) | no — shortcut reads s, conv2_A reads h=relu(conv1_A(s)) |
+| shortcut_A | linear | Add | no — parallel, different sink timing |
+| conv1_B | linear | ReLU | no |
+| conv2_B | linear | Add(+z, identity) | no — z and h=relu(conv1_B(z)) differ |
+| linear1 | linear | ReLU | no |
+| linear2 | linear | output/spec | already folded into spec by auto_LiRPA |
+
+ReLUs are IBP-exact (monotone), so there is also no `x−relu(x)` monotone-unary target. This reconfirms
+the prior `plain-relu-rewrites-cant-move-crown-bound` finding ("resnet-v1/v2 have NO input-dependent
+linear-linear fold site") from the op structure directly.
+
+**The one exact structural rewrite resnet2b admits — block-B residual elimination — is IBP-neutral.**
+`z` (block-A output) is a ReLU output ⇒ `z ≥ 0` ⇒ `z = relu(z)`, so
+`conv2_B(relu(conv1_B(z))) + z  ≡  relu(wide([relu(conv1_B(z)), z]))` with `wide = [conv2_B | I]`
+(identity kernel on the z half) — a plain conv-relu-conv-relu, residual removed. Built on the trained
+weights as `NNs/resnet2b_ibp_vs_crown.py::Resnet2bResFree`; forward equivalence to stock is **bit-exact
+(max|Δ| = 0.000e+00)**. Predicted IBP-neutral (IBP already does optimal interval addition on the Add:
+width `|W2|·h_w + |I|·z_w` is unchanged) and CROWN-neutral (identity-routed channels are stably
+active). Block A's shortcut is a mixed-sign CONV, not a ReLU output, so it is NOT eliminable without
+adding ReLUs (strictly IBP-looser) — left as an Add.
+
+**Bonus targets are unreachable independent of any rewrite (hypothesis to measure).** resnet2b is
+standard-trained (not IBP-trained), so IBP width grows ~‖W‖₁ per layer over 7 linear layers and is
+expected VACUOUS (10³–10⁵-wide) at any ε where CROWN is informative (~1–10). A constant-factor
+tightening of a 10⁴-wide box is still 10⁴, so "IBP(rewritten) beats CROWN(original)" and "beats
+CROWN(rewritten)" cannot hold on this net regardless of the rewrite. `NNs/resnet2b_ibp_vs_crown.py`
+logs OUTPUT-INTERVAL WIDTHS (not just verified/not) under IBP/CROWN/CROWN-Opt for orig vs resfree, to
+turn this expectation into a number — heavy CROWN-Opt gated behind `--full` for the compute node.
+The genuine IBP-improvement demo (a rewrite that DOES tighten IBP ~37%) is the constructed
+`plain_relu_more_verifiable.py`, which HAS the mixed-sign consecutive-linear fold site resnet2b lacks.
+
+### resnet2b IBP rewrite — BUILT and MEASURED (2026-09-04): residual-fold, negative (no cancellation)
+
+Following the "build up from small ReLU-rewrite experiments" directive, implemented the one valid ReLU
+rewrite with an actual site in resnet2b and measured it end-to-end.
+
+**Mechanism (exp 1, `NNs/ibp_residfold_mechanism.py`).** A residual block `relu(W2·relu(W1 s) + Ws s)`
+rewrites exactly via `relu(u)=u+relu(-u)` to `relu(L s + W2·relu(-W1 s))` with `L = W2 W1 + Ws` — this
+EXPOSES the main path's hidden linear skeleton `W2 W1` and FOLDS it with the shortcut `Ws` into one
+operator `L`. Measured on a tiny gadget: when the paths cancel (`Ws=-W2W1 ⇒ L=0`) IBP output width
+**halves** (21.98→10.67); with random `Ws` (`|L|` large) it is **looser** (15.4→23.8). So the rewrite
+tightens IBP iff `|L|` is small — i.e. iff main and shortcut linearly cancel.
+
+**resnet2b measurement (exp 2, `NNs/resnet2b_residual_fold.py`).** Formed `L=conv2∘conv1+shortcut` as a
+single dense operator per block (basis-projection through the relu-free skeleton) and built folded
+variants {foldA, foldB, foldAB}, each a valid rewrite of stock resnet2b. Diagnostic:
+
+| block | `|conv2∘conv1 + shortcut|₁` | baseline |
+|---|---|---|
+| A | **10,740** | (shortcut = 1×1 conv, small) |
+| B | **12,796** | `|I|₁ = 1024` |
+
+No cancellation — `|L|` is huge. IBP output widths (mean over 4 imgs) vs orig:
+
+| ε_pixel | orig | foldA | foldB | foldAB |
+|---|---|---|---|---|
+| 2/255 | 2063.8 | 2046.7 (−0.8%, noise) | 4205.9 (**+104%**) | 4197.6 (+103%) |
+| 8/255 | 7646.2 | 8064.2 (+5.5%) | 12918.7 (+69%) | 13651.3 (+79%) |
+
+**The fold does NOT improve resnet2b's IBP** (foldA within noise and sign-flipping; foldB/AB much
+worse). Bit-exactness also degrades to ~6e-4 (float32 catastrophic cancellation from re-exposing the
+large `A2A1`), itself a symptom of the no-cancellation structure. This upgrades the earlier *asserted*
+negative to a *measured* one.
+
+**Why it's structural, not a search miss.** resnet2b's IBP width is dominated by the MAIN FEEDFORWARD
+path `|conv2|·width(relu(conv1(s)))` + head — the genuine computation, irreducible by any valid rewrite
+(the only adjacent op is a ReLU, which can't be folded through). The shortcut is a minor addend
+(`|As|·width(s)`, `As` a 1×1 conv), so even *perfect* shortcut cancellation would save a negligible
+fraction. Both known IBP-improving families need structure resnet2b lacks: (i) linear folding needs
+mixed-sign cancellation (measured absent, `|L|≈10–13k`); (ii) min/max consolidation needs a
+correlated-ReLU-subtraction / linearly-dependent pair (absent — same ~0.4 proportionality floor as
+snap-merge). CONCLUSION: no valid semantics-preserving rewrite meaningfully improves IBP on the *stock*
+resnet2b function; an IBP win requires a net whose blocks were CONSTRUCTED/IBP-TRAINED to cancel (exp 1
+shows the fold then fires) — which is a different function, not stock resnet2b.
+
+**Airtight confirmation (16 imgs @ eps=2/255, `NNs/resnet2b_fold_confirm16.py`):** foldA tighter on **3/16** images, mean Δ **+2.59%** (worse), range −4.4%..+9.3% — the −0.8% on 4 imgs was small-sample luck. Definitive: no valid semantics-preserving rewrite improves IBP on stock resnet2b.
+
+### resnet2b IBP: ALL FOUR rewrite doors checked and closed (2026-09-04, exhaustive)
+
+For a valid (≤1e-4) rewrite to reduce IBP output width it must invoke one of exactly four mechanisms.
+Each checked against stock resnet2b's trained weights:
+
+| # | mechanism | requires | resnet2b status (measured) |
+|---|---|---|---|
+| 1 | linear fold `B(Ax)→(BA)x` | two consecutive linear layers (shared input / composed) | **no site** — every conv/linear is followed by a ReLU or a block-diagonal Add (different inputs) |
+| 2 | residual fold via `relu(u)=u+relu(-u)` | main/shortcut linear **cancellation** (`|L|` small) | **absent** — `|conv2∘conv1+shortcut|₁`=10,740/12,796; foldB IBP **+104%**, foldA noise (3/16, +2.6%) |
+| 3 | redundancy-collapse (merge parallel ReLU filters) | an **exactly parallel** filter/row pair | **absent** — closest pair snap-error **3.75e-2** (375× over 1e-4); all others ≥0.13 (`NNs/resnet2b_parallel_scan.py`) |
+| 4 | min/max consolidation `x−relu(x)→−relu(−x)` | a correlated linear-minus-its-own-ReLU term | **no site** — resnet2b's residual is an ADD; no subtraction of a variable against its own ReLU |
+
+Root obstruction (unifies 1,2,4): resnet2b's only shared-variable double-count is the residual, whose
+two paths through the shared input are **separated by a ReLU** — nonlinear correlation, unfoldable. Door
+3 fails independently (no exact redundancy; standard-trained weights, ~0.4 proportionality floor). The
+IBP width is dominated by the irreducible main path `|conv2|·width(relu(conv1(s)))`.
+
+~~**Definitive result: no valid semantics-preserving rewrite improves IBP on the stock resnet2b
+function.**~~ **← OVERTURNED 2026-09-04 (see next section). The four-door table conflated two effects in
+door 2 and missed a fifth door. A valid rewrite DOES improve IBP on stock resnet2b.**
+
+### resnet2b IBP: the FIFTH door — stability-conditioned selective flip-and-fold (2026-09-04) — POSITIVE
+
+The door-2 row above is wrong because it applied the flip `relu(u)=u+relu(−u)` to **all** coordinates and
+attributed the net loss to "no residual cancellation." Split the flip by IBP neuron stability instead:
+
+- For an **IBP-stable-active** coord `i` of `conv1_A(s)` (`l_i^IBP > 0`): `relu(−conv1(s))_i` has IBP width
+  **exactly 0** — the flip is **free** — and coord `i`'s linear contribution folds with the shortcut into
+  one op, `|L_S| ≤ |B_S||A_S|+|short|`, **strict generically, NO weight cancellation needed**.
+- For an **unstable** coord the flip *adds* `|conv2[:,i]|·|l_i|` width (this is the door-2 cost). The full
+  fold flipped these too, drowning the gain — hence the earlier +2.6%/+104%.
+
+So the lever is **neuron stability, not residual weight cancellation.** At eps=2/255, `conv1_A` is
+~43% stable-active / ~39% stable-inactive / ~18% unstable — a large live set. Selecting `S` = the
+stable-active set and folding only those coordinates (`NNs/resnet2b_stability_fold.py`, `L_S` built in
+float64, `relu(u)=u+relu(−u)` a **global** identity for any fixed `S` so every folded net is globally
+equivalent to stock resnet2b to ~2e-6). **All numbers below are on REAL CIFAR-10 test images** (an earlier
+draft used uniform-noise inputs — noise gives a rosier −53% / 37% majority and is NOT the honest figure):
+
+| variant | S | IBP output width vs orig | tighter | note |
+|---|---|---|---|---|
+| **per-box S** (each net globally = resnet2b, ~2e-6) | ~43% per box | **−41.2%** (1691.5 → 994.2) | 16/16 | **SOUND**: MC in-box violation of fold bounds = −213 (≤0) |
+| fixed majority S (one net, calib active ≥9/16) | 14.7% | **+8.4%** (worse) | 1/16 | measured on HELD-OUT — does NOT generalize |
+| fixed conservative S (active on ALL calib) | 0.3–0.6% | −0.01% (≈0) | 15/16 | input-independent set is tiny |
+
+**Headline: the fifth door is a PER-BOX exact rewrite.** For each verification box we emit a network that
+is *globally* functionally identical to stock resnet2b (~2e-6 on random inputs) but on which IBP is **41%
+tighter, soundly** (Monte-Carlo confirms all in-box outputs lie inside the folded IBP box). This meets the
+goal ("a rewrite of resnet2b that causes IBP to improve, max error ≤1e-4") per instance — the same kind of
+box-informed exact-rewrite selection every verifier already does internally. A *single input-independent*
+fixed rewrite does **not** meaningfully help on real images: coords stable-active across all images at
+2/255 are only 0.3–0.6% (box-stability is genuinely input-dependent), and the naive majority mask even
+loses out-of-sample. So the correction to the "all four doors closed" claim is real but scoped: **a valid
+rewrite tightens IBP on stock resnet2b, per box, not as one fixed net.**
+
+Bonus **MEASURED UNREACHED**: plain CROWN(orig) mean width ≈ 3.4 ≪ IBP(fold) ≈ 994, so IBP stays vacuous
+relative to CROWN on this standard-trained net — no rewrite makes IBP beat CROWN (CROWN linearizes stable
+neurons *and* relaxes unstable ones; the fold only recovers the stable-neuron part). Door 1 was checked
+only at the *graph* level ("no consecutive linears"); stable ReLUs create *box-conditional* consecutive
+linears at every ReLU layer — that is the fifth door.
+
+### Does the same fold improve VANILLA CROWN (no α-opt)? NO — measured neutral, structural (2026-09-04)
+
+Ran the identical per-box stability fold under the CROWN family (`resnet2b_stability_fold.py` section D,
+`conv_mode=matrix` — the constant-mask `Mul` breaks auto_LiRPA's default Patches mode, same class as the
+`convfused-verified-neutral` Split note):
+
+| method | intermediate bounds | orig → fold width | result |
+|---|---|---|---|
+| **vanilla CROWN** | backward-CROWN | 3.4156 → 3.4156 | **NEUTRAL, 0/16** (signed Δ ∈ [−9.5e-7, +4.3e-4] = float32 `L_S`-reconstruction, not a bound change) |
+| CROWN-IBP | IBP | 1025.4 → 598.3 | **−41.7%, 16/16** |
+| IBP | IBP | 1691.5 → 994.2 | −41.2%, 16/16 |
+
+**The fold helps exactly the methods whose *intermediate* bounds come from IBP; vanilla CROWN is not one.**
+It back-substitutes CROWN intermediates *exactly* through the stable (linear) ReLUs, so removing their box
+slack is invisible to it (the 0/16 is the theorem, not a near-miss). CROWN-IBP takes IBP intermediates, so
+the fold's 42%-tighter block-A box propagates to tighter block-B hulls → −41.7%. So the fifth door is
+**IBP-specific: IBP and plain CROWN lose tightness in different places, and the stable-neuron place is
+already exact for CROWN.**
+
+Why no CROWN analog exists (induction — closes exact rewrites for plain CROWN on stock resnet2b): plain
+CROWN's bound = exact linear back-substitution + Σ over *unstable* `i` of `|A_i|·gap(l_i,u_i,α_i)`, with the
+area heuristic `α_i = 1[u_i > |l_i|]`. Layer-1 hulls are exact (linear in the input box) ⇒ rewrite-
+invariant; layer-k hulls are CROWN bounds through layers <k ⇒ invariant by induction ⇒ `α_k`, `gap_k`
+invariant; the `A_i` are the linear skeleton ⇒ invariant. The **only** escape is changing the neuron *set*
+— merging proportional pre-activations (redundancy-collapse) or restructuring a min/max tree — both
+**hull-CHANGING**. (The "create a complementary pair via the flip" idea also closes: un-sharing a ReLU into
+`relu(q)` + `q+relu(−q)` is redundancy-collapse *in reverse* — always ≥ original, equality iff same-sign
+downstream coeffs. Every "introduce a second ReLU" construction reduces to this; nested/clipped re-
+expressions like `relu(relu(z))`, `min(u,relu(z))` add only *stable* ReLUs. So the neuron set is the only
+lever.)
+
+**Authored the CROWN-improving rewrite and measured it — then scanned stock resnet2b for its fire site
+(2026-09-04).** (1) The rewrite that DOES move vanilla CROWN (`NNs/reassoc_results/crown_redundancy_collapse.py`,
+`method="CROWN"` not just α-opt): proportional-merge opposite-sign **−59.4%** (132.75→53.94), complementary-
+collapse opposite-sign **−33.4%** (193.42→128.81); same-sign controls exactly neutral (0.0%) — proving the
+mechanism is downstream-coefficient sign cancellation. (2) Proper fire-condition scan on stock resnet2b
+(`NNs/resnet2b_parallel_scan.py`-successor, AUGMENTED `[weight|bias]` pre-activation vectors, sign-separated):
+NO proportional site (best cos +0.59); the closest pair anywhere is the stem's near-**complementary** pair
+(cos −0.9932, β −0.948) — but exact-merge snap-error **4.25e-2** (14% rel), 425× over 1e-4. **Best exact
+site tolerance anywhere = 4.25e-2.** So: **no EXACT rewrite improves vanilla CROWN at snap tolerance
+≥ 4.25e-2 on these trained weights.** (3) The snap-merge SURROGATE (snap that pair exact, collapse, subtract
+a composed certificate δ) LOSES under the composed-CROWN δ — but "vacuous" is not fully proven, and the δ
+numbers are a good bracketing lesson. δ = sup_box|orig−snap| bracketed: the *sampled* change (2000 pts/box)
+= **0.09** (a data-manifold LOWER bound; looked like a surprise win); the composed-CROWN bound of `orig−snap`
+over the eps-box = **7.18 per logit** (an UPPER bound, and a LOOSE one — CROWN back-substitutes both branches'
+ReLU relaxations independently, blind to their near-identity, so it over-charges). The true sup is somewhere
+in **[0.09, 7.18]**. With δ=7.18 the certificate `margin ≥ margin_collapsed − δ` is destroyed (7.18 > the
+3.42 width); with a tighter δ estimator (e.g. the single-neuron Lipschitz `|W|`-propagation bound used in
+[[snap-merge-certified-surrogate]]) it is UNKNOWN — and I did not measure the actual collapse tightening
+either (closed the case on δ alone). Snap alone makes CROWN slightly worse (+0.025). LESSON: **sampled δ is a
+lower bound, composed-CROWN δ a loose upper bound; a surrogate's viability depends where the true sup falls —
+measure both, conclude from neither alone.** So: **no EXACT rewrite improves vanilla CROWN on stock resnet2b
+at snap tolerance ≥ 4.25e-2; the surrogate loses under composed-CROWN δ but tighter-δ + collapse-tightening
+viability is OPEN.** (My earlier "huge Lipschitz" assertion is neither confirmed nor refuted — sample says
+small, CROWN bound says large, true value unmeasured.) A resnet2b-*architecture* net with planted redundancy
+or a redundancy-regularized retrain would show the collapse improving its vanilla CROWN directly.
+
+## 2026-09-04 (cont. 2) — REAL modern model: exact attention-GAUGE rewrites improve CROWN on the VNN-COMP'23 ViT
+
+**Goal reframed (user `/goal`): find REAL trained models (downloadable; NOT hand-made/modified) that a rewrite
+makes more verifiable — best = modern architecture + full CROWN, then vanilla CROWN, then IBP. Planted/CReLU
+results are disqualified as results.** Target chosen: the **VNN-COMP 2023 `vit` benchmark**
+(`vnncomp2023_benchmarks/benchmarks/vit`, sparse-cloned): two real, competition-standard vision transformers,
+`pgd_2_3_16` (PGD-trained; 2 layers, 3 heads×16, d=48, 5 tokens, BatchNorm pre-norm, ReLU MLP 48→96→48, softmax
+attention) and `ibp_3_3_8` (IBP-trained, 3 layers, 17 tokens), 100 instances each, ε = 1/255 (normalized
+0.0197), 100 s timeout, 9 margin specs `Y_label − Y_i`. Compute: user's 12 h L40S allocation (g3120) via
+`srun --jobid --overlap`; nothing heavy on the login node.
+
+**Harness.** `NNs/vit_rewrite/vit_model.py` = faithful PyTorch reimplementation loading the stock ONNX weights
+(faithful gate: fp32 vs onnxruntime **2.4e-6**), with switchable EXACT rewrite variants (fp64 gate vs stock
+≤ **2.7e-15** for R1/R3, ~2e-8 for the re-factored weights = fp32 storage of the fused matrices, same precision
+class as the stock fp32 weights). `vit_bounds.py` = per-instance IBP / vanilla CROWN / alpha-CROWN lower
+bounds on the exact vnnlib boxes, Monte-Carlo soundness check, `--diag` slack attribution, `--width`.
+`vit_export.py` = ONNX export (strip BN `training_mode` for onnx2pytorch) + benchmark dir for the UNMODIFIED
+official `abcrown.py` pipeline. `vit_gauge_opt.py` = gradient-learned gauge (below).
+
+**Baseline landscape (instance 4021 first, then 100).** (a) auto_LiRPA softmax mode matters enormously and
+*differently per tier*: vanilla CROWN **lse −0.70 ≫ complex −2.28** (official config uses complex); alpha-CROWN
+**complex −0.174 (7/9 specs) ≫ lse −0.70** — in lse mode alpha-CROWN ≡ vanilla CROWN to 6 digits (the lse softmax
+relaxation has no alphas; only the MLP ReLUs do, and they don't move it). So the BEST stock baseline is
+mode-dependent: lse for vanilla CROWN, complex+alpha for full CROWN. (b) IBP is 5 orders of magnitude vacuous
+(min lb −695,109) and even crashes in complex mode (exp underflow → `BoundReciprocal` positivity assert): the
+IBP tier is dead on this ViT. (c) Standalone vanilla CROWN in complex mode raises `BoundReduceMax perturbed
+indexes NotImplementedError` (the official pipeline avoids it via its intermediate-bound path). (d) Official
+pipeline (complex+alpha+BaB, 100 s), pgd model, running: at 35/100 → 6 safe, 11 safe-incomplete, **18 unknown**
+— plenty to flip. (e) Full 100, vanilla CROWN lse, stock: **24/100 verified by the incomplete bound alone**,
+mean min-lb −0.614, mean width 4.264.
+
+**Negative rewrites (all exact, all measured, all WORSE than the best baseline).** R1 softmax shift-invariance
+(`softmax(s)=exp(s−c)/Σ`, c fixed, deletes the perturbed ReduceMax/Sub of the `complex` decomposition):
+vanilla −10.65 (c=0) vs lse −0.70; alpha −1.59 (c=0), **−302 with c=10** (float conditioning), per-row
+fixed-mean shift −1.46 @ 85 s — the numerical-stability max is ALSO the relaxation-friendly form, and any
+primitive decomposition loses to the joint `lse` relaxation. R2 QKᵀ reassociation onto X (`(XM)Xᵀ`, `X(MXᵀ)`,
+M_h=W_qW_kᵀ + exact bias cross-terms): −1.72 vs −0.70. R3 `(A·X)W_v` : −2.40. Lesson: the trained projections
+COMPRESS the bilinear operands (16 tight symbolic dims vs 48 raw); pushing the product onto X adds terms and
+loses cancellation.
+
+**Slack attribution (lse, vanilla CROWN, 3 instances, linearize ONE nonlinearity at the box center; inexact,
+diagnostic only).** mean width 3.949 full → 2.153 without QK-bilinear slack (−45%), 2.434 without softmax
+(−38%), 1.956 without AV-bilinear slack (−50%), 0.904 without all three (77% of the width is the attention
+nonlinearities; remainder = MLP ReLUs + interactions). The two bilinear products are the biggest levers.
+
+**★ POSITIVE: the attention GAUGE rewrite.** `(X W_q)(X W_k)ᵀ = (X W_q G)(X W_k G^{-T})ᵀ` and
+`A(X W_v)W_o = A(X W_v G)(G^{-1}W_o)` for ANY invertible G ∈ GL(16) per head/layer (biases transform with G) —
+an exact rewrite FAMILY (matmul associativity + inserting GG⁻¹) that keeps 16 bilinear products but changes the
+per-coordinate operand widths CROWN's McCormick relaxation sees (diagonal G is provably neutral, only mixing
+matters). Closed-form choice R4/R5 = SVD-balanced factorization (W_q' = U√Σ, W_k' = V√Σ of M_h; same for
+(W_v,W_o)). **Full 100 instances, vanilla CROWN lse: 24 → 26 verified (+2 flips); mean min-lb −0.614 → −0.525;
+mean width 4.264 → 4.089 (−4.1%); every instance and method improved; MC-sound; random orthogonal gauges are
+slightly WORSE than stock (3.97 vs 3.95 on 3 inst.), so SVD is a real basis, not luck.** R4 alone 26 (4.146),
+R5 alone 26 (4.205), both 26 (4.089). Exported to ONNX (`vit_R45_both_svd/`, 2.1e-6 vs stock on all centers).
+**Learned gauge** (`vit_gauge_opt.py`: gradient ascent on the CROWN lower bound, chain-ruled through the exact
+gauge algebra, tuning boxes = ε-boxes around CIFAR-10 TRAIN images (disjoint from the test-set benchmark
+instances), init SVD, tiny cond penalty): smoke test climbs monotonically 1.92→2.09 mean lb / −0.335→−0.178
+mean min-lb in 8 steps, cond(G) ≤ 2.8, gate 8e-8. Required a gradient fix in the fork's
+`auto_LiRPA/operators/softmax.py` (`_softmax_lse_lower/upper`: `torch.where` 0/0 → NaN grads; gradient-safe
+denominators, forward values unchanged).
+
+**Paired per-instance statistics (`vit_compare.py`), pgd_2_3_16, 100 benchmark instances, vanilla CROWN lse.**
+SVD gauge R45: min-spec lb tighter on **100/100** instances (Δ mean +0.088, worst +0.021), 893/900 specs tighter,
+width narrower on 100/100. R4 alone: 100/100 (Δ +0.058), R5 alone: 93/100 (Δ +0.032, 7 looser). So the
+closed-form gauge is a monotone improvement on this model, not 2 lucky flips.
+
+**★★ LEARNED gauge, OUT-OF-SAMPLE (400 Adam steps on 512 CIFAR-TRAIN ε-boxes, ~5 min on the L40S; held-in eval
+climbed 1.92→2.32 mean lb, −0.335→−0.044 mean min-lb, frac_ver 0.36→0.43; max cond(G)=2.8; fp64 gate vs stock
+4.9e-8; `gauges/pgd_mix_svdinit.pt`). Evaluated on the 100 TEST-set benchmark instances (never seen):
+vanilla CROWN lse **24 → 36 verified (+12 flips, 0 reverse)**; mean min-lb **−0.614 → −0.154**; mean width
+**4.264 → 3.282 (−23.0%)**; tighter on **100/100 instances and 900/900 specs** (Δ mean +0.459, worst +0.213);
+MC-sound (max violation −0.75). vs the SVD gauge: 26 → 36, 100/100, 900/900.** A single fixed, input-independent
+exact rewrite of the stock weights. Exported to ONNX (`vit_learnedG_pgd/`, 3.0e-6 vs stock on all 100 centers).
+
+**Second real model, ibp_3_3_8 (3 layers, 17 tokens), 100 instances, vanilla CROWN lse.** Stock: 15/100,
+mean min-lb −0.0296, width 1.156. **SVD gauge R45 is WORSE: 12/100, looser on 100/100 instances / 900/900
+specs (Δ −0.002, width +0.4%).** The closed-form balancing is NOT universally good — it happened to align
+with CROWN's slack on the pgd model; the learned gauge (which optimizes the actual bound) is the principled
+version. Learned gauge for ibp_3_3_8: running (batch 2; batch 8/32 OOM the 44 GB GPU — the autograd graph of
+CROWN through 3 layers × 17 tokens is large).
+
+**Official-pipeline ("full CROWN") tier.** The first official baseline run was contaminated (GPU shared with
+probes; `auto_enlarge_batch_size` sizes BaB batches from free memory; finally killed at 47/100 by my ibp gauge
+learner OOM-ing the card) — treated as a pilot only: 47 done → 10 safe / 12 safe-incomplete / 25 unknown;
+initial complex-mode vanilla CROWN verifies 0/47 (mean min-lb −2.67 — far looser than lse's −0.61), alpha-CROWN
+verifies 4.83/9 specs on average. Clean comparison = `run_chain.sh`: learned-G, stock (pgd-only instances.csv),
+R45, each ALONE on the GPU with the untouched vit.yaml settings; parsed by `vit_official_parse.py` (per-instance
+initial CROWN = deterministic complex-mode vanilla CROWN, alpha-CROWN #specs verified, final verdict with the
+100 s BaB caveat). IN PROGRESS.
+
+**safenlp (VNN-COMP'24) checked as the "more modern NLP transformer" fallback: it is NOT a transformer** —
+both `perturbations_0.onnx` are 30→128→2 ReLU MLPs (4,226 params) on precomputed sentence embeddings. No
+Attention/Softmax/MatMul-bilinear ops; nothing for the gauge rewrite to act on and no more modern than the ViT.
+
+## 2026-09-05 — ViT gauge rewrite: full-CROWN (official pipeline) tier, robustness checks, ibp hard-box re-learn
+
+The 12 h interactive allocation from 2026-09-04 ended after 2 h 40 (shell exit, not a crash) and killed the clean
+official chain before its first Result. Resumed 06:48 on a fresh 12 h L40S (g3114) via `run_chain2.sh`: the three
+official abcrown runs (untouched vit.yaml settings) sequential and ALONE on the GPU, CPU-only side jobs alongside.
+
+**ibp_3_3_8 learned gauge (last night's, tuned on 128 easy train boxes) is out-of-sample NEUTRAL:** 15 → 15
+verified, tighter on 75/100 instances / 549/900 specs, Δ mean +0.0006 (width −0.0%). Cause: its tuning boxes were
+82% verified at init (held-in mean min-lb +1.06 vs the benchmark's −0.03), so the objective had no signal. Fix:
+`vit_gauge_opt.py --hard 1 --pool N` scores a pool of train boxes with stock CROWN and keeps the n_train with the
+smallest |min-lb|. On ibp_3_3_8 the pool of 600 is 80% verified (mean +1.01); the hard 192 have mean +0.007,
+range [−0.36, +0.35], 49.5% verified — benchmark-like. Re-learn running on CPU (`gauges/ibp_mix_hard.pt`).
+
+**Init is not load-bearing (pgd_2_3_16).** `--init id --seed 1`, 200 steps on 512 train boxes (CPU): held-in
+mean min-lb −0.558 → −0.110, frac_ver 0.289 → 0.398 (SVD init at 200 steps: −0.060 / 0.422). Out-of-sample on
+the 100 test instances, vanilla CROWN lse: **24 → 37 verified (13 flips, 0 reverse), tighter on 100/100 instances
+and 900/900 specs (Δ mean +0.442, worst +0.200), width −22.2%, MC-sound (−0.77)** — essentially the SVD-init
+gauge's result (36; the two learned gauges differ by Δ −0.018 mean, mixed sign). Gate 3.5e-8. Two independent
+runs (different init, seed, step count) land on the same improvement: it is the family + objective, not a lucky G.
+
+**Official pipeline (full CROWN: complex softmax + alpha-CROWN 50 it + beta-CROWN BaB, 100 s), learned-G run
+(`vit_learnedG_pgd/`), 100 instances, GPU exclusive:** 13 safe + 52 safe-incomplete = **65/100 verified**,
+35 unknown; initial complex-mode vanilla CROWN verifies 13/100 (mean min-lb −1.06); alpha-CROWN verifies
+7.93/9 specs on average. Interim pairing against the contaminated pilot stock run (initial CROWN is deterministic
+and contention-free, so this part is valid; 20 common instances): initial CROWN tighter on 20/20 (Δ mean +1.19,
+worst +0.36); alpha-CROWN more specs on 6, fewer on 0. Clean stock run (pgd-only instances.csv) IN PROGRESS, then
+R45; final paired numbers below when done.
+
+**★★★ FULL-CROWN TIER RESULT (official alpha-beta-CROWN pipeline, unmodified vit.yaml settings, each run ALONE on
+the L40S, 100 s/instance, pgd_2_3_16, the 100 benchmark test instances; `vit_official_parse.py`
+`_scratch/official_stock_pgd.log` vs `_scratch/official_learnedG_pgd.log`):**
+
+| | stock ONNX | learned-G rewrite (exact) |
+|---|---|---|
+| initial complex-mode vanilla CROWN: all-9 verified | 0/100 (mean min-lb −2.52) | **13/100** (mean min-lb −1.06) |
+| paired initial CROWN min-lb | | **tighter on 100/100**, Δ mean +1.46, median +1.30, worst +0.36 |
+| alpha-CROWN (50 it): all-9 verified (safe-incomplete) | 41/100 | **52/100** |
+| paired alpha-CROWN #specs verified | | more on **27**, fewer on **0**, same 73 (net +46 of 900) |
+| final verdict (alpha + beta-CROWN BaB, 100 s) | 58/100 (17 safe + 41 safe-inc.) | **65/100** (13 safe + 52 safe-inc.) |
+| verdict flips | | unknown→verified **7** [60, 388, 4671, 5927, 7064, 9106, 9145], verified→unknown **0** |
+| mean time / instance | 49.5 s | 42.0 s |
+
+The gauge was learned against vanilla lse-CROWN on TRAIN boxes, so this is a transfer result: it carries over to
+the complex softmax relaxation, to alpha-optimized bounds, and to BaB. The two contention-free levels (initial
+CROWN, alpha-CROWN) are monotone improvements (0 instances worse at either level); the BaB verdict is time-capped
+but each run had the GPU to itself with identical settings. Same fp32-storage caveat as before (3.0e-6 vs stock).
+SVD-gauge (R45) official run IN PROGRESS; ibp_3_3_8 hard-box learner IN PROGRESS.
+
+**Controls added after advisor review (2026-09-05 09:30).** (i) Export-path confound: the learned-G run above used a
+re-exported ONNX (opset 14, 210 nodes) while stock is the competition file (opset 9, 133 nodes). New
+`vit_patch_onnx.py` writes the gauge-transformed weights INTO the stock graph (structure byte-identical, 14/16
+attention initializers change, identity control changes 0/16 and is bit-identical) → `vit_learnedG_patched/`,
+`vit_idinitG_patched/`; `vit_export.py --variant base` → `vit_base_export/` (identity weights through the export
+path, 0.0 vs stock at centers). Early CPU result (7 instances × 9 specs): base_export initial CROWN vs stock
+max|Δ| = 8.8e-6 — the export path does NOT move initial CROWN; the rewrite's Δ is 5 orders larger. GPU official
+runs of learnedG_patched / base_export / idinitG_patched queued after R45 (`run_chain3.sh`). (ii) The initial
+alpha-CROWN pass never hit its 30 s cap (max 21.6 s stock, 25.4 s learned-G) → initial CROWN and alpha-CROWN levels
+are both deterministic; only BaB verdicts are time-capped. (iii) Margins of the newly verified instances vs the
+3e-6 fp32-storage discrepancy: 7 BaB flips min 6.9e-4 (last-batch proxy), 11 new alpha-only verifications min
+2.1e-4 — ≥70× the discrepancy everywhere.
+
+**SVD (closed-form) gauge R45 at the full tier (official pipeline, alone on the GPU, 100 instances):** initial
+complex-mode CROWN tighter on 99/100 (Δ mean +0.32, worst −0.07), all-9 verified 0 → 3; alpha-CROWN #specs more
+on 5 / fewer on 1 (net +4); final verdicts identical (17 safe + 41 safe-incomplete both; 0 flips either way);
+alpha pass never time-capped (max 25.3 s). So the closed form moves the deterministic levels modestly and the
+verdicts not at all — the LEARNED gauge is what turns the tightening into verified instances (58 → 65).
+
+**Export-path control complete (initial CROWN, 100 instances × 9 specs, base_export CPU run vs stock GPU run):**
+max|Δ| = 6.3e-5, mean|Δ| = 3.9e-6, 0/100 verified either way → the re-export path is bound-neutral; the rewrite's
+Δ (+1.46 mean, +0.36 worst) is 4–5 orders of magnitude larger. Independent replication at this level: the id-init
+gauge patched into the stock graph (CPU run) is tighter on 100/100 vs stock, Δ mean +1.42, worst +0.34, 12/100
+verified outright (SVD-init gauge: 13/100). CPU alpha passes are time-capped (59/88) → alpha/BaB levels for these
+two models come from the GPU runs (queued).
+
+**ibp_3_3_8 hard-box learned gauge — out-of-sample NEUTRAL too (measured negative):** 300 steps on the 192
+benchmark-like train boxes (held-in min-lb −0.0095 → −0.0073, frac_ver 0.453 → 0.461, cond 41 → 1.7, gate 5.1e-8);
+on the 100 test instances: 15 → 15 verified, Δ mean +0.0006 (worst −0.0007, best +0.0046), tighter on 75/100
+instances / 505/900 specs, width −0.0%, MC-sound (−0.236). Same as the easy-box gauge → on this model the gauge
+family has ~no leverage: its vanilla-CROWN slack is not in the per-head bilinear operand basis (3 layers × 17
+tokens; the pgd model's 77 %-attention width decomposition does not carry over). The gauge is a real but
+model-dependent lever: large on pgd_2_3_16, nil on ibp_3_3_8.
+
+**★★★ CLEAN HEADLINE (learned gauge written INTO the stock ONNX graph, `vit_learnedG_patched/`; official pipeline,
+alone on the GPU; paired vs the stock run, 100 instances):**
+
+| level | stock | learned-G (stock graph, 14 initializer values changed) |
+|---|---|---|
+| initial complex-mode vanilla CROWN, all-9 verified | 0/100 | **13/100**; tighter on **100/100**, Δ mean +1.46, median +1.30, worst +0.36 |
+| alpha-CROWN (50 it, never time-capped), all-9 verified | 41/100 | **52/100**; #specs more on **27**, fewer on **0** (net +46/900) |
+| final verdict (alpha + BaB, 100 s) | 58/100 | **64/100**; unknown→verified **6** [60, 388, 4671, 5927, 9106, 9145], verified→unknown **0** |
+| margins of newly verified (vs 3e-6 fp32 storage) | | BaB flips min 6.9e-4; alpha-only min 2.1e-4 |
+| mean time / instance | 49.5 s | 43.1 s |
+
+The exported-graph run and the stock-graph run of the SAME learned weights agree exactly at both deterministic
+levels (initial CROWN Δ = 0 on 100/100; alpha-CROWN #specs identical on 100/100); they differ on one BaB verdict
+(7064: safe in the exported run, unknown here — time-capped BaB noise, so the verdict gain is 6–7 depending on run).
+Together with base_export ≈ stock (max|Δ| 6.3e-5), the export path is fully ruled out as the source of the gain.
+GPU official runs of base_export and idinitG_patched (alpha/BaB-level replication) IN PROGRESS.
+
+**Final checks (12:05).** (a) fp32-storage discrepancy over the BOX, not just the center (`vit_box_discrepancy.py`,
+onnxruntime, 1000 uniform points + corners/center per box): learned-G patched vs stock sup = 2.98e-6 on the 18 newly
+verified boxes, 3.34e-6 over all 100 boxes (200 pts each); id-init gauge 3.34e-6. Smallest newly verified margin
+2.1e-4 ≥ 70× the box discrepancy → every new certificate transfers to the stock model. (b) Ceiling check (no
+downloads; `git ls-tree` on the sparse clones, GitHub API for 2025): VNN-COMP 2023 benchmarks = acasxu cctsdb_yolo
+cgan collins_rul_cnn collins_yolo_robustness dist_shift metaroom ml4acopf nn4sys tllverifybench
+traffic_signs_recognition vggnet16 **vit** yolo; 2024 = the 2023 set re-listed + cifar100 tinyimagenet cora
+linearizenn lsnc safenlp ml4acopf_2024 (**vit_2023** is the only transformer; safenlp is a 30→128→2 MLP, checked at
+op level; the others are CNN/ResNet/MLP/ODE benchmarks by name). No vnncomp2025_benchmarks repo exists (HTTP 404).
+So the two `vit` models are the only trained transformers in the competition suite; both were run (pgd_2_3_16:
+large gain; ibp_3_3_8: neutral). Larger trained transformers are outside CROWN's reach at ε = 1/255 anyway —
+ibp_3_3_8 (3 layers, 17 tokens) is already at 15 % stock-verified with mean min-lb −0.03. (c) The GPU base_export
+official run was killed at 7/100 (PID 2773577) as redundant: exported-vs-patched learned-G had already shown the
+export path is neutral at the alpha level; the chain moved to idinitG_patched (GPU, alpha/BaB replication).
+
+**Replication at the full tier (id-init gauge, seed 1, patched into the stock graph; official GPU run, alone; DONE_ALL
+13:14):** 15 safe + 50 safe-incomplete = **65/100** (stock 58); unknown→verified **7** — the SAME seven instances
+[60, 388, 4671, 5927, 7064, 9106, 9145] as the SVD-init exported run — verified→unknown **0**; initial CROWN tighter
+on 100/100 (Δ +1.42); alpha-CROWN more specs on 26, fewer on 0 (net +42); alpha pass never time-capped (max 21 s);
+mean time 49.5 → 41.2 s. Smallest newly verified margin 9.0e-5 (instance 1546, alpha-only) vs box discrepancy
+3.3e-6 → 27×; all others ≥ 4.3e-4. Two independently learned gauges (different init, seed, step count) reproduce
+the same top-tier gain on the same instances: the result is the rewrite family + objective, not a particular G.
+
+**Tier achieved: FULL CROWN on a modern (transformer) trained competition model; goal closed 2026-09-05 13:15.**
+Summary table (pgd_2_3_16, 100 instances, official pipeline): stock 58 → learned-G 64/65/65 (three runs: patched
+svd-init, exported svd-init, patched id-init); 6–7 unknown→verified, 0 reverse; alpha-CROWN 41 → 52/52/50;
+initial CROWN 0 → 13/13/12. Vanilla CROWN lse: 24 → 36/37. Controls: export path neutral (6.3e-5), alpha never
+time-capped, margins ≫ fp32 box discrepancy. Negatives: R1–R3 exact rewrites worse; SVD gauge verdict-neutral
+(pgd) / worse (ibp); learned gauge neutral on ibp_3_3_8 (easy and hard boxes); IBP vacuous; safenlp is an MLP.

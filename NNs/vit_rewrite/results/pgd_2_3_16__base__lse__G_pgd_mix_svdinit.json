@@ -1,0 +1,21 @@
+{
+ "tag": "pgd_2_3_16__base__lse__G_pgd_mix_svdinit",
+ "model": "pgd_2_3_16",
+ "variant": "base",
+ "softmax": "lse",
+ "diag": [],
+ "n": 100,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 100,
+   "n_verified_all9": 36,
+   "mean_lb": 2.3443591594696045,
+   "mean_min_lb": -0.15437215566635132,
+   "median_min_lb": -0.25752541422843933,
+   "mean_width": 3.2824866771698,
+   "mean_time_s": 0.6594412565231323,
+   "mc_max_violation": -0.754083514213562
+  }
+ }
+}

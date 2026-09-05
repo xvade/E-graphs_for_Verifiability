@@ -1,0 +1,31 @@
+{
+ "tag": "pgd_2_3_16__base__lse__v3",
+ "model": "pgd_2_3_16",
+ "variant": "base",
+ "softmax": "lse",
+ "diag": [],
+ "n": 3,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 3,
+   "n_verified_all9": 0,
+   "mean_lb": 0.5981346964836121,
+   "mean_min_lb": -0.9517925381660461,
+   "median_min_lb": -0.6994287371635437,
+   "mean_width": 3.9493892192840576,
+   "mean_time_s": 0.8298917611440023,
+   "mc_max_violation": -1.539731502532959
+  },
+  "CROWN-Optimized": {
+   "n_ok": 3,
+   "n_verified_all9": 0,
+   "mean_lb": 0.5981345772743225,
+   "mean_min_lb": -0.9517927765846252,
+   "median_min_lb": -0.6994284391403198,
+   "mean_width": 3.9493894577026367,
+   "mean_time_s": 12.088618834813436,
+   "mc_max_violation": -1.54282546043396
+  }
+ }
+}

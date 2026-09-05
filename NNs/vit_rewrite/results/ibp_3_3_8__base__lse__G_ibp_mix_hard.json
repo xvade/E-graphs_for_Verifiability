@@ -1,0 +1,21 @@
+{
+ "tag": "ibp_3_3_8__base__lse__G_ibp_mix_hard",
+ "model": "ibp_3_3_8",
+ "variant": "base",
+ "softmax": "lse",
+ "diag": [],
+ "n": 100,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 100,
+   "n_verified_all9": 15,
+   "mean_lb": 2.9554805755615234,
+   "mean_min_lb": -0.029024625197052956,
+   "median_min_lb": -0.028566543012857437,
+   "mean_width": 1.1551473140716553,
+   "mean_time_s": 3.3055372214317322,
+   "mc_max_violation": -0.23555776476860046
+  }
+ }
+}

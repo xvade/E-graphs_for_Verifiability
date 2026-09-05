@@ -1,0 +1,21 @@
+{
+ "tag": "pgd_2_3_16__R4_rand1__lse__rand",
+ "model": "pgd_2_3_16",
+ "variant": "R4_rand1",
+ "softmax": "lse",
+ "diag": [],
+ "n": 3,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 3,
+   "n_verified_all9": 0,
+   "mean_lb": 0.5899546146392822,
+   "mean_min_lb": -0.9595009684562683,
+   "median_min_lb": -0.7119043469429016,
+   "mean_width": 3.9673380851745605,
+   "mean_time_s": 0.8837691942850748,
+   "mc_max_violation": null
+  }
+ }
+}

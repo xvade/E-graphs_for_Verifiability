@@ -1,0 +1,21 @@
+{
+ "tag": "pgd_2_3_16__R4_qk_svd__lse",
+ "model": "pgd_2_3_16",
+ "variant": "R4_qk_svd",
+ "softmax": "lse",
+ "diag": [],
+ "n": 100,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 100,
+   "n_verified_all9": 26,
+   "mean_lb": 1.8912922143936157,
+   "mean_min_lb": -0.5554132461547852,
+   "median_min_lb": -0.6071971654891968,
+   "mean_width": 4.145556926727295,
+   "mean_time_s": 0.5348370122909546,
+   "mc_max_violation": -0.9481980800628662
+  }
+ }
+}

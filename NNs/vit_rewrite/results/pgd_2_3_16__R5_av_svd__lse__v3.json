@@ -1,0 +1,31 @@
+{
+ "tag": "pgd_2_3_16__R5_av_svd__lse__v3",
+ "model": "pgd_2_3_16",
+ "variant": "R5_av_svd",
+ "softmax": "lse",
+ "diag": [],
+ "n": 3,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 3,
+   "n_verified_all9": 0,
+   "mean_lb": 0.6273471117019653,
+   "mean_min_lb": -0.9201767444610596,
+   "median_min_lb": -0.6602954864501953,
+   "mean_width": 3.8922765254974365,
+   "mean_time_s": 0.7830305099487305,
+   "mc_max_violation": -1.4989145994186401
+  },
+  "CROWN-Optimized": {
+   "n_ok": 3,
+   "n_verified_all9": 0,
+   "mean_lb": 0.6273472309112549,
+   "mean_min_lb": -0.9201769828796387,
+   "median_min_lb": -0.6602957248687744,
+   "mean_width": 3.8922760486602783,
+   "mean_time_s": 13.001671393712362,
+   "mc_max_violation": -1.502007007598877
+  }
+ }
+}
