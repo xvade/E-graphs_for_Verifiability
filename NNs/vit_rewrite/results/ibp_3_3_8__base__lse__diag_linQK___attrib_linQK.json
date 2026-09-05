@@ -1,0 +1,23 @@
+{
+ "tag": "ibp_3_3_8__base__lse__diag_linQK___attrib_linQK",
+ "model": "ibp_3_3_8",
+ "variant": "base",
+ "softmax": "lse",
+ "diag": [
+  "linQK"
+ ],
+ "n": 8,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 8,
+   "n_verified_all9": 1,
+   "mean_lb": 3.084639310836792,
+   "mean_min_lb": -0.025866826996207237,
+   "median_min_lb": -0.01983056589961052,
+   "mean_width": 1.1854978799819946,
+   "mean_time_s": 0.772545725107193,
+   "mc_max_violation": null
+  }
+ }
+}

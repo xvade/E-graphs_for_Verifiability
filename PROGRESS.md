@@ -1751,3 +1751,54 @@ svd-init, exported svd-init, patched id-init); 6–7 unknown→verified, 0 rever
 initial CROWN 0 → 13/13/12. Vanilla CROWN lse: 24 → 36/37. Controls: export path neutral (6.3e-5), alpha never
 time-capped, margins ≫ fp32 box discrepancy. Negatives: R1–R3 exact rewrites worse; SVD gauge verdict-neutral
 (pgd) / worse (ibp); learned gauge neutral on ibp_3_3_8 (easy and hard boxes); IBP vacuous; safenlp is an MLP.
+
+## 2026-09-05 (cont.) — Why the gauge result does NOT replicate on ibp_3_3_8 (mechanistic diagnosis)
+
+Goal (user, 13:30): replicate the pgd_2_3_16 full-CROWN gain by training gauges for the ibp_3_3_8 model. Two
+learned gauges already existed for it (easy train boxes → 15→15; hard/benchmark-like boxes → 15→15, Δ +0.0006,
+see above), so the question became WHY, before spending GPU time on a third. New 24 h allocation: 2 × L40S
+(job 39619518, g3120 + g3124).
+
+**Training objective used for ALL gauges (pgd and ibp), for the record:** the vanilla CROWN lower bound itself
+(auto_LiRPA method `CROWN`, softmax mode `lse`, no alpha optimization), objective `mix` = 0.5·mean over the 9
+margin specs + 0.5·mean over boxes of the worst spec, + cond penalty 1e-4·(‖G‖²+‖G⁻¹‖²), grad-norm clip 1.0,
+Adam lr 0.01, batch 32 (pgd) / 2 (ibp, GPU memory), boxes = ε-boxes around correctly classified CIFAR-10 TRAIN
+images (disjoint from the test-set benchmark instances). NOT the IBP method (vacuous on these ViTs, −7e5, no
+signal) and NOT bound width. Gradients flow CROWN → gauged weights → G (exact gauge algebra, differentiable;
+needed the gradient-safe softmax.py denominators). Evaluation is always on the 100 benchmark test instances.
+
+**The two models** (same block design: BN pre-norm, 3 heads × 16, d=48, ReLU MLP 48→96→48, softmax attention;
+same ε=1/255, 9 specs): pgd_2_3_16 = PGD-adversarially trained, 2 layers, patch 16 → 5 tokens, stock vanilla
+CROWN 24/100 (mean min-lb −0.61); ibp_3_3_8 = IBP-certified-trained, 3 layers, patch 8 → 17 tokens, stock 15/100
+(mean min-lb −0.03, i.e. benchmark instances sit right at the boundary).
+
+**Slack attribution on ibp_3_3_8 (`run_ibp_attrib.sh`; `--diag` linearizes ONE attention nonlinearity at the
+box center — inexact, diagnostic only; lse vanilla CROWN, 8 instances, mean width):** full 1.186 → linQK 1.185
+(−0.1%) → linSM 1.171 (−1.3%) → linAV 1.167 (−1.6%) → all three 1.152 (**−3%**). On pgd_2_3_16 the same three
+were **77%** of the width (3.949 → 0.904). The gauge family can only change how CROWN relaxes QKᵀ, softmax and
+A·V (it is provably neutral for linear ops and cannot touch ReLUs), so on ibp_3_3_8 it has at most ~3% of the
+width to work with — consistent with the measured Δ ≈ +0.0006. IBP training makes the attention nearly
+interval-friendly/linear; the remaining slack is the 3 × 17 × 96 = 4896 MLP ReLUs and their interaction across
+layers. This is the mechanism behind "gauge = model-dependent lever".
+
+**Sampling diagnostic (`vit_sample_diag.py`, 20 boxes × 256 uniform samples; not a bound):** both models look
+alike at the sample level — attention probabilities move by ≤0.004 across a box, normalized attention entropy
+0.63 (pgd) / 0.62 (ibp), and only 0.6% (pgd) / 0.5% (ibp) of MLP ReLUs change sign inside a box. So the
+difference is in how loose CROWN's *relaxations* are, not in the functions' input sensitivity: on pgd the
+bilinear/softmax relaxations are loose relative to the true ranges (hence the gauge lever); on ibp they are
+already tight.
+
+**ReLU-side exact rewrites checked:** the one exact ReLU rewrite known to tighten CROWN (redundancy collapse —
+merge duplicated or complementary hidden units) does not fire: ibp_3_3_8 MLPs have 0 dead units and 0 pairs
+with |cos| > 0.99 (max cos 0.949 / 0.922 / 0.850 per layer; pgd: 0.728 / 0.507). Permutation / positive
+scaling of hidden units and any change of basis of the residual stream (BN → affine fold) are exact but
+CROWN-neutral (linear-op rewrites compose exactly). No exact rewrite family with leverage on this model is
+known; see the plain-ReLU neutrality results earlier in this file.
+
+**Standalone complex-mode CROWN fix (for future complex-objective training):** the NotImplementedError
+(`BoundReduceMax` with perturbed max indices) is avoided in the official pipeline by
+`bound_opts['fixed_reducemax_index'] = True` (set in `beta_CROWN_solver.py`); the harness can pass the same
+option. Not needed for ibp_3_3_8 given the 3% ceiling.
+
+**Full-tier baseline for stock ibp_3_3_8 (official pipeline, alone on g3120): RUNNING** — needed to quantify
+the headroom that any ibp_3_3_8 rewrite would have at the tier that matters.

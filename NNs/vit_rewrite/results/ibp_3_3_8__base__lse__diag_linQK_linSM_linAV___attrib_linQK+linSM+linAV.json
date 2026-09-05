@@ -1,0 +1,25 @@
+{
+ "tag": "ibp_3_3_8__base__lse__diag_linQK_linSM_linAV___attrib_linQK+linSM+linAV",
+ "model": "ibp_3_3_8",
+ "variant": "base",
+ "softmax": "lse",
+ "diag": [
+  "linQK",
+  "linSM",
+  "linAV"
+ ],
+ "n": 8,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 8,
+   "n_verified_all9": 4,
+   "mean_lb": 3.101155996322632,
+   "mean_min_lb": -0.007671276107430458,
+   "median_min_lb": -0.005664147436618805,
+   "mean_width": 1.1518088579177856,
+   "mean_time_s": 0.6074449121952057,
+   "mc_max_violation": null
+  }
+ }
+}

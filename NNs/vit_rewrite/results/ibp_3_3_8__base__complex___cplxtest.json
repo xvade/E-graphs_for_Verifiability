@@ -1,0 +1,21 @@
+{
+ "tag": "ibp_3_3_8__base__complex___cplxtest",
+ "model": "ibp_3_3_8",
+ "variant": "base",
+ "softmax": "complex",
+ "diag": [],
+ "n": 2,
+ "bound_opts": "{'softmax': 'complex', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 0,
+   "n_verified_all9": 0,
+   "mean_lb": NaN,
+   "mean_min_lb": NaN,
+   "median_min_lb": NaN,
+   "mean_width": null,
+   "mean_time_s": 0.6614747047424316,
+   "mc_max_violation": null
+  }
+ }
+}

@@ -1,0 +1,23 @@
+{
+ "tag": "ibp_3_3_8__base__lse__diag_linAV___attrib_linAV",
+ "model": "ibp_3_3_8",
+ "variant": "base",
+ "softmax": "lse",
+ "diag": [
+  "linAV"
+ ],
+ "n": 8,
+ "bound_opts": "{'softmax': 'lse', 'conv_mode': 'matrix', 'disable_optimization': ['Exp'], 'optimize_bound_args': {'iteration': 50, 'lr_alpha': 0.5, 'use_shared_alpha': True, 'early_stop_patience': 10, 'lr_decay': 0.98}}",
+ "methods": {
+  "CROWN": {
+   "n_ok": 8,
+   "n_verified_all9": 2,
+   "mean_lb": 3.094142436981201,
+   "mean_min_lb": -0.015993177890777588,
+   "median_min_lb": -0.0138530433177948,
+   "mean_width": 1.1665174961090088,
+   "mean_time_s": 0.9391474723815918,
+   "mc_max_violation": null
+  }
+ }
+}
