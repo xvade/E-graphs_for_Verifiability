@@ -32,6 +32,12 @@ a verification spec. Nothing hand-made; all models are the authors' released che
   -A gpu-l40s-amath --gres=gpu:l40s:1 -c 5 --mem=25G -t 16:00:00 deept_chain.sh alpha small12 long0`) or inside an existing
   allocation (`JOBID=<id> NODE=<node> deept_chain.sh ...`); modes `alpha` (small_3 alpha tier), `alpha6`/`alpha5` (small_6 alpha
   tier at ≤ 6 / ≤ 5 tokens), `alldev`, `small6`, `small12`/`small12b`, `long0/1` are documented in its header.
+- `export_gauged_ckpt.py --name <deept model> --gauge <pt|none> --out <dir>` — folds a learned gauge into a DeepT checkpoint and writes
+  the Shi et al. 2020 directory layout (`checkpoint` + `ckpt-N/{config.json,vocab.txt,pytorch_model.bin}`), so third-party verifiers
+  built on that codebase (DeepT, PBVerification) load stock and gauged weights the same way; used for the composition test in
+  `RELATED_WORK.md` (their verifier lives in `deept_benchmarks/PBVerification/`, wrappers `run_pbv.sh`, `run_pbv_chain.sh`).
+- `RELATED_WORK.md` — what others have done (AAAI-26 parameterised abstract interpretation, GaLileo, Vertex-Softmax, gauge-symmetry
+  papers, …), how it relates to the gauge rewrite, and the stock-vs-gauged runs of their verifier.
 - `run_on_bigger_gpu.sh <chain args>` — sbatch wrapper for steps that need > 44 GB (alpha-CROWN on small_6): checks the card has
   ≥ 60 GB, then runs `deept_chain.sh`; used with `-p ckpt-all -A ckpt-amath --qos=ckpt-gpu --gres=gpu:a100:1`.
 - `diagnostics/` — the one-off memory / NaN / sharing investigations behind the facts below (`_mem_probe*.py`, `_alpha_mem_probe*.py` +
@@ -74,8 +80,8 @@ fp64 exactness gate 8.9e-16; newly verified margins ≥ 1.3e-2 vs fp32 stock-vs-
   CROWN" reading was that artifact.
 
 Provenance of the alpha-tier numbers: the small_3 alpha row came from the earlier `eval_alpha` (one BoundedModule per sentence
-length, weights with autograd on); the small_6 row from the current one (fresh module per call, weights frozen). Both variants
-bound the same optimisation; the equivalence was checked directly (`results/deept_small3_eval_alpha_check.json`, see PROGRESS.md).
+length, weights with autograd on); the small_6 row from the current one (fresh module per call, weights frozen). Rerunning 18 small_3
+positions through the current code reproduced the earlier bounds bit-for-bit (`results/deept_small3_eval_alpha_check.json`).
 
 ## Reproduce (DeepT small_3; small_6 analogously via `deept_chain.sh small6` then `run_on_bigger_gpu.sh alpha6`)
 ```

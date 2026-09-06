@@ -2064,8 +2064,9 @@ learner OOMs at 44 GB for ≥ 6-token sentences and its bisection radius is set 
 Not done: the BaB tier for DeepT (the abcrown loader was never wired for these models; the alpha-CROWN tier is the top tier
 reported). Code provenance of the alpha numbers: small_3's row came from the earlier `eval_alpha` (module per sentence length,
 weights with autograd on), small_6's from the current one (fresh BoundedModule per call, frozen weights, needed to fit the
-A100). A direct check that both variants give the same bounds (3 small_3 test sentences, eps 0.03, job 39666884) is running;
-result below.
+A100). A direct check (job 39666884, L40S, 3 small_3 test sentences = 18 positions, eps 0.03) reran those instances through the
+current code: all 18 alpha-CROWN and CROWN bounds, stock and gauged, are **bit-identical** to the earlier file (max |Δ| = 0;
+`results/deept_small3_eval_alpha_check.json`). The two alpha rows are therefore directly comparable.
 
 Disclosures for this section: the two long-sentence evals were lost with the user's interactive allocation and rerun as batch
 jobs; two duplicate job submissions (39659490, 39662432) were cancelled by me; the CPU NaN-cliff probe was killed as too slow
@@ -2073,3 +2074,66 @@ and rerun on a GPU (first GPU attempt failed on a device mismatch, fixed); a dup
 for several hours (its A100 submissions and the `eval_alpha` fix produced the small_6 alpha-tier result; it also consumed L40S
 and ckpt-amath hours); the stock GenBaB official run noted earlier was not rerun; `git push` is blocked by the permission
 classifier, so `main` is ahead of origin locally until the user pushes.
+
+### Prior-art check: Huang, Wei, Isac, Wu, Wu, Barrett, "Parameterized Abstract Interpretation for Transformer Verification" (AAAI-26) — 2026-09-06 ~11:00
+
+User asked whether the gauge rewrite is still novel against https://ojs.aaai.org/index.php/AAAI/article/view/40860 (code:
+https://github.com/huangdiudiu/PBVerification-for-Transformers, a fork of Shi et al. 2020's `main.py` verifier — the same
+codebase DeepT's `sst_bert_small_*` checkpoints live in, so it slots into our pipeline).
+
+What they do: keep the network fixed and parameterise the affine relaxation of every scalar product xy inside QKᵀ and
+V·softmax — either tangent planes to a mean-gap-optimal quadratic bound (PBverifierT) or a convex combination of Shi et al.'s
+two McCormick planes (PBverifierI, their eq. 20) — and optimise the parameters per verification query by gradient descent on
+the final bound (their eq. 26; optionally per-layer widths, eq. 25). Baseline = Shi et al. (18a,b). Models: Shi-style
+SST/Yelp BERTs, N ≤ 3 layers, 4 heads, hidden 256; one perturbed word embedding; radius by bisection on 50/60 instances.
+Their gains (ratio of mean radii): SST ℓ∞ 1 layer 0.0346 → 0.0348 (tie), 2 layers +2.0 %, 3 layers 0.0204 → 0.0210
+(+2.9 %, wins 44/50); Yelp ℓ∞ 3 layers +8.7 %; interval widths "advantage becomes more pronounced for deeper layers". Cost ≈ 5×
+verification time (100 s vs 21 s per query at 3 layers).
+
+Relation to the gauge rewrite, checked in code: auto_LiRPA's `MulHelper.interpolated_relaxation` (used by `BoundMul` and by
+`BoundLinear.bound_backward_with_weight`, i.e. the QKᵀ and V·P matmuls) is exactly Shi's (18a,b) in plain mode and exactly
+the PBverifierI family (r_l, r_u ∈ [0,1] per product, learned in `opt_stage`) under `CROWN-Optimized`. So our "vanilla CROWN"
+tier IS their Baseline, and our alpha-CROWN tier already runs their interpolated per-query optimisation (final-bound objective
+only, intermediate boxes fixed at plain CROWN; plus softmax/ReLU alphas). The alpha-tier pairings are therefore the
+composition test: on top of the PBverifierI-family relaxation the gauge still tightens 47/47 (small_6), 202/205 (small_3),
+100/100 initial + 41 → 52 alpha verified (pgd ViT). The two methods drain the same slack from different sides — theirs moves
+the plane inside the McCormick hull of the *original* per-coordinate boxes; the gauge changes which quantities get
+box-concretised (the CROWN box on Gᵀq is not derivable from the box on q), so neither subsumes the other (their tangent family
+reaches off-centre planes the gauge never picks). Like-for-like: their SST 3-layer ℓ∞ +2.9 % vs our DeepT small_3 seed 0
++2.7 % (ratio of means; the diary's +1.7 % is the per-instance mean ratio) on the same model family / threat model; our small_6
++13.1 % (273/294, 0 smaller) has no counterpart (they stop at 3 layers). Their depth trend independently corroborates the
+leverage rule. The gauge symmetry itself is known (Wang & Wang, NeurReps 2025, characterise the full per-head GL(d_k)×GL(d_v)
+group; no verification use); a brief search found no prior use of a learned gauge to move bound-propagation boxes.
+Honest deltas: theirs needs no tuning data and is never worse than Baseline in principle; ours costs a one-off GPU-hour of
+learning, adds zero verification-time overhead, and has no out-of-sample guarantee (0 reverse on small_6; neutral on ibp ViT).
+Full write-up of this and the other related work (verifier-side transformer relaxations, symmetry work) lives in
+`NNs/transformer_rewrite/RELATED_WORK.md`. Follow-up launched at the user's request (11:17): their verifier (`origin` = Baseline,
+`originPlus` = PBverifierI, `bilinear` = PBverifierT) on stock vs gauged DeepT small_3/small_6 checkpoints exported by
+`NNs/transformer_rewrite/export_gauged_ckpt.py` — jobs 39672839/40 (L40S) and 39672841/42 (A100 ckpt); their `model_sst_{1,2,3}`
+checkpoints are not in their data archive (only data + BERT base), so learning a gauge on their models would need retraining.
+
+**small_12 footnote eval cancelled and resubmitted (2026-09-06 11:24).** Job 39659465 (`deept_chain.sh small12b`) had spent
+5 h 20 on the *stock* half of the 290-instance eval without printing its summary (small_6's stock half took 66 min; the
+12-layer graph is far slower per CROWN call, ~4 s/call at ≤ 7 tokens from the learner's box-radius timing). The gauged half
+needs the same again, so the job could not finish before its 13:40 hard limit (`scontrol update TimeLimit` is denied to
+users), and `cmd_eval` only wrote its JSON at the very end — so I cancelled it (`scancel 39659465`; ~7.7 GPU-hours lost,
+the learner's gauge `gauges/deept_small12_seed0.pt` survives). Fixes: `cmd_eval` now dumps a partial JSON after each half;
+resubmitted as job 39672903 `deept_s12e` (L40S, 14 h) with a smaller footnote eval: 20 test sentences ≤ 10 tokens, 8
+bisection iters, eps 0.005/0.01/0.02, log `_scratch/deept_eval_short_small12.log` (the timed-out log is kept as
+`deept_eval_short_small12_timedout_290inst.log`). An intermediate resubmission (job 39672899) was cancelled after 19 s
+because it raced the code patch. The job queues behind the two L40S PBVerification jobs (account limit 2 concurrent).
+
+
+**PBVerification composition runs, first pair (12:00).** small_3 under their Baseline (`origin`, 15 sentences × positions 1–3
+= 35 instances, ℓ∞, 8 bisection steps): stock 0.03667 → gauged 0.03617 (−1.3 %; larger 10 / smaller 18 / equal 7). The same
+35 instances under auto_LiRPA CROWN: 0.03605 → 0.03663 (+1.6 %; 30 / 3 / 2). So the small_3 gauge's gain is
+verifier-specific — it was learned against auto_LiRPA's relaxation and does not carry to Shi's (different softmax relaxation;
+their stock radii differ from auto_LiRPA's per instance by up to ±40 %). Details and table in
+`NNs/transformer_rewrite/RELATED_WORK.md`. small_6 pair (+13 % in auto_LiRPA) pending (job 39672839, gauged half running).
+
+**PBVerification composition runs, small_6 Baseline pair (12:35, job 39672839):** stock 0.01686 → gauged 0.01912 = **+13.4 %**
+mean certified radius in *their* verifier (larger on 29/35, smaller on 6, median +14.6 %, range −4.7 … +30.4 %) — the same
+size as the +13.1 % under auto_LiRPA. The small_6 gauge is therefore not an artefact of auto_LiRPA's relaxation: it
+tightens Shi et al.'s independently implemented Baseline as well. Cross-check on the same 35 instances under auto_LiRPA (job 39673979,
+13:13): +17.5 % (larger 35/35). Their Baseline is much looser than auto_LiRPA on the 6-layer model (stock radii ≈ half),
+yet the gauge lifts both by a similar fraction. PBverifierI/T pairs still running.
