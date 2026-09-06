@@ -26,3 +26,6 @@ NNs/vit_rewrite/_scratch/
 NNs/reassoc_results/fullop_d3_graph_subst.pb
 NNs/reassoc_results/fullop_d3_egg.multi.pb
 NNs/reassoc_results/fullop_d3_egg.CURRENT.multi.pb
+/genbab_benchmarks/
+/deept_benchmarks/
+/autolirpa_language/

@@ -11,8 +11,8 @@ import sys, re, json, numpy as np
 def parse(path):
     recs, cur = {}, None
     for line in open(path, errors="replace"):
-        m = re.search(r"Using vnnlib vnnlib/(\S+?)_(\d+)\.vnnlib", line)
-        if m: cur = int(m.group(2)); recs[cur] = dict(id=cur); continue
+        m = re.search(r"Using vnnlib (?:vnnlib/\S+?_|specs/)(\d+)\.vnnlib", line)   # VNN-COMP vit: vnnlib/<model>_<id>; GenBaB: specs/<id>
+        if m: cur = int(m.group(1)); recs[cur] = dict(id=cur); continue
         if cur is None: continue
         r = recs[cur]
         m = re.match(r"initial CROWN bounds \(first 10 items\): \[(.*)\]", line)

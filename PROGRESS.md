@@ -1802,3 +1802,95 @@ option. Not needed for ibp_3_3_8 given the 3% ceiling.
 
 **Full-tier baseline for stock ibp_3_3_8 (official pipeline, alone on g3120): RUNNING** — needed to quantify
 the headroom that any ibp_3_3_8 rewrite would have at the tier that matters.
+
+## 2026-09-05 (cont. 3) — Goal: replicate the gauge result on more downloaded transformers
+
+**Candidate search (transformers that come with a verification spec and slot into alpha-beta-CROWN):**
+VNN-COMP 2023/2024 have only the two `vit` models already covered (2024 `safenlp` is an MLP; no 2025 repo yet).
+The GenBaB benchmark suite (Shi et al., TACAS 2025; HF dataset `zhouxingshi/GenBaB`, `cifar/vit_{1_3,1_6,2_3,2_6}`)
+ships four PGD-trained CIFAR-10 ViTs with vnnlib specs (ε=1/255, instances pre-filtered to those vanilla CROWN
+does not verify and PGD does not falsify) and abcrown configs (`Customized("../models/vit.py", ...)`) — the best
+possible fit for the pipeline. Downloaded with `NNs/vit_rewrite/genbab_download.py` (105 MB, git-ignored).
+Normalization/disjointness check: spec bounds reproduce `(clip(test[id]±1/255)−mean)/std` to 2e-7, spec id =
+CIFAR test index → our CIFAR-train tuning boxes are disjoint.
+
+**Result: the gauge has NO leverage on any GenBaB ViT — their attention is constant over the ε-boxes.**
+`NNs/vit_rewrite/genbab_gauge.py` (exact per-head gauge on the nn.Linear q/k/v/out weights, fp64 gate, learner,
+export). Probe (vanilla CROWN lse, 8 instances each):
+
+| model | softmax interval width over the box (per layer) | attention at box centre | random gauge (scale 0.3) max Δ min-lb |
+|---|---|---|---|
+| vit_1_3 | L0: 0.00000 (probs exactly 0.200 = 1/5) | scores std 0.0000 → exactly uniform | 2.9e-6 |
+| vit_1_6 | L0: 0.00000 (lower 0.000, upper 1.000) | scores std 9.76 → saturated one-hot | 2.7e-6 |
+| vit_2_3 | L0: 0.00000 (uniform); L1: 0.0043 | L0 uniform; L1 mean |p−1/T| 0.06 | 4.9e-5 |
+| vit_2_6 | L0: 0.00000; L1: 0.00000 (both uniform) | both exactly uniform | 1.1e-6 |
+
+Mechanism: with 5 tokens and ε=1/255 the PGD-trained ViTs collapsed their attention to a token mean (exactly uniform
+softmax; the query/key projections are ~constant across tokens) or to hard one-hot attention that the ε-box cannot
+move — so QKᵀ, softmax and AV contribute no CROWN slack and the whole width (0.5–0.6) sits in the ReLU MLPs and
+LayerNorms. This is the opposite of the VNN-COMP `pgd_2_3_16` (77% of width in attention). A 3-step debug run of the
+learner confirms it: gradient norm on G ≈ 7e-7, held-in eval unchanged to 4 decimals. The GenBaB filtering (only
+instances vanilla CROWN fails) makes stock vanilla CROWN 0/72 by construction (mean min-lb −0.0135), which makes no
+difference here.
+
+Stock official run (GenBaB config, alone on the L40S 44 GB): 24 instances finished (21 safe, 2 safe-incomplete,
+1 unknown) before CUDA OOM at instance 25 inside BaB (`batch_size: 50` was tuned for a bigger GPU). Not rerun — the
+rewrite cannot change anything on these models. Negative, mechanistic, closed.
+
+**Next target: DeepT (Bonaert et al., PLDI 2021) pretrained SST transformers** (`eth-sri/DeepT`, 735 MB clone,
+git-ignored under `deept_benchmarks/`): BERT-style, hidden 128, 4 heads × 32, 3/6/12 layers, ReLU MLP, 'no_var'
+LayerNorm (mean-subtraction: linear), tanh pooler; spec = ℓ∞ ball of radius eps around the embedding of ONE word
+of a test sentence (CLS/SEP/word-pieces excluded), property = true-label logit stays larger; DeepT reports the max
+certified eps per (sentence, position) on 10 seed-0 test sentences (reference small_3 ℓ∞: mean 0.0327 over 117
+positions). Harness `NNs/transformer_rewrite/deept_gauge.py`: clean single-input forward over their modules is
+bit-identical to their `forward(embeddings=)` (fp64 diff 0.0); their exact sentence sample is not reproducible
+(our seed-0 sample: 155 positions, theirs 117 — different RNG consumption), so we use our own sample and say so.
+auto_LiRPA gotcha: default `sparse_intermediate_bounds=True` makes lse-CROWN peak 18.7 GiB at 12 tokens (OOM at 16);
+`False` gives the identical bound at 0.24 GiB. In grad mode (needed for gauge learning / alpha-CROWN) the retained
+graph costs 21 GiB at 12 tokens and OOMs at 20 → tuning and the full tier are restricted to sentences ≤ 12 tokens.
+
+**Full-tier baseline for stock ibp_3_3_8 (official vit.yaml pipeline, alone on g3120, finished 15:21): 59/100
+verified (40 safe by BaB + 19 safe-incomplete by alpha-CROWN), 41 unknown; initial complex-mode CROWN verifies
+0/100 (mean min-lb −0.046); alpha-CROWN verifies 8.16/9 specs on average and hit its 30 s cap on 81/100 instances.**
+So the ibp_3_3_8 headroom at the tier that matters is 41 instances, but the gauge (3% attention share) cannot reach
+it — consistent with the vanilla-tier neutrality above. (`results/official_stock_ibp.json`.)
+
+### DeepT `sst_bert_small_3`: the gauge transfers, weakly (vanilla CROWN tier, out-of-sample, two seeds)
+
+Setup (`NNs/transformer_rewrite/deept_gauge.py learn/eval`): tuning boxes = 119 one-word ℓ∞ boxes on 40 SST **dev**
+sentences ≤ 10 tokens (3 random positions each), per-box eps = the box's stock certified radius (so the stock bound sits
+at ≈0 on every tuning box); objective = mean CROWN(lse) lb, Adam lr 0.01, cond penalty 1e-4, clip 1.0, 120 steps ×
+4-box accumulation (12 min per seed on an L40S); best-by-held-in-lb checkpoint. Exactness gate (fp64, random points in
+the boxes): 8.9e-16 for both gauges. Evaluation on SST **test** sentences ≤ 12 tokens (40 sentences, 278 positions),
+same bisection grid for stock and gauged:
+
+| | stock | gauge seed 0 | gauge seed 1 |
+|---|---|---|---|
+| mean certified radius | 0.0331 (median 0.0311) | 0.0340 — larger on 211/278, smaller on 13, equal 54 (+1.7%) | 0.0336 — larger 155, smaller 9, equal 114 (+1.2%) |
+| verified at eps 0.01 / 0.02 / 0.03 | 256 / 212 / 147 | 256 / 212 / **149** (2 flips up, 0 down) | 256 / 212 / **150** (3 up, 0 down) |
+| lb at eps 0.03: tighter / looser | | 224 / 54, mean Δ +0.025 | 136 / 142, mean Δ +0.035 |
+
+So the effect replicates in verdict and in mean radius across two independently learned gauges with zero reverse
+flips, but it is an order of magnitude smaller than on the VNN-COMP ViT. Seed 0 is the clean one (tighter lb on 266/278
+at eps 0.01, 224/278 at 0.03); seed 1 is mixed per instance below the radius (tighter on 130 vs looser on 148 at
+eps 0.01) while still enlarging more radii than it shrinks. fp32-storage check: the newly verified instances at
+eps 0.03 have gauged margins ≥ 1.3e-2 (seed 1: 0.0133/0.0295/0.0764; seed 0: 0.0198/0.0298), while the float32 stock
+vs gauged logit discrepancy on random points in those very boxes is ≤ 4.8e-7 — four orders of magnitude apart, so the
+flips are not rounding artefacts. Held-in gains were much larger (mean lb on tuning boxes +0.05 → +0.20), so
+part of the gap is overfitting to 119 boxes; the rest is the ceiling below:
+
+**Attention-slack attribution** (`attrib`: attention probabilities frozen at their box-centre values, which removes the
+QKᵀ-bilinear, softmax and AV-bilinear slack; 24 instances, 12 test sentences ≤ 12 tokens): attention nonlinearities
+account for **9.2% of the CROWN width at eps = stock radius and 12.8% at 1.5× the radius** (per sentence 1%–24%).
+Compare 77% on `pgd_2_3_16` (where the gauge flipped 7/100 at the full tier) and 3% on `ibp_3_3_8` (neutral). The
+one-word embedding perturbation barely moves the attention pattern (softmax interval widths 0.001–0.015), so most of
+the slack sits in the ReLU MLPs and the tanh pooler, which the gauge cannot touch. A +1–2% radius gain is consistent with a
+~10% attention share (this is a plausibility argument, not a derived relationship). Consistent picture across three model families: **gauge leverage ≈ attention share of the
+CROWN width**, and that share is a property of model + spec, not of the rewrite.
+
+Caveats: the DeepT reference sentence sample is not reproduced (different RNG consumption; our seed-0 sample has 155
+positions vs their 117), so DeepT's reported radii (mean 0.0327 for their zonotope on small_3) are on different
+instances. The alpha-CROWN / BaB tier is only reachable for ≤ 8-token sentences on 44 GB (alpha-CROWN is +40% tighter
+than CROWN there: +0.94 → +1.32 at 6 tokens, +2.39 → +3.49 at 8) — a paired alpha-tier eval on the 44 such test
+sentences (205 positions) is the remaining step for the full-tier statement. A long-sentence eval (≤ 32 tokens, 251
+positions, 12 sentences) is running to test transfer beyond the ≤ 10-token tuning regime.

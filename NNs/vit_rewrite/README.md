@@ -27,6 +27,19 @@ fp32 storage of the rewritten weights differs from the stock ONNX by ~3e-6 (same
 - `run_chain.sh`, `run_chain2.sh` — the compute-node sequences (official runs must be ALONE on the GPU:
   `auto_enlarge_batch_size` sizes BaB batches from free memory, so a shared card contaminates the comparison).
 
+## GenBaB ViTs (TACAS'25 `zhouxingshi/GenBaB`, downloaded to `genbab_benchmarks/`, gitignored) — no gauge leverage
+- `genbab_download.py` — fetches `cifar/models` + `vit_1_3/1_6/2_3/2_6` (config.yaml, instances.csv, vnnlib specs) from the HF API.
+- `genbab_gauge.py` — same harness as `vit_gauge_opt.py` for the GenBaB checkpoints (`{state_dict, optimizer, ...}` wrapper,
+  Dropout stripped): `eval` (stock vs gauged vanilla CROWN on the benchmark boxes), `learn`, `export` (writes a gauged
+  checkpoint + config copy into `genbab_benchmarks/cifar/<name>_<tag>/` for the official abcrown run).
+- `genbab_smoke.py` / `run_genbab_smoke.sh` — CPU smoke: fp64 exactness gate with a random gauge, stock eval, 3 debug learner steps.
+- `run_official_genbab.sh <config.yaml> <tag>` — unmodified abcrown with the GenBaB config (300 s), alone on the GPU. The stock
+  `vit_2_3` run OOM'd at instance 25 (batch 50) and was not repeated because the diagnosis below made it moot.
+- Result (PROGRESS.md 2026-09-05 cont. 3): on all four ViTs the softmax interval width over the ε=1/255 boxes is exactly 0
+  (attention exactly uniform, or saturated one-hot on `vit_1_6`), so attention is a constant linear map on the spec and any
+  gauge is bound-neutral (random-gauge Δ ≤ 5e-5). The general rule — gauge leverage ≈ attention nonlinearities' share of
+  the CROWN width — and the DeepT transfer are in `NNs/transformer_rewrite/`.
+
 ## Fork modification (alpha-beta-CROWN is git-ignored here, so the delta is recorded in this file)
 `alpha-beta-CROWN/complete_verifier/auto_LiRPA/operators/softmax.py`, `_softmax_lse_lower` and
 `_softmax_lse_upper`: the chordal-slope formulas use `torch.where(diff > 1e-5, num/diff, fallback)`. The
