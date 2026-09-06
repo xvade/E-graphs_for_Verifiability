@@ -28,9 +28,17 @@ a verification spec. Nothing hand-made; all models are the authors' released che
 - `run_deept_cmd.sh <cmd> [args]` — generic Slurm-step wrapper (venv python, cwd = this directory); `run_deept_probe.sh`,
   `run_deept_radii.sh`, `run_deept_learn.sh <name> <out.pt> [args]` (absolutizes `--out`), `run_deept_eval_chain.sh <seed> <node>`
   (waits for the learner's DONE marker in `NNs/vit_rewrite/_scratch/official_sequence.log`, then short + long paired evals).
-- `diagnostics/` — the one-off memory / NaN / sharing investigations behind the facts below (`_mem_probe*.py` + wrappers,
-  `_nan_alpha_check.py`, `_freeze_check.py`, `_count_short.py`); run from this directory. Kept for the record, not maintained.
-- `gauges/deept_small3_seed{0,1}.pt` — learned gauges (119 dev boxes, 120 steps); `results/*.json` — per-instance eval
+- `deept_chain.sh <what>...` — the follow-up chains as ONE script that runs either as a batch job (`sbatch -p gpu-l40s
+  -A gpu-l40s-amath --gres=gpu:l40s:1 -c 5 --mem=25G -t 16:00:00 deept_chain.sh alpha small12 long0`) or inside an existing
+  allocation (`JOBID=<id> NODE=<node> deept_chain.sh ...`); modes `alpha` (small_3 alpha tier), `alpha6`/`alpha5` (small_6 alpha
+  tier at ≤ 6 / ≤ 5 tokens), `alldev`, `small6`, `small12`/`small12b`, `long0/1` are documented in its header.
+- `run_on_bigger_gpu.sh <chain args>` — sbatch wrapper for steps that need > 44 GB (alpha-CROWN on small_6): checks the card has
+  ≥ 60 GB, then runs `deept_chain.sh`; used with `-p ckpt-all -A ckpt-amath --qos=ckpt-gpu --gres=gpu:a100:1`.
+- `diagnostics/` — the one-off memory / NaN / sharing investigations behind the facts below (`_mem_probe*.py`, `_alpha_mem_probe*.py` +
+  wrappers, `_nan_alpha_check.py`, `_nan_cliff_probe.py` + `run_nan_cliff_probe.sh` (is the bisection radius a zero crossing or the lse NaN
+  cliff?), `_freeze_check.py`, `_count_short.py`); run from this directory. Kept for the record, not maintained.
+- `gauges/deept_small3_seed{0,1}.pt` — learned gauges (119 dev boxes, 120 steps); `deept_small6_seed0.pt` (68 boxes from 23 dev
+  sentences ≤ 8 tokens), `deept_small3_alldev_seed0.pt` (305-box overfitting control), `deept_small12_seed0.pt` (5 boxes; ≤ 5 tokens); `results/*.json` — per-instance eval
   arrays (`inst=[sentence idx, position, n_tokens, label]`, `stock_rad`, `gauged_rad`, `fixed[eps][stock|gauged]`) and the
   attribution numbers. Logs live in `NNs/vit_rewrite/_scratch/deept_*.log` (gitignored).
 
@@ -40,8 +48,15 @@ a verification spec. Nothing hand-made; all models are the authors' released che
 | mean certified radius | 0.0331 | 0.0340 (larger 211 / smaller 13 / equal 54) | 0.0336 (155 / 9 / 114) |
 | verified at eps 0.03 | 147 | 149 (2 up, 0 down) | 150 (3 up, 0 down) |
 
-Attention nonlinearities are 9.2% (eps = radius) / 12.8% (1.5×) of the CROWN width on this model+spec (77% on the VNN-COMP
-ViT where the gauge flipped 7/100, 3% on `ibp_3_3_8` where it was neutral): **gauge leverage ≈ attention share of the width.**
+| **`sst_bert_small_6`**, test sentences ≤ 12 tokens, 294 positions | stock | gauge seed 0 (tuned on 68 dev boxes ≤ 8 tokens) |
+|---|---|---|
+| mean certified radius | 0.0220 | **0.0249 (+13.1% in mean radius; +10.6% mean per-instance)**, larger 273 / smaller 0 / equal 21 |
+| verified at eps 0.02 / 0.03 | 181 / 41 | 183 / **95** (0 reverse flips) |
+| alpha-CROWN tier (A100 80 GB; 49 positions ≤ 6 tokens), verified at eps 0.02 | 24 | **27** (3 up, 0 down; tighter on 47/47 finite) |
+
+Attention nonlinearities are 9.2% of the CROWN width on small_3, 39.7% on small_6, 70.0% on small_12 (eps = stock radius;
+77% on the VNN-COMP ViT where the gauge flipped 7/100 at the full tier, 3% on `ibp_3_3_8` where it was neutral):
+**gauge leverage ≈ attention share of the width** — small_3 +1.7% radius, small_6 +13.1%.
 fp64 exactness gate 8.9e-16; newly verified margins ≥ 1.3e-2 vs fp32 stock-vs-gauged discrepancy ≤ 4.8e-7.
 
 ## auto_LiRPA facts learned here
@@ -52,10 +67,17 @@ fp64 exactness gate 8.9e-16; newly verified margins ≥ 1.3e-2 vs fp32 stock-vs-
   the alpha/BaB tier is only reachable for ≤ 8-token sentences on this hardware.
 - `softmax: complex` mode needs `fixed_reducemax_index: True` and hit an AssertionError on some boxes here; `lse` is used
   throughout (NaN only far above the certified radius — counted and treated as unverified).
+- alpha-CROWN memory on the 6-layer model: per-call peak 36 GiB (5 tokens) / 62 GiB (6 tokens) / ~84 GiB (7, extrapolated),
+  and each BoundedModule retains 4.5–8 GiB after a call — so `eval_alpha` builds a fresh module per call and keeps the weights
+  frozen (`diagnostics/_alpha_mem_probe*.py`). The small_6 alpha tier therefore needs an 80 GB card and ≤ 6-token sentences.
 - `CROWN-Optimized` inside `torch.no_grad()` silently returns plain CROWN (alphas cannot step) — the earlier "alpha ==
   CROWN" reading was that artifact.
 
-## Reproduce (DeepT small_3)
+Provenance of the alpha-tier numbers: the small_3 alpha row came from the earlier `eval_alpha` (one BoundedModule per sentence
+length, weights with autograd on); the small_6 row from the current one (fresh module per call, weights frozen). Both variants
+bound the same optimisation; the equivalence was checked directly (`results/deept_small3_eval_alpha_check.json`, see PROGRESS.md).
+
+## Reproduce (DeepT small_3; small_6 analogously via `deept_chain.sh small6` then `run_on_bigger_gpu.sh alpha6`)
 ```
 python NNs/vit_rewrite/genbab_download.py                      # GenBaB models (105 MB)
 git clone --depth 1 https://github.com/eth-sri/DeepT deept_benchmarks/DeepT ; # + data.tar.gz from their install.sh -> deept_benchmarks/data

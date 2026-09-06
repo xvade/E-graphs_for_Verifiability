@@ -308,15 +308,21 @@ def cmd_eval(a):
 def cmd_eval_alpha(a):
     """paired stock vs gauged alpha-CROWN (CROWN-Optimized, 20 it) at fixed eps on test sentences <= max_len tokens (<= 8 fits the 44 GB GPU)"""
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh = len(net.layers), net.H, net.dh; st = [[t.to(dev) for t in w] for w in stock_tensors(net)]
-    data = load_sst("test"); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed); lirpas = make_lirpas(net, [e.shape[1] for _, _, e, _ in S], dev, a.softmax, alpha=True)
+    data = load_sst("test"); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed)
     inst = [(j, i, e, ex["label"], toks) for j, ex, e, toks in S for i in positions(toks)]; eps_list = [float(x) for x in a.eps_list.split(",")]
     print(f"# {a.name}: alpha-CROWN paired eval on {len(S)} test sentences <= {a.max_len} tokens, {len(inst)} instances, eps {eps_list}", flush=True)
-    for p in leaves(net): p.requires_grad_(True)
+    # Memory: alpha-CROWN's per-call peak is 36 GiB (5 tokens) / 62 GiB (6 tokens) on the 6-layer model, and every BoundedModule
+    # RETAINS 4.5-8 GiB of alpha/bound state after a call (diagnostics/_alpha_mem_probe2.py), so per-length modules kept alive
+    # across the loop pushed the 6-token case over 80 GB. A fresh module per call (~1 s) keeps only the peak. Weights do not
+    # need requires_grad for alpha optimisation (probe 1: identical bound), so they stay frozen.
+    def alpha_and_crown(e, i, eps, y):
+        lp = make_lirpas(net, [e.shape[1]], dev, a.softmax, alpha=True)[e.shape[1]]
+        v = crown_lb(lp, e, i, eps, y, dev, method="CROWN-Optimized", grad=True); c = crown_lb(lp, e, i, eps, y, dev); del lp; torch.cuda.empty_cache(); return v, c
     Gq, Ga = load_gauge(a.gauge, L, H, dh); res = {}
     for tag, (gq, ga) in [("stock", eye_gauge(L, H, dh, torch.float64)), ("gauged", (Gq, Ga))]:
         load_eff(net, effective(st, gq.float().to(dev), ga.float().to(dev), H, dh)); t0 = time.time(); res[tag] = {}
         for eps in eps_list:
-            v = np.array([crown_lb(lirpas[e.shape[1]], e, i, eps, y, dev, method="CROWN-Optimized", grad=True) for j, i, e, y, _ in inst]); c = np.array([crown_lb(lirpas[e.shape[1]], e, i, eps, y, dev) for j, i, e, y, _ in inst])
+            vc = [alpha_and_crown(e, i, eps, y) for j, i, e, y, _ in inst]; v = np.array([x[0] for x in vc]); c = np.array([x[1] for x in vc])
             res[tag][eps] = (v, c); print(f"# {tag} eps {eps}: alpha-CROWN verified {(v > 0).sum()}/{len(v)} (nan {np.isnan(v).sum()}) mean lb {np.nanmean(v):+.4f} | CROWN verified {(c > 0).sum()} mean lb {np.nanmean(c):+.4f}  [{time.time()-t0:.0f}s]", flush=True)
     for eps in eps_list:
         s_, g_ = res["stock"][eps][0], res["gauged"][eps][0]; d = g_ - s_

@@ -1888,9 +1888,188 @@ the slack sits in the ReLU MLPs and the tanh pooler, which the gauge cannot touc
 ~10% attention share (this is a plausibility argument, not a derived relationship). Consistent picture across three model families: **gauge leverage ≈ attention share of the
 CROWN width**, and that share is a property of model + spec, not of the rewrite.
 
+**Attention share on the deeper DeepT models:** 39.7% (`small_6`) and 70.0% (`small_12`) — see the table in the next subsection.
+
+**Long-sentence transfer on small_3 (seed-1 gauge, 2026-09-06 03:35, job 39641026 `long1`):** 12 test sentences of 10–32
+tokens (251 positions; 236 of them longer than any tuning sentence). Stock mean radius 0.0341 (median 0.0281); gauged
+0.0343 (+0.7%): larger on 93, smaller on 2, equal 156; by length 13–20 tokens +1.1%, 21–26 +0.6%, 27–32 +0.6%. Fixed
+eps 0.005/0.01/0.02: verified 251/251/227 → unchanged, lb tighter on ~half (132/124/127 of 251), 0 flips. So the
+small_3 gauge tuned on ≤ 10-token boxes is essentially neutral (never harmful) at 3× the tuning length — the gauge's
+small effect on this model does not grow or reverse with length, it fades. Seed-0 gauge (job 39641025, 05:25): the same picture but uniformly tighter — lb tighter on **251/251** at all three eps (mean
+Δ +0.0003 / +0.0013 / +0.0065), radius 0.0341 → 0.0344 (+0.8%; larger on 140, smaller on 0, equal 111), verified counts
+unchanged, 0 flips; fp64 gate 8.9e-16. Job 39641025 complete.
+
+**Overfitting test on small_3 (all dev positions), 2026-09-06 00:20 — the ceiling explanation wins.** Learner on ALL
+positions of the 53 correctly classified dev sentences ≤ 10 tokens (305 boxes, 2.6× the 119 before), 300 steps × 8-box
+accumulation (best step 270; held-in mean lb +0.07 → +0.64, three times the 119-box learner's +0.20). Same 278 test
+positions: mean radius 0.0331 → 0.0337 (per-instance +1.3%; larger on 126, smaller on 81, equal 71), eps 0.03 verified
+147 → **152** (5 up, 0 down), but the per-instance lb is mixed (eps 0.03: tighter 116 / looser 162, mean Δ +0.031). So
+2.6× more tuning data and 3× the held-in gain buy no extra test gain (+1.3% vs +1.7%/+1.2% for the two 119-box gauges):
+the small_3 gap is the ~9% attention-share ceiling, not overfitting. Gauge `gauges/deept_small3_alldev_seed0.pt`,
+results `results/deept_small3_alldev_eval_short_seed0.json`.
+
+**Alpha-CROWN tier on small_3 (2026-09-06 01:18, `deept_chain.sh alpha`, job 39641025):** paired stock vs seed-0 gauge with
+`CROWN-Optimized` (20 iterations, autograd on) on the 44 test sentences ≤ 8 tokens (205 positions; the 44 GB limit for the
+3-layer alpha graph). eps 0.03: alpha-CROWN verified 104/205 → 104 (vanilla CROWN 83 → 83), lb tighter on **202/205**,
+looser 3, mean Δ +0.015; eps 0.04: 54 → 54 (CROWN 44 → 45), tighter 162/205, looser 43, mean Δ +0.025; 0 flips either
+way. So on small_3 the gauge's tightening survives alpha optimisation almost instance-for-instance but is too small to
+flip verdicts — the same +1–2% story as the vanilla tier, as the 9% attention share predicts. The analogous alpha-tier
+eval for small_6 (share 40%) was tried at ≤ 6 tokens (job 39658740, `alpha6`, 15 sentences / 49 positions): **CUDA OOM at
+44 GB** on the first alpha pass — alpha-CROWN (which optimises intermediate bounds too) retains far more than the
+plain grad-mode CROWN used by the learner, which fit ≤ 8-token sentences on this model. A ≤ 5-token retry was
+queued (job 39662432, `alpha5`) and later cancelled as superseded by the A100 result (see "small_6 alpha tier" below).
+
+**small_12 learner: CUDA OOM (2026-09-06 01:55).** With autograd on, the 12-layer graph does not fit 44 GB even at 7-token
+sentences (35 boxes; the first backward OOM'd at 43.9 GiB). Retry at ≤ 6 tokens (job 39659465, `small12b`: 5 dev sentences, 17 boxes) **also OOM'd at 44 GB** (03:59); its automatic
+fallback at ≤ 5 tokens (2 sentences, 5 boxes — too few to mean much) did run and its paired eval is job 39659465 (result appended below when it lands). Independently of memory, small_12 is a
+poor target for the *radius* metric: the stock lb at the bisection radius is +1.2 to +2.2 on every tuning set, i.e. the
+"radius" is where lse-CROWN turns NaN, not where the bound crosses zero (contrast small_6 below: `diagnostics/_nan_cliff_probe.py`, 40 sampled test instances: stock radii are
+zero-crossing-limited on 40/40, gauged on 39/40 — one gauged radius is set by the NaN cliff, i.e. the gauged bound is
+still positive when lse-CROWN turns NaN, so that instance's +Δ is if anything understated). A small_12 statement would need the NaN-free `complex` softmax mode or an 80 GB card, and is left
+out of the goal. Note also that on small_12 the bisection radius is set by the lse NaN
+cliff, not by the bound crossing zero (stock lb at the found radius is +1.22 on the tuning boxes, cf. the attribution
+run where only 2/24 instances were finite at 1.5× radius) — the same question for small_6 was settled by
+`diagnostics/_nan_cliff_probe.py` on a GPU (the CPU attempt was killed as too slow): small_6 radii are zero-crossing-limited (40/40 stock, 39/40 gauged; see below).
+
+### DeepT `sst_bert_small_6`: the gauge result REPLICATES at full strength (vanilla CROWN tier, out-of-sample) — 2026-09-05 ~23:00
+
+Predicted by the leverage rule (attention share 39.7% vs 9.2% on small_3) and confirmed. Same protocol as small_3
+(`deept_chain.sh small6`, batch job 39641026): learner on the 23 SST **dev** sentences ≤ 8 tokens (68 boxes, 3 positions
+each, per-box eps = stock radius, mean 0.0184), 120 steps × 4-box accumulation, 25 min; best step 90, held-in mean lb
++0.16 → +1.18; fp64 exactness gate 8.9e-16 (learner and eval). Paired eval on 40 SST **test** sentences ≤ 12 tokens
+(294 positions; the tuning regime was ≤ 8 tokens, so 267 of these are longer than anything tuned on):
+
+| small_6, 294 test positions | stock | gauge seed 0 |
+|---|---|---|
+| mean certified radius | 0.0220 | **0.0249 (+13.1%)**; larger on 273/294, smaller on 0, equal 21 (grid resolution); per-instance +10.6% mean, max +36% |
+| by length: 5–6 / 7–8 / 9–10 / 11–12 tokens | 0.0146 / 0.0239 / 0.0223 / 0.0218 | +14.5% / +21.5% / +13.3% / +11.7% (gain persists beyond the tuning lengths) |
+| verified at eps 0.01 / 0.02 / 0.03 | 275 / 181 / 41 (20 lse-NaN at 0.03) | 275 / **183** / **95** (6 NaN); flips up 0 / 2 / 40 finite + 14 NaN→verified, **0 reverse** |
+| lb at eps 0.03: tighter / looser | | 274 / 0, mean Δ +1.62 (eps 0.02: 277 / 17, +0.26) |
+
+**Alpha-CROWN tier on small_6 (2026-09-06 08:16, A100 80 GB, job 39663976, `deept_chain.sh alpha6` with the fresh-module-per-call
+`eval_alpha`):** paired stock vs seed-0 gauge with `CROWN-Optimized` (20 it) on the 15 test sentences ≤ 6 tokens (49 positions;
+the 6-layer alpha graph peaks at 62 GiB there). **eps 0.02: alpha-CROWN verified 24/49 → 27/49 (3 up, 0 down), lb tighter on
+47/47 finite pairs, looser 0, mean Δ +0.33**; NaN 2 → 0; newly verified margins 0.157 / 0.137 / 0.037 (stock −0.019 / −0.038 /
+−0.264). Vanilla CROWN on the same instances 11 → 15. eps 0.03 is NaN-dominated at these lengths (stock 47/49 NaN) — the gauge
+reduces NaNs to 35 and 4 instances become verified (margins ≥ 1.66), but it is not a meaningful comparison. So on small_6 the
+gauge's gain survives alpha optimisation: +3/49 verdicts (+12% of the verified set) and tighter on every finite instance —
+the same shape as the VNN-COMP ViT full-tier result (+7/100, 0 reverse). BaB was not run (no abcrown Customized-loader wiring
+for DeepT; the alpha graph already needs an 80 GB card).
+
+Newly verified margins ≥ 1.8e-2 (eps 0.02) and ≥ 5.5e-2 (eps 0.03), vs fp32 stock-vs-gauged logit discrepancy 4.8e-7
+measured on small_6 itself (32 random points in each newly verified eps-0.03 box) — five orders of magnitude. The learned
+gauges are mild (per-head condition numbers 1.3–2.3), and they also reduce lse-CROWN NaNs at eps 0.03 (20 → 6), i.e. keep
+the softmax relaxation finite further out. The eps 0.03 count more than doubles (41 → 95 of 294) with zero instances getting worse — this is the
+same shape as the VNN-COMP ViT result (initial CROWN tighter on 100/100, 7 unknown→verified, 0 reverse), now on a
+second real, downloaded transformer with its authors' spec. Three DeepT depths give a within-family dose-response:
+
+| model | attention share of CROWN width (eps = radius) | radius gain (out-of-sample) | eps-0.03 verified |
+|---|---|---|---|
+| small_3 | 9.2% | +1.7% / +1.2% (two seeds) | 147 → 149 / 150 of 278 |
+| small_6 | 39.7% | **+13.1%** (alpha tier, ≤ 6 tokens, eps 0.02: 24 → 27 of 49, tighter 47/47) | 41 → 95 of 294 |
+| small_12 | 70.0% | not measurable: learner OOMs at 44 GB for ≥ 6-token sentences, and the stock radius is set by the lse NaN cliff, not a zero crossing (5-box fallback gauge eval = job 39659465, footnote below) | |
+
+Ops note (2026-09-05 20:15): the interactive allocation 39619518 ended (job COMPLETED after 6 h 50, the user's
+interactive step cancelled), which killed both long-sentence paired evals ~1.8 h into their gauged half (stock half
+done: mean radius 0.0341, median 0.0281 over 251 positions; eps 0.005/0.01/0.02 verified 251/251/227) and made the
+queued chains fail instantly ("Slurm job has expired"). Resubmitted as two batch jobs on `gpu-l40s`/`gpu-l40s-amath`
+(1 L40S each, 16 h): 39641025 = alpha-tier eval → small_12 learner+eval → long eval seed 0; 39641026 = small_6
+learner+eval → all-dev learner+eval → long eval seed 1 (`NNs/transformer_rewrite/deept_chain.sh`). The allocation's end coincides
+with the user's login session on klone-login03 closing (20:13); nothing was cancelled by this session. Bookkeeping caveat:
+part of this session's context was dropped mid-evening, so the queue notes above were written twice with slightly different
+decisions (the all-dev learner was first dropped, then re-queued); the batch-job list in this note is authoritative.
+
 Caveats: the DeepT reference sentence sample is not reproduced (different RNG consumption; our seed-0 sample has 155
 positions vs their 117), so DeepT's reported radii (mean 0.0327 for their zonotope on small_3) are on different
 instances. The alpha-CROWN / BaB tier is only reachable for ≤ 8-token sentences on 44 GB (alpha-CROWN is +40% tighter
 than CROWN there: +0.94 → +1.32 at 6 tokens, +2.39 → +3.49 at 8) — a paired alpha-tier eval on the 44 such test
-sentences (205 positions) is the remaining step for the full-tier statement. A long-sentence eval (≤ 32 tokens, 251
-positions, 12 sentences) is running to test transfer beyond the ≤ 10-token tuning regime.
+sentences (205 positions) was the remaining step for the full-tier statement (done: tighter 202/205, no flips, see "alpha tier" below). A long-sentence eval (≤ 32 tokens, 251
+positions, 12 sentences) was started to test transfer beyond the ≤ 10-token tuning regime; it was lost with the allocation and rerun as batch jobs (done: +0.7/+0.8 %, no flips, see below).
+
+### Deeper DeepT models have a much larger attention share → they are the better targets (2026-09-05 evening)
+
+Same `attrib` probe (24 instances, 12 test sentences ≤ 12 tokens, attention probabilities frozen at the box centre) on the
+6- and 12-layer DeepT SST models, run alongside the long evals:
+
+| model | attention share of CROWN width at eps = stock radius | at 1.5× |
+|---|---|---|
+| `sst_bert_small_3` | 9.2% | 12.8% |
+| `sst_bert_small_6` | **39.7%** (per sentence 0%–86%: 22, 80, 1, 65, 15, 33, 16, 85, 0, 86, 15, 24) | 33.5% (14 finite instances; the rest NaN in lse mode) |
+| `sst_bert_small_12` | **70.0%** (24 instances; per sentence 29%–99%: 29, 71, 66, 71, 94, 99, 82, 51, 77, 97, 38) | only 2 finite instances (lse NaN at 1.5× radius on this depth) — not meaningful |
+
+Interpretation: with more layers the one-word perturbation propagates into the attention patterns of later layers, and the
+bilinear/softmax slack compounds, so the attention share — and by the leverage rule the gauge's room — grows with depth.
+Decision: the queued "all-dev-positions small_3 learner" (overfitting test) was **dropped from the queue before it started**
+(its waiting shell was killed; no GPU job was cancelled) in favour of learning + evaluating gauges on `small_6` and then
+`small_12` (`run_deept_model_chain.sh`, same protocol as small_3: dev-set tuning boxes, 120 steps × 4-box accumulation, seed
+0, paired eval on 40 test sentences ≤ 12 tokens; deeper models tune on ≤ 10 / ≤ 8-token sentences because grad-mode memory
+scales with depth, with an automatic fallback to shorter sentences on OOM). The alpha-CROWN paired eval of the small_3 seed-0
+gauge (44 test sentences ≤ 8 tokens, eps 0.03/0.04) stayed queued on the other GPU (done, see "alpha tier" below).
+
+
+
+
+**small_12 learner OOM (2026-09-06 01:55, job 39641025 `small12`):** the 12 dev sentences ≤ 7 tokens gave 35 tuning boxes
+(stock radii are tiny on the 12-layer model: mean 0.0070, max 0.0094 — it is far less certifiable than small_3/6), radii and
+the no-grad sharing check ran, but the first grad-mode CROWN on the 12-layer graph exceeded 44 GB (43.85 GiB allocated by
+PyTorch). The chain continued with `long0`. Resubmitted as job `deept_D` (`deept_chain.sh small12b`): tuning sentences
+≤ 6 tokens (5 positions each), automatic fallback to ≤ 5 tokens, then the short paired eval at eps 0.005/0.01/0.02 (the
+eps list is scaled to small_12's radii). Queued behind the group GPU limit (2 concurrent L40S) with the small_6 alpha eval.
+
+**Probe result (03:50, job 39662749, `diagnostics/_alpha_mem_probe.py`): the weight-gradient hypothesis is rejected.** small_3 at
+6 tokens: peak 14.6 GiB with weight gradients vs 16.4 GiB with weights frozen, identical alpha bound (−0.60991); small_6 OOMs
+above 43.6 GiB at 6, 7 and 8 tokens with weights frozen. alpha-CROWN on the 6-layer model simply needs more than 44 GB for
+≥ 6-token sentences (it retains ~3× what the 3-layer model does, more than the layer count alone would suggest). Options:
+the ≤ 5-token retry (`alpha5`, job 39662432, later cancelled) or an 80 GB GPU (taken; result below).
+Submitted the ≤ 6-token small_6 alpha eval on an **80 GB A100** via the checkpoint partition (job 39662797, `ckpt-all`/`ckpt-amath`,
+`run_on_bigger_gpu.sh alpha6`, which aborts if the card has < 60 GB; preemptible, so it may restart). The ≤ 5-token L40S retry
+(job 39662432, submitted by the parallel instance) stayed queued as the fallback and was cancelled once the A100 result landed.
+
+**04:35 — the A100 run OOM'd too** (job 39662797: 78.6 GiB allocated at 6 tokens; the small_12 ≤ 6-token learner likewise at
+42.9 GiB on the L40S, now retrying at ≤ 5 tokens, which gives only 5 tuning boxes). alpha-CROWN on the 6-layer graph is not
+simply "3× small_3": either the per-instance peak is really > 80 GB or memory accumulates across consecutive instances inside
+the reused BoundedModule. Probe 2 (`diagnostics/_alpha_mem_probe2.py`, job 39663682, A100) measures allocated-before/after and
+per-call peak over 4 consecutive instances at 5 and 6 tokens, with the module reused (as `eval_alpha` does) and rebuilt per call.
+
+**Probe 2 result (05:05, job 39663682, A100 80 GB): no leak, but retained state + peak overflowed.** small_6 alpha-CROWN per-call
+peak is 36.4 GiB at 5 tokens and 61.9 GiB at 6 tokens (stable over 4 consecutive instances, ~72 s each); after each call the
+BoundedModule *retains* 4.5 GiB (5 tokens) / 7.9 GiB (6 tokens) of alpha/bound state. `eval_alpha` kept one module per sentence
+length alive across the loop and had the weights with `requires_grad`, so the 6-token peak sat on top of ~12 GiB of retained
+state and overflowed 80 GB (78.6 GiB at the OOM). Fix in `deept_gauge.py eval_alpha`: a fresh BoundedModule per call (deleted
+after, ~1 s overhead) and frozen weights (probe 1: identical bound). Peak then ≈ 62 GiB at 6 tokens → resubmitted on the A100
+(job `deept_a100b`, `alpha6`: 15 test sentences ≤ 6 tokens, 49 positions, eps 0.02/0.03, ~49 × 4 × 75 s ≈ 4 h). 7 tokens
+would need ≈ 84 GiB, so ≤ 6 tokens is the ceiling for the 6-layer alpha tier on this cluster.
+
+### Wrap-up of the replication goal (2026-09-06 ~08:40)
+
+**Verdict.** The attention-gauge result (learned exact per-head reparametrisation tightens CROWN-family bounds) replicates on
+one downloaded transformer that ships with its authors' verification spec: DeepT's `sst_bert_small_6` (6 layers, SST-2 word
+substitution, ℓ∞ radius on one word embedding as in the DeepT paper). Tuning used 68 boxes from 23 dev sentences ≤ 8 tokens;
+the evaluation is out-of-sample (40 test sentences, 294 positions ≤ 12 tokens, 267 of them longer than any tuning sentence):
+
+| tier | stock → gauged |
+|---|---|
+| vanilla CROWN, certified radius (294 positions) | +13.1 % mean; larger on 273/294, smaller on 0 |
+| vanilla CROWN, verified at eps 0.03 | 41 → 95 of 294, 0 reverse |
+| alpha-CROWN (A100, 49 positions ≤ 6 tokens), eps 0.02 | tighter on 47/47 finite pairs, looser on none; 24 → 27 verified, 0 reverse (small sample) |
+
+It transfers weakly on the shallower sibling `small_3` (+1.7 % / +1.2 % radius over two seeds, tighter 202/205 at the alpha
+tier, no verdict flips at any tier or sentence length) and is mechanistically null on the GenBaB ViTs (attention constant over
+the boxes). All of it is consistent with the leverage rule: the gain tracks the share of the CROWN width attributable to the
+attention nonlinearities (9 % small_3 → +1.7 %; 40 % small_6 → +13 %; 77 % pgd ViT → +7/100; 3 % ibp ViT and 0 % GenBaB →
+neutral). That is a two-point dose-response inside DeepT plus the ViT points; `small_12` (70 %) is *not* a third point — its
+learner OOMs at 44 GB for ≥ 6-token sentences and its bisection radius is set by the lse NaN cliff rather than a zero crossing
+(the 5-box ≤ 5-token gauge eval, job 39659465, is appended below as a footnote only).
+
+Not done: the BaB tier for DeepT (the abcrown loader was never wired for these models; the alpha-CROWN tier is the top tier
+reported). Code provenance of the alpha numbers: small_3's row came from the earlier `eval_alpha` (module per sentence length,
+weights with autograd on), small_6's from the current one (fresh BoundedModule per call, frozen weights, needed to fit the
+A100). A direct check that both variants give the same bounds (3 small_3 test sentences, eps 0.03, job 39666884) is running;
+result below.
+
+Disclosures for this section: the two long-sentence evals were lost with the user's interactive allocation and rerun as batch
+jobs; two duplicate job submissions (39659490, 39662432) were cancelled by me; the CPU NaN-cliff probe was killed as too slow
+and rerun on a GPU (first GPU attempt failed on a device mismatch, fixed); a duplicate instance of this session ran concurrently
+for several hours (its A100 submissions and the `eval_alpha` fix produced the small_6 alpha-tier result; it also consumed L40S
+and ckpt-amath hours); the stock GenBaB official run noted earlier was not rerun; `git push` is blocked by the permission
+classifier, so `main` is ahead of origin locally until the user pushes.
