@@ -2481,3 +2481,20 @@ vs the random-vocabulary gauge +1.8 %. **Both out-of-distribution tests pass:** 
 effect, and random vocabulary strings give 89 % of it. The three gauges (SST dev / Yelp text / random tokens) land within 2 % of
 each other on 294 held-out instances with 0 reverse flips each, so the learned gauge is a property of the weights plus the box
 scale, which is the precondition for deriving it without data. Both OOD runs complete; the two-word run is still evaluating.
+
+**16:20 — rigorous certificate transfer (user: "bound the difference between the two networks"; option 2 = interval weights) and
+per-query gauges (route A) — smoke tests passed, full runs launched.** `deept_gauge.py eval --weight_intervals 1` re-verifies with the
+folded attention weights declared as auto_LiRPA `BoundedParameter`s spanning their two fp32 neighbours (contains the exact real
+product; largest fp32 rounding actually incurred 7.3e-9), so the certificate covers the exact rewrite = the original function.
+Two auto_LiRPA obstacles on the way: nn.Linear traces to MatMul(x, Transpose(W)) and the weight-perturbation path cannot push A
+through the Transpose → the pass swaps each attention Linear for an `IntervalLinear` (x @ Wt + b, parameter feeds the MatMul directly);
+and concretisation takes dim 0 of a perturbed root as the batch → parameters get a leading size-1 dim. Smoke (job 39768955, 7
+instances ≤ 6 tokens): gauged-with-intervals vs gauged: radii identical 7/7, lb looser by ≤ 2e-4 (mean −0.0000 / −0.0000 /
+−0.0002 at eps 0.01 / 0.02 / 0.03); stock-with-intervals vs stock: identical radii, lb looser ≤ 1e-4. So the rigorous version of the
+certificate costs ≈ 1e-4 in margin and nothing in radius at the 1e-4 grid. Full 294-position run: job 39771549 (L40S, 4 weight
+sets, `results/deept_small6_wint_eval_short_seed0.json`). Per-query gauges (`eval_pq`: Adam on the gauge per instance from the
+learned S6 init, best-of iterates, sound for every iterate): smoke (job 39770485, 4 instances, 3 steps) ran end to end; one
+eps-0.03 instance stopped after 1 step on a non-finite gradient near the NaN cliff → gradient entries are now masked as in
+`pbv_learn.py`. Full runs: job 39771547 (verified counts at eps 0.02 / 0.03, 20 sentences ≤ 12 tokens, 20 steps) and 39771548
+(certified radius: optimise at the fixed gauge's radius, bisect upward with the optimised gauge frozen), ckpt A100, progressive
+save + resume. Goal set by the user meanwhile: **find the formula for the gauges** (work interleaved with landing results).

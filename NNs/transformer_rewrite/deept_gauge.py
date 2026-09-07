@@ -166,6 +166,40 @@ def load_eff(net, effs):
     with torch.no_grad():
         for p, t in zip(leaves(net), [t for e in effs for t in e]): p.copy_(t)
 
+class IntervalLinear(nn.Module):
+    """x @ Wt + b with Wt (1 x in x out) and b (1 x 1 x out) as auto_LiRPA BoundedParameters.  nn.Linear traces to MatMul(x, Transpose(W)), and
+    auto_LiRPA's weight-perturbation path cannot push A matrices through that Transpose (4-D A vs 3-D permutation), so the
+    interval-weight pass swaps each attention nn.Linear for this module, whose parameter feeds the MatMul directly."""
+    def __init__(self, Wt, b): super().__init__(); self.Wt = Wt; self.b = b
+    def forward(self, x):
+        y = torch.matmul(x, self.Wt); return y + self.b if self.b is not None else y
+
+def install_weight_intervals(net, effs64):
+    """Rigorous transfer of the certificate to the ORIGINAL network.  The gauged network equals the original in real arithmetic; the
+    only difference is that the folded attention weights (computed here in fp64) are stored in fp32.  Declare each stored entry as
+    the interval between its two fp32 neighbours (it contains the exact real product: the fp32 rounding is <= half an ulp and the
+    fp64 product error is ~1e-16 relative, far below one ulp), so the bound holds for every network in the family, including the
+    exact rewrite, i.e. for the original function.  auto_LiRPA then treats those layers as bilinear (weight x activation) with its
+    McCormick relaxation.  Returns the largest fp32 rounding actually incurred."""
+    from auto_LiRPA import BoundedParameter
+    def bp(t64):
+        w = t64.float(); lo = torch.nextafter(w, torch.full_like(w, -float("inf"))); hi = torch.nextafter(w, torch.full_like(w, float("inf")))
+        return BoundedParameter(w.clone(), PerturbationLpNorm(norm=np.inf, x_L=lo, x_U=hi), requires_grad=False), (w.double() - t64).abs().max().item()
+    worst = 0.0; net._orig_attn = []
+    for l, (Wq, bq, Wk, bk, Wv, bv, Wo) in zip(net.layers, effs64):
+        at = l.attention.self; od = l.attention.output; net._orig_attn.append((at.query, at.key, at.value, od.dense))
+        for parent, nm, W, b in ((at, "query", Wq, bq), (at, "key", Wk, bk), (at, "value", Wv, bv), (od, "dense", Wo, None)):
+            # leading size-1 "batch" dim: auto_LiRPA's concretisation takes dim 0 of a perturbed root as the batch dimension
+            Wt, e1 = bp(W.T.contiguous().unsqueeze(0)); worst = max(worst, e1)
+            if b is not None: bb, e2 = bp(b.reshape(1, 1, -1)); worst = max(worst, e2)
+            else: bb = nn.Parameter(getattr(parent, nm).bias.detach().clone().reshape(1, 1, -1), requires_grad=False)   # out-projection bias is not transformed by the gauge
+            setattr(parent, nm, IntervalLinear(Wt, bb))
+    return worst
+
+def remove_weight_intervals(net):
+    for l, (q, k, v, o) in zip(net.layers, net._orig_attn): l.attention.self.query, l.attention.self.key, l.attention.self.value, l.attention.output.dense = q, k, v, o
+    net._orig_attn = []
+
 def eye_gauge(L, H, dh, dtype=torch.float32):
     I = torch.eye(dh, dtype=dtype).expand(L, H, dh, dh).clone(); return I, I.clone()
 
@@ -359,7 +393,19 @@ def cmd_eval(a):
         if a.save_json:  # partial save after each half, so a job time-out keeps the finished half (small_12 eval lost 5 h this way)
             json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], **{f"{t}_rad": r[0].tolist() for t, r in res.items()}, "fixed": {str(eps): {t: r[1][eps].tolist() for t, r in res.items()} for eps in eps_list}}, open(a.save_json, "w"))
         print(f"# {tag}: certified radius mean {rad.mean():.4f} median {np.median(rad):.4f} | " + "; ".join(f"eps {eps}: verified {(v > 0).sum()}/{len(v)} (nan {np.isnan(v).sum()}) mean lb {np.nanmean(v):+.4f}" for eps, v in fixed.items()) + f"  [{time.time()-t0:.0f}s]", flush=True)
+    if a.weight_intervals:   # rigorous-transfer tier: fp32-neighbour intervals on the folded attention weights (see install_weight_intervals)
+        st64 = [[t.double() for t in w] for w in st]; lengths = [e.shape[1] for _, _, e, _ in S]
+        for tag, (gq, ga) in [("stock_wint", eye_gauge(L, H, dh, torch.float64)), ("gauged_wint", gauges[0])]:
+            effs64 = effective(st64, gq.double().to(dev), ga.double().to(dev), H, dh); worst = install_weight_intervals(net, effs64)
+            lw = make_lirpas(net, lengths, dev, a.softmax); t0 = time.time()
+            print(f"# {tag}: attention weights as 2-ulp fp32 intervals (largest fp32 rounding of the folded weights {worst:.2e})", flush=True)
+            rad = np.array([certified_radius(lw[e.shape[1]], e, i, y, dev, hi=a.hi, iters=a.iters) for j, i, e, y, _ in inst])
+            fixed = {eps: np.array([crown_lb(lw[e.shape[1]], e, i, eps, y, dev) for j, i, e, y, _ in inst]) for eps in eps_list}
+            res[tag] = (rad, fixed); remove_weight_intervals(net); del lw; torch.cuda.empty_cache()
+            if a.save_json: json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], **{f"{t}_rad": r[0].tolist() for t, r in res.items()}, "fixed": {str(eps): {t: r[1][eps].tolist() for t, r in res.items()} for eps in eps_list}}, open(a.save_json, "w"))
+            print(f"# {tag}: certified radius mean {rad.mean():.4f} median {np.median(rad):.4f} | " + "; ".join(f"eps {eps}: verified {(v > 0).sum()}/{len(v)} (nan {np.isnan(v).sum()}) mean lb {np.nanmean(v):+.4f}" for eps, v in fixed.items()) + f"  [{time.time()-t0:.0f}s]", flush=True)
     pairs = [(t, "stock") for t in tags] + [(t, "gauged") for t in tags[1:]]
+    if a.weight_intervals: pairs += [("stock_wint", "stock"), ("gauged_wint", "gauged"), ("gauged_wint", "stock")]
     for t, base in pairs:
         dr = res[t][0] - res[base][0]
         print(f"# PAIRED radius {t}-{base} over {len(dr)} instances: larger on {(dr > 0).sum()}, smaller on {(dr < 0).sum()}, equal {(dr == 0).sum()}; mean rel change {np.mean(dr / np.maximum(res[base][0], 1e-9)):+.3f}; mean radius {res[base][0].mean():.4f} -> {res[t][0].mean():.4f}")
@@ -441,12 +487,80 @@ def cmd_attrib(a):
         print(line, flush=True)
     if a.save_json: json.dump({"rows": rows, "modes": modes, "factors": factors}, open(a.save_json, "w"))
 
+def pq_optimise(net, st, lirpa, e, i, eps, label, dev, Gq0, Ga0, H, dh, steps, lr, cond_pen, clip, stop_at=None):
+    """Per-query gauge (route A): Adam on (Gq, Ga) from the given init, maximising THIS box's CROWN margin lb at eps; best-of over
+    iterates (step 0 = the init, so the result is never below the fixed gauge); optional early stop once lb > stop_at.  Sound for
+    any iterate because every gauge is an exact rewrite.  Returns (best lb, (Gq, Ga) fp32 on dev, best step, steps run)."""
+    Gq = nn.Parameter(Gq0.float().to(dev).clone()); Ga = nn.Parameter(Ga0.float().to(dev).clone()); opt = torch.optim.Adam([Gq, Ga], lr=lr)
+    best = (-float("inf"), None, -1); run = 0
+    for step in range(steps + 1):
+        effs = effective(st, Gq, Ga, H, dh); load_eff(net, effs); lv = leaves(net)
+        for p_ in lv: p_.grad = None
+        lb = crown_lb_t(lirpa, e, i, eps, label, dev); v = lb.item()
+        if np.isfinite(v) and v > best[0]: best = (v, (Gq.detach().clone(), Ga.detach().clone()), step)
+        if step == steps or (stop_at is not None and v > stop_at): break
+        (-lb).backward(); grads = [p_.grad for p_ in lv]
+        if any(g_ is None for g_ in grads): break
+        for g_ in grads: g_[~torch.isfinite(g_)] = 0.0      # near the lse NaN cliff a few entries are non-finite: mask them (as pbv_learn does) instead of giving up
+        torch.autograd.backward([t for ee in effs for t in ee], grads)
+        if cond_pen > 0: (cond_pen * sum((p_ ** 2).sum() + (torch.linalg.inv(p_) ** 2).sum() for p_ in (Gq, Ga))).backward()
+        for p_ in (Gq, Ga): p_.grad[~torch.isfinite(p_.grad)] = 0.0
+        gn = torch.nn.utils.clip_grad_norm_([Gq, Ga], clip)
+        if not torch.isfinite(gn) or gn.item() == 0.0: opt.zero_grad(); break
+        opt.step(); opt.zero_grad(); run = step + 1
+    return best[0], best[1], best[2], run
+
+def cmd_eval_pq(a):
+    """Route A: per-query gauge optimisation on TEST instances.  For each instance and each eps in --eps_list: stock lb, fixed
+    learned-gauge lb, and the per-query lb (Adam from the learned gauge, --pq_steps steps, early stop once verified unless
+    --pq_stop_verified 0).  With --pq_radius 1 also: stock / fixed-gauge certified radius, then the gauge optimised at the fixed
+    gauge's radius r_f and a bisection on [r_f, hi] with that gauge frozen (sound: its lb at r_f is >= the fixed gauge's > 0).
+    Progressive JSON save + resume (--save_json), so a pre-empted job continues where it stopped."""
+    dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh = len(net.layers), net.H, net.dh; st = [[t.to(dev) for t in w] for w in stock_tensors(net)]
+    data = load_data(a, "test"); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed); lirpas = make_lirpas(net, [e.shape[1] for _, _, e, _ in S], dev, a.softmax)
+    inst = [(j, i, e, ex["label"], toks) for j, ex, e, toks in S for i in positions(toks)]; print(f"# {a.name}: {len(S)} test sentences <= {a.max_len} tokens, {len(inst)} instances; per-query steps {a.pq_steps}, lr {a.pq_lr}", flush=True)
+    for p_ in leaves(net): p_.requires_grad_(True)
+    Gq0, Ga0 = load_gauge(a.gauge, L, H, dh); I64 = eye_gauge(L, H, dh, torch.float64); eps_list = [float(x) for x in a.eps_list.split(",")]
+    out = {"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], "eps_list": eps_list, "args": vars(a), "rec": {}}
+    if a.save_json and os.path.exists(a.save_json):
+        prev = json.load(open(a.save_json)); out["rec"] = prev.get("rec", {}); print(f"# resuming: {len(out['rec'])} instances already done", flush=True)
+    def fixed_lb(gq, ga, lp, e, i, eps, y): load_eff(net, effective(st, gq.float().to(dev), ga.float().to(dev), H, dh)); return crown_lb(lp, e, i, eps, y, dev)
+    t_all = time.time()
+    for idx, (j, i, e, y, toks) in enumerate(inst):
+        if str(idx) in out["rec"]: continue
+        lp = lirpas[e.shape[1]]; rec = {}; t0 = time.time()
+        for eps in eps_list:
+            s_ = fixed_lb(I64[0], I64[1], lp, e, i, eps, y); f_ = fixed_lb(Gq0, Ga0, lp, e, i, eps, y)
+            if f_ > 0 and a.pq_stop_verified: pq = (f_, 0, 0)
+            else:
+                v, G, bs, run = pq_optimise(net, st, lp, e, i, eps, y, dev, Gq0, Ga0, H, dh, a.pq_steps, a.pq_lr, a.cond_pen, a.clip, stop_at=0.0 if a.pq_stop_verified else None); pq = (v, bs, run)
+            rec[str(eps)] = {"stock": s_, "fixed": f_, "pq": pq[0], "pq_best_step": pq[1], "pq_steps_run": pq[2]}
+        if a.pq_radius:
+            load_eff(net, effective(st, I64[0].float().to(dev), I64[1].float().to(dev), H, dh)); r_s = certified_radius(lp, e, i, y, dev, hi=a.hi, iters=a.iters)
+            load_eff(net, effective(st, Gq0.float().to(dev), Ga0.float().to(dev), H, dh)); r_f = certified_radius(lp, e, i, y, dev, hi=a.hi, iters=a.iters)
+            m0 = crown_lb(lp, e, i, r_f, y, dev)
+            v, G, bs, run = pq_optimise(net, st, lp, e, i, r_f, y, dev, Gq0, Ga0, H, dh, a.pq_steps, a.pq_lr, a.cond_pen, a.clip, stop_at=None)
+            load_eff(net, effective(st, G[0], G[1], H, dh)); r_pq = certified_radius(lp, e, i, y, dev, lo=r_f, hi=a.hi, iters=a.iters) if r_f < a.hi else r_f
+            rec["radius"] = {"stock": r_s, "fixed": r_f, "pq": r_pq, "margin_at_rf_fixed": m0, "margin_at_rf_pq": v, "pq_best_step": bs}
+        out["rec"][str(idx)] = rec
+        if a.save_json: json.dump(out, open(a.save_json, "w"))
+        msg = "; ".join(f"eps {eps}: {r['stock']:+.3f} / {r['fixed']:+.3f} / {r['pq']:+.3f} ({r['pq_steps_run']} st)" for eps, r in rec.items() if eps != "radius")
+        if "radius" in rec: r = rec["radius"]; msg += f"; radius {r['stock']:.4f} / {r['fixed']:.4f} / {r['pq']:.4f} (margin at r_f {r['margin_at_rf_fixed']:+.3f} -> {r['margin_at_rf_pq']:+.3f})"
+        print(f"  inst {idx:3d} (sent {j} pos {i} len {e.shape[1]}): stock / fixed / per-query -- {msg}  [{time.time()-t0:.0f}s, total {time.time()-t_all:.0f}s]", flush=True)
+    R = out["rec"]; n = len(R)
+    for eps in eps_list:
+        k = str(eps); s_ = np.array([R[x][k]["stock"] for x in R]); f_ = np.array([R[x][k]["fixed"] for x in R]); q_ = np.array([R[x][k]["pq"] for x in R])
+        print(f"# eps {eps} over {n}: verified stock {(s_ > 0).sum()} / fixed gauge {(f_ > 0).sum()} / per-query {(q_ > 0).sum()}; per-query lb > fixed on {(q_ > f_).sum()}, mean lb {np.nanmean(s_):+.3f} / {np.nanmean(f_):+.3f} / {np.nanmean(q_):+.3f}", flush=True)
+    if a.pq_radius and n:
+        rs = np.array([R[x]["radius"]["stock"] for x in R]); rf = np.array([R[x]["radius"]["fixed"] for x in R]); rq = np.array([R[x]["radius"]["pq"] for x in R])
+        print(f"# radius over {n}: mean stock {rs.mean():.4f} / fixed {rf.mean():.4f} ({100*(rf.mean()/rs.mean()-1):+.1f}%) / per-query {rq.mean():.4f} ({100*(rq.mean()/rs.mean()-1):+.1f}% vs stock, {100*(rq.mean()/rf.mean()-1):+.1f}% vs fixed); per-query > fixed on {(rq > rf).sum()}, equal {(rq == rf).sum()}", flush=True)
+
 def load_gauge(path, L, H, dh):
     if path is None: return eye_gauge(L, H, dh, torch.float64)
     g_ = torch.load(path); return g_["qk"], g_["av"]
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(); ap.add_argument("cmd", choices=["probe", "radii", "learn", "eval", "eval_alpha", "attrib"])
+    ap = argparse.ArgumentParser(); ap.add_argument("cmd", choices=["probe", "radii", "learn", "eval", "eval_alpha", "attrib", "eval_pq"])
     ap.add_argument("--split", default="dev"); ap.add_argument("--pos_per_sent", type=int, default=3); ap.add_argument("--eps_scale", type=float, default=1.0); ap.add_argument("--radius_iters", type=int, default=8)
     ap.add_argument("--steps", type=int, default=150); ap.add_argument("--accum", type=int, default=4); ap.add_argument("--lr", type=float, default=0.01); ap.add_argument("--cond_pen", type=float, default=1e-4); ap.add_argument("--clip", type=float, default=1.0)
     ap.add_argument("--which", default="both"); ap.add_argument("--seed", type=int, default=0); ap.add_argument("--log_every", type=int, default=10); ap.add_argument("--debug", type=int, default=0); ap.add_argument("--n_eval", type=int, default=48)
@@ -454,5 +568,7 @@ if __name__ == "__main__":
     ap.add_argument("--obj", default="mean", help="mean | hinge"); ap.add_argument("--hinge_w", type=float, default=4.0)
     ap.add_argument("--max_len", type=int, default=12); ap.add_argument("--n_sent", type=int, default=20); ap.add_argument("--alpha", type=int, default=1); ap.add_argument("--hi", type=float, default=0.1); ap.add_argument("--iters", type=int, default=10); ap.add_argument("--save_json", default=None); ap.add_argument("--name", default="sst_bert_small_3"); ap.add_argument("--data", default="auto", help="sst | yelp | auto (from --name prefix)"); ap.add_argument("--eps", type=float, default=0.03); ap.add_argument("--softmax", default="lse"); ap.add_argument("--crown_batch", type=int, default=512)
     ap.add_argument("--split_attrib", type=int, default=0, help="attrib: also linearise ONE nonlinearity at a time (qk / softmax / av) and all three"); ap.add_argument("--factors", default="1,1.5", help="attrib: eps as multiples of the stock radius")
+    ap.add_argument("--pq_steps", type=int, default=20); ap.add_argument("--pq_lr", type=float, default=0.01); ap.add_argument("--pq_stop_verified", type=int, default=1); ap.add_argument("--pq_radius", type=int, default=0)
+    ap.add_argument("--weight_intervals", type=int, default=0, help="eval: also verify stock and gauged weights declared as 2-ulp fp32 intervals (rigorous transfer to the original network)")
     ap.add_argument("--k_words", type=int, default=1, help="perturb k embedding rows at once (1 = DeepT's one-word spec; 2 = two-word)"); ap.add_argument("--pairs_per_sent", type=int, default=7, help="eval: position sets per sentence when k_words > 1")
-    a = ap.parse_args(); {"probe": cmd_probe, "radii": cmd_radii, "learn": cmd_learn, "eval": cmd_eval, "eval_alpha": cmd_eval_alpha, "attrib": cmd_attrib}[a.cmd](a)
+    a = ap.parse_args(); {"probe": cmd_probe, "radii": cmd_radii, "learn": cmd_learn, "eval": cmd_eval, "eval_alpha": cmd_eval_alpha, "attrib": cmd_attrib, "eval_pq": cmd_eval_pq}[a.cmd](a)
