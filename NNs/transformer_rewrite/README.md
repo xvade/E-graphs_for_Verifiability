@@ -8,6 +8,7 @@ a verification spec. Nothing hand-made; all models are the authors' released che
 |---|---|---|---|
 | GenBaB ViTs `vit_1_3/1_6/2_3/2_6` | HF `zhouxingshi/GenBaB` (TACAS'25), `genbab_benchmarks/` | vnnlib, CIFAR-10 ε=1/255, abcrown config | **no leverage**: attention is constant over the boxes (exactly uniform / saturated softmax) — see `NNs/vit_rewrite/genbab_gauge.py`, PROGRESS.md |
 | DeepT SST transformers `sst_bert_small_3` (…6/12) | `eth-sri/DeepT` (PLDI'21), `deept_benchmarks/` | ℓ∞ ball (eps) around ONE word embedding of a test sentence; certified radius per (sentence, position) | `deept_gauge.py` — learner + paired eval (results in PROGRESS.md) |
+| DeepT release, further checkpoints: `yelp_bert_small_3/6`, `sst_bert_big_3` (hidden 256), `sst_bert_smaller_3` (hidden 64), `sst_bert_standard_layer_norm_3` | same download | same protocol (Yelp: reviews ≤ 14 words; tuning boxes from train.csv, eval on test.csv) | `deept_gauge.py --data auto`, `deept_yelp_chain.sh`; see "More DeepT-release checkpoints" below |
 
 ## Files
 - `deept_gauge.py` — the whole DeepT harness (one file, `python deept_gauge.py <cmd> --name sst_bert_small_3 ...`):
@@ -38,6 +39,9 @@ a verification spec. Nothing hand-made; all models are the authors' released che
   `RELATED_WORK.md` (their verifier lives in `deept_benchmarks/PBVerification/`, wrappers `run_pbv.sh`, `run_pbv_chain.sh`).
 - `RELATED_WORK.md` — what others have done (AAAI-26 parameterised abstract interpretation, GaLileo, Vertex-Softmax, gauge-symmetry
   papers, …), how it relates to the gauge rewrite, and the stock-vs-gauged runs of their verifier.
+- `deept_yelp_chain.sh attrib:<name>:<tag> | full:<name>:<tag>[:max_len:n_sent:pos:steps:accum] ...` — attribution → learn → paired eval
+  for any DeepT-release checkpoint (Yelp models, SST width variants); the eval eps grid is 0.5 / 1 / 1.5 × the median stock radius
+  from the attribution JSON. `diagnostics/_count_short_yelp.py` counts short, correctly classified Yelp test reviews.
 - `run_on_bigger_gpu.sh <chain args>` — sbatch wrapper for steps that need > 44 GB (alpha-CROWN on small_6): checks the card has
   ≥ 60 GB, then runs `deept_chain.sh`; used with `-p ckpt-all -A ckpt-amath --qos=ckpt-gpu --gres=gpu:a100:1`.
 - `diagnostics/` — the one-off memory / NaN / sharing investigations behind the facts below (`_mem_probe*.py`, `_alpha_mem_probe*.py` +
@@ -61,6 +65,26 @@ a verification spec. Nothing hand-made; all models are the authors' released che
 | alpha-CROWN tier (A100 80 GB; 49 positions ≤ 6 tokens), verified at eps 0.02 | 24 | **27** (3 up, 0 down; tighter on 47/47 finite) |
 
 small_12 (5-box ≤ 5-token gauge, the most the 12-layer learner fits in 44 GB; 120 test positions ≤ 10 tokens): radius +26.6 % (120/120 larger), eps 0.01 verified 67 → 96 (0 reverse), NaN 39 → 13 — NaN-cliff-limited radii, so only indicative (`results/deept_small12_eval_short_seed0.json`).
+
+## More DeepT-release checkpoints (2026-09-06 evening; separately trained networks shipped in the same download, same one-word ℓ∞ protocol)
+Attribution first (attention share of the CROWN width at eps = stock radius), gain predicted from it *before* learning, then learn on
+train/dev boxes ≤ 8 tokens and evaluate on 40 held-out test sentences ≤ 12 tokens (eps grid = 0.5 / 1 / 1.5 × the median stock radius).
+
+| model | hidden / layers / data | attention share | predicted | mean radius stock → gauged (paired) | verified at the top eps (1.5 × median stock radius; calibration rows: the old 0.03 grid) | reverse flips |
+|---|---|---|---|---|---|---|
+| `sst_bert_small_3` | 128 / 3 / SST | 9.2 % | — (calibration) | 0.0331 → 0.0340, +1.7 % (211 / 13 / 54) | 147 → 149 | 0 |
+| `sst_bert_smaller_3` | 64 / 3 / SST | 13.6 % | +2–3 % class | 0.0384 → 0.0389, **+1.0 % (neutral, mixed: larger 140 / smaller 115 / equal 22)**; fixed-eps bounds tighter on ≈ half | 88 → 85 (0 up, 3 down) | **3** (+1 at the middle eps) |
+| `sst_bert_big_3` | 256 / 3 / SST | 33.9 % | ≈ +10 % | **0.0166 → 0.0186, +9.3 % per-instance (+11.9 % of means); larger 274 / smaller 0 / equal 14** | 4 → **48** (+44) | **0** |
+| `sst_bert_small_6` | 128 / 6 / SST | 39.7 % | — (calibration) | 0.0220 → 0.0249, +10.6 % (+13.1 % of means); 273 / 0 / 21 | 41 → 95 | 0 |
+| `yelp_bert_small_3` | 128 / 3 / Yelp | 59.2 % | ≥ +13 % (SST small_6 class) | **0.0223 → 0.0245, +9.5 % per-instance (+10.1 % of means); larger 263 / smaller 1 (−0.5 %) / equal 13** | 116 → **152** (+36) | **0** |
+| `yelp_bert_small_6` | 128 / 6 / Yelp | 80.6 % | > yelp small_3, NaN-cliff caveat | 0.0061 → 0.0066, **+4.9 % per-instance (+7.2 % of means); larger 176 / smaller 1 / equal 100** — cliff-dominated (stock NaN 23–46 % of positions, not moved by the gauge); +6.2 % on the 213 finite-stock positions, +6.4 % on the 71 provable zero crossings; bounds tighter 212/213 · 174/180 · 147/148 where finite | 79 → **90** (+11) | **0** |
+| `sst_bert_standard_layer_norm_3` | 128 / 3 / SST, full LayerNorm | — | — | **not boundable by auto_LiRPA as built** (`convex_concave.py:138 assert x.lower.min() >= 0` on `sqrt(var+eps)`; fails on the stock model) | | |
+
+Reading: the attention share is a *screen*, not a dose-response — every model with share ≥ 30 % gains one-sidedly (+5–13 %, 0
+verified→unverified flips on 5/5 including the ViT), while the two models with share ≤ 14 % are neutral (small_3 +1.7 %, smaller_3 +1.0 % with mixed signs and 3 reverse flips; their ordering is noise — at low share, don't gauge); the share is *not* a
+cross-dataset calibration (Yelp small_3 at 59 % gains less than SST small_6 at 40 %; Yelp small_6 at 81 % gains less than Yelp small_3 — above ≈ 60 % the lse-CROWN NaN cliff caps what the gauge can move). Yelp small_3 is the first DeepT model with a
+few looser fixed-eps bounds (2 / 7 / 9 of 277, none changing a verdict). No NaN at any eps on yelp small_3 or big_3 (≤ 4 on big_3's top eps).
+Details, per-instance quantiles and the preregistered predictions: PROGRESS.md 2026-09-06 18:40 onwards.
 
 Attention nonlinearities are 9.2% of the CROWN width on small_3, 39.7% on small_6, 70.0% on small_12 (eps = stock radius;
 77% on the VNN-COMP ViT where the gauge flipped 7/100 at the full tier, 3% on `ibp_3_3_8` where it was neutral):

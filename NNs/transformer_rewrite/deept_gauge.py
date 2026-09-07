@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 """Attention-gauge rewrite for the DeepT (Bonaert et al., PLDI 2021) pretrained SST sentiment transformers
 (deept_benchmarks/DeepT/Robustness-Verification-for-Transformers/sst_bert_*; BERT-style, hidden 128, 4 heads, 3/6/12 layers,
-'no_var' LayerNorm = mean-subtraction (linear), ReLU MLP, tanh pooler).
+'no_var' LayerNorm = mean-subtraction (linear), ReLU MLP, tanh pooler).  The same release ships further separately trained
+checkpoints that load unchanged: yelp_bert_small_{3,6,12} (Yelp polarity, own vocab; --data yelp or auto), sst_bert_big_*
+(hidden 256), sst_bert_smaller_* (hidden 64), sst_bert_standard_layer_norm_* (full LayerNorm).
 
 Verification spec (DeepT / Shi et al. 2020): the input is the token embedding sequence (word+position+type, BEFORE the
 embedding LayerNorm) of a test sentence [CLS] w_1..w_k [SEP]; ONE word position i is perturbed in an l_inf ball of radius eps
@@ -16,6 +18,25 @@ REPO = "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; DT = os.path
 sys.path.insert(0, os.path.join(REPO, "alpha-beta-CROWN/complete_verifier")); sys.path.insert(0, DT)
 from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 NAMES = ["query.weight", "query.bias", "key.weight", "key.bias", "value.weight", "value.bias", "out.weight"]
+
+def load_yelp(split, max_words=14):
+    """Yelp Review Polarity (DeepT's yelp_bert_* models; csv label 1 -> 0 negative, 2 -> 1 positive).  Yelp has no dev split, so
+    split 'dev' = train.csv and 'test' = test.csv (disjoint).  Only reviews with <= max_words words are kept (the pipeline needs
+    <= 12 word pieces anyway; 856 of the 38000 test reviews).  Word splitting is a regex stand-in for DeepT's nltk.word_tokenize
+    (nltk is not in the venv); BERT's basic tokenizer re-splits punctuation, so the word-piece sequence is the same."""
+    import csv
+    def words(t): return re.findall(r"\w+|[^\w\s]", t.replace("\\n", " ").replace('\\"', '"'))
+    f = {"test": "test.csv", "dev": "train.csv"}[split]; data = []
+    for l, t in csv.reader(open(os.path.join(DT, "..", "data", "yelp", f))):
+        if len(t.split()) <= max_words:
+            w = words(t)
+            if len(w) <= max_words: data.append({"label": int(l) - 1, "sent_a": w})
+    return data
+
+def load_data(a, split):
+    """--data sst|yelp|auto (auto = from the model name prefix)"""
+    d = a.data if a.data != "auto" else ("yelp" if a.name.startswith("yelp") else "sst")
+    return load_yelp(split) if d == "yelp" else load_sst(split)
 
 def load_sst(split):
     """DeepT's load_data_sst (test/dev): PTB trees -> tokens, binary label (neutral dropped)."""
@@ -136,7 +157,7 @@ def build(name, dev):
 
 def cmd_probe(a):
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, "cpu")
-    data = load_sst("test"); print(f"# {a.name}: {len(data)} SST test sentences (binary)")
+    data = load_data(a, "test"); print(f"# {a.name}: {len(data)} test sentences (binary)")
     S = sample_sentences(net, m, tok, data, n=10, seed=0)
     # fidelity: clean forward vs the DeepT model's own forward with the embeddings kwarg (float64)
     m64 = copy.deepcopy(m).double(); net64 = DeepTNet(m64); worst = 0.0
@@ -188,7 +209,7 @@ g_embed = embed
 
 def cmd_radii(a):
     """stock certified radii on short test sentences, vanilla CROWN vs alpha-CROWN"""
-    dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); data = load_sst("test")
+    dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); data = load_data(a, "test")
     S = short_instances(net, m, tok, data, a.max_len, a.n_sent); print(f"# {a.name}: {len(S)} correctly classified test sentences with <= {a.max_len} tokens; positions {sum(len(positions(t)) for _, _, _, t in S)}")
     lirpas = {}
     def get_lirpa(n):
@@ -227,7 +248,7 @@ def fp64_gate(name, Gq, Ga, boxes, n_pts=32, seed=0):
 def cmd_learn(a):
     torch.manual_seed(a.seed); random.seed(a.seed); dev = "cuda" if torch.cuda.is_available() else "cpu"
     m, tok, net = build(a.name, dev); L, H, dh = len(net.layers), net.H, net.dh; st = [[t.to(dev) for t in w] for w in stock_tensors(net)]
-    data = load_sst(a.split); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed)
+    data = load_data(a, a.split); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed)
     rng = random.Random(a.seed); boxes = []   # (e, i, label, n)
     for j, ex, e, toks in S:
         P = positions(toks); rng.shuffle(P)
@@ -287,7 +308,7 @@ def crown_lb_t(lirpa, e, i, eps, label, dev):
 def cmd_eval(a):
     """paired stock vs gauged on TEST sentences: certified radii (same bisection grid) + fixed-eps verified counts; vanilla CROWN, no grad"""
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh = len(net.layers), net.H, net.dh; st = [[t.to(dev) for t in w] for w in stock_tensors(net)]
-    data = load_sst("test"); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed); lirpas = make_lirpas(net, [e.shape[1] for _, _, e, _ in S], dev, a.softmax)
+    data = load_data(a, "test"); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed); lirpas = make_lirpas(net, [e.shape[1] for _, _, e, _ in S], dev, a.softmax)
     inst = [(j, i, e, ex["label"], toks) for j, ex, e, toks in S for i in positions(toks)]; print(f"# {a.name}: {len(S)} test sentences <= {a.max_len} tokens, {len(inst)} (sentence, position) instances", flush=True)
     eps_list = [float(x) for x in a.eps_list.split(",")]; res = {}
     Gq, Ga = load_gauge(a.gauge, L, H, dh)
@@ -310,7 +331,7 @@ def cmd_eval(a):
 def cmd_eval_alpha(a):
     """paired stock vs gauged alpha-CROWN (CROWN-Optimized, 20 it) at fixed eps on test sentences <= max_len tokens (<= 8 fits the 44 GB GPU)"""
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh = len(net.layers), net.H, net.dh; st = [[t.to(dev) for t in w] for w in stock_tensors(net)]
-    data = load_sst("test"); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed)
+    data = load_data(a, "test"); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed)
     inst = [(j, i, e, ex["label"], toks) for j, ex, e, toks in S for i in positions(toks)]; eps_list = [float(x) for x in a.eps_list.split(",")]
     print(f"# {a.name}: alpha-CROWN paired eval on {len(S)} test sentences <= {a.max_len} tokens, {len(inst)} instances, eps {eps_list}", flush=True)
     # Memory: alpha-CROWN's per-call peak is 36 GiB (5 tokens) / 62 GiB (6 tokens) on the 6-layer model, and every BoundedModule
@@ -334,7 +355,7 @@ def cmd_eval_alpha(a):
 def cmd_attrib(a):
     """attention-slack attribution: CROWN lb with the attention probabilities frozen at their box-centre values (attention = constant
     linear map; QK bilinear, softmax and AV bilinear slack removed) vs the true lb, at eps = stock certified radius x {1, 1.5}"""
-    dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); data = load_sst("test"); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed)
+    dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); data = load_data(a, "test"); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed)
     lirpas = make_lirpas(net, [e.shape[1] for _, _, e, _ in S], dev, a.softmax); rows = []
     for j, ex, e, toks in S:
         n = e.shape[1]; lp = lirpas[n]
@@ -370,5 +391,5 @@ if __name__ == "__main__":
     ap.add_argument("--which", default="both"); ap.add_argument("--seed", type=int, default=0); ap.add_argument("--log_every", type=int, default=10); ap.add_argument("--debug", type=int, default=0); ap.add_argument("--n_eval", type=int, default=48)
     ap.add_argument("--out", default=None); ap.add_argument("--gauge", default=None); ap.add_argument("--eps_list", default="0.01,0.02,0.03")
     ap.add_argument("--obj", default="mean", help="mean | hinge"); ap.add_argument("--hinge_w", type=float, default=4.0)
-    ap.add_argument("--max_len", type=int, default=12); ap.add_argument("--n_sent", type=int, default=20); ap.add_argument("--alpha", type=int, default=1); ap.add_argument("--hi", type=float, default=0.1); ap.add_argument("--iters", type=int, default=10); ap.add_argument("--save_json", default=None); ap.add_argument("--name", default="sst_bert_small_3"); ap.add_argument("--eps", type=float, default=0.03); ap.add_argument("--softmax", default="lse"); ap.add_argument("--crown_batch", type=int, default=512)
+    ap.add_argument("--max_len", type=int, default=12); ap.add_argument("--n_sent", type=int, default=20); ap.add_argument("--alpha", type=int, default=1); ap.add_argument("--hi", type=float, default=0.1); ap.add_argument("--iters", type=int, default=10); ap.add_argument("--save_json", default=None); ap.add_argument("--name", default="sst_bert_small_3"); ap.add_argument("--data", default="auto", help="sst | yelp | auto (from --name prefix)"); ap.add_argument("--eps", type=float, default=0.03); ap.add_argument("--softmax", default="lse"); ap.add_argument("--crown_batch", type=int, default=512)
     a = ap.parse_args(); {"probe": cmd_probe, "radii": cmd_radii, "learn": cmd_learn, "eval": cmd_eval, "eval_alpha": cmd_eval_alpha, "attrib": cmd_attrib}[a.cmd](a)

@@ -2210,3 +2210,135 @@ numbers will be recorded here as soon as the attribution step lands, before the 
 median +4.5 %, range −2.9 … +13.7 %). PBverifierI itself is −15.6 % vs their Baseline on stock small_6 (9/26). All six DeepT
 stock-vs-gauged pairs in their verifier are now done; table in `NNs/transformer_rewrite/RELATED_WORK.md`. Their-model runs
 (Baseline 20 sentences; PBverifierI/T 8 sentences; stock and gauged) still running.
+
+**18:45 — Yelp attribution landed (before any learner ran); prediction sharpened.** Attention nonlinearities' share of the
+CROWN width at eps = stock radius (12 test reviews × 2 positions, seed 3): **yelp small_3 59.2 %** (24/24 finite; 74.5 % at
+1.5× radius), **yelp small_6 80.6 %** (23/24 finite; 93.9 % at 1.5×, only 13/24 finite → the NaN cliff is close, as on SST
+small_12). Same depth as SST small_3 (9.2 %) and small_6 (39.7 %), so the Yelp models are a much sharper test of the leverage
+rule than another SST depth: at *equal depth* the share is 6× higher. Stock radius scale: yelp small_3 median 0.0160 (eval grid
+0.008/0.016/0.024), yelp small_6 median 0.0059 (grid 0.0029/0.0059/0.0088); SST small_3 0.0266, small_6 0.0219.
+Prediction on record: yelp small_3 gains ≥ SST small_6's +13 % (its share is above small_6's 40 %), yelp small_6 gains more
+still but with the NaN-cliff caveat (report the zero-crossing subgroup as for SST small_12); both 0 reverse. Falsifier: a yelp
+small_3 gain in the +2 % class would break the rule.
+
+**18:50 — SST width / LayerNorm variants, attribution (depth 3 throughout):** `sst_bert_big_3` (hidden 256) **33.9 %** (24/24
+finite; 50.4 % at 1.5×), `sst_bert_smaller_3` (hidden 64) **13.6 %** (12.2 % at 1.5×), `sst_bert_small_3` (hidden 128) 9.2 %.
+So at fixed depth the share is not monotone in width (64 → 128 → 256 gives 14 → 9 → 34 %) but big_3 sits in the same class as
+SST small_6 (40 %), which predicts a ≈ +10 % gain; smaller_3 predicts the +2–3 % class. Queued as job `deept_width`
+(`deept_yelp_chain.sh full:sst_bert_big_3:big3 full:sst_bert_smaller_3:smaller3`, runs when an L40S slot frees) — a width
+dose-response at fixed depth to go with the depth one. `sst_bert_standard_layer_norm_3` **cannot be bounded by auto_LiRPA as
+built**: the full LayerNorm's `sqrt(var + eps)` hits `convex_concave.py:138 assert x.lower.min() >= 0` — CROWN's linear
+relaxation of the squared deviations yields a negative lower bound on the variance, so the sqrt relaxation refuses. This is a
+verifier limitation independent of the gauge (the stock model fails the same way before any gauge is applied); the DeepT
+release ships this variant because their zonotope verifier handles the full norm, auto_LiRPA's CROWN path as built does not.
+Dropped, recorded as such (a variance node bounded by IBP instead of CROWN would be the fix; not pursued).
+
+**19:30 — gauge learned against THEIR verifier (user: "do it").** `pbv_learn.py` differentiates Huang et al.'s bound (patched copy
+`PBVerification_grad/`, detach removed) w.r.t. the folded gauge; smoke test OK (small_3: +1.62 → +1.88 in 6 steps, logits
+unchanged). Launched: small_6 trained against their Baseline (`origin`) and against their midpoint tangent planes (`inner`), and
+their `model_sst_3` against `origin`; each followed by their verifier variants and a paired auto_LiRPA eval (jobs 39699642–53).
+Also noticed two new L40S jobs not mine (`deept_width`, `deept_yelp`) — see the note below once identified.
+
+**19:35 — Yelp small_3 RESULT (job 39697769, `results/deept_yelp3_eval_short_seed0.json`): the gauge transfers to a second
+dataset.** Gauge learned in 400 s on 113 train-review boxes (40 reviews ≤ 8 tokens × 3 positions; tuning-box mean lb +0.25 →
++1.78; max cond(G) 6.0; fp64 gate 2.7e-15). Held-out test: 40 reviews ≤ 12 tokens = 277 positions, vanilla lse-CROWN, no NaN
+anywhere (clean zero-crossing radii, unlike SST small_12):
+
+| | stock | gauged | paired |
+|---|---|---|---|
+| certified radius (mean) | 0.0223 | 0.0245 | **+9.5 % mean per-instance (+10.1 % ratio of means)**, larger on 263/277, smaller on 1 (−0.5 %, one bisection step), equal on 13 (all at radii < 0.021, no cap hits) |
+| eps 0.008 | 255/277 | 256/277 | tighter 275/277 (looser 2: −0.013, −0.001), flips +1 / −0 |
+| eps 0.016 | 209/277 | 219/277 | tighter 270/277 (looser 7, worst −1.24), flips +10 / −0 |
+| eps 0.024 | 116/277 | **152/277** | tighter 268/277 (looser 9, worst −0.27), **flips +36 / −0** |
+
+Per-instance relative gain: median +9.0 %, 10–90 % quantiles +2.2 … +18.0 %, max +20.9 %; flat across sentence lengths 4–12
+(+5.6 … +11.3 %). fp64 gate on 24 test boxes 2.2e-15. **Against the preregistered prediction:** the qualitative part holds —
+Yelp small_3 (share 59 %) gains 5.6× SST small_3 (share 9 %) at the same depth and with 0 verified→unverified flips, and the
+attention share predicted this before any learner ran. The quantitative part does not: +9.5 % is *below* SST small_6's +13 %
+despite a higher share (59 % vs 40 %), so the share orders gains within a dataset but is not a cross-dataset calibration
+(the falsifier — a +2 %-class gain — did not occur). Also the first DeepT model with a handful of looser fixed-eps bounds (2/7/9
+of 277, none changing a verdict); the learner objective is the mean lb at the tuning radius, and Yelp's train/test split is
+looser than SST's dev/test. For scale: Huang et al.'s PBverifier gains +8.7 % on their Yelp ℓ∞ 3-layer model over their baseline
+— a different model and verifier, but the same order of magnitude as this rewrite-only gain on the stock verifier.
+
+**20:40 — SST big_3 RESULT (hidden 256, depth 3; job 39697876, `results/deept_big3_eval_short_seed0.json`): the prediction
+from the width attribution holds.** Attribution said 33.9 % attention share → "≈ +10 %" (small_6 class). Gauge learned in 715 s
+on 70 dev boxes (24 sentences ≤ 8 tokens; tuning mean lb +0.15 → +1.18, max cond(G) 8.7, fp64 gate 8.9e-16). Held-out test,
+40 sentences ≤ 12 tokens = 288 positions, vanilla lse-CROWN:
+
+| | stock | gauged | paired |
+|---|---|---|---|
+| certified radius (mean) | 0.0166 | 0.0186 | **+9.3 % mean per-instance (+11.9 % ratio of means)**, larger on 274/288, smaller on **0**, equal on 14 (all with stock radius 0.0003, the bisection floor) |
+| eps 0.0096 | 256/288 | 258/288 | tighter 288/288, flips +2 / −0 |
+| eps 0.0191 | 116/288 | 129/288 | tighter 288/288, flips +13 / −0 |
+| eps 0.0287 | 4/288 | **48/288** | tighter 282/288 (looser 2: −0.006, −0.083; NaN 4 → 3), **flips +44 / −0** |
+
+Per-instance gain median +8.6 %, 10–90 % +1.8 … +18.2 %, max +21.6 %; all sentence lengths 5–12 positive (+4.5 … +19.1 %).
+fp64 gate on 24 test boxes 8.9e-16. So at fixed depth 3, doubling the hidden size moved the attention share 9 % → 34 % and the
+gauge gain +1.7 % → +9.3 %, i.e. the leverage rule holds along the width axis too, within the SST family where its calibration
+was set (small_6: 40 % → +13 %). Two SST points (small_3, big_3) and one Yelp point now sit at depth 3, with gains ordered
+exactly by share (9 % → +1.7 %, 34 % → +9.3 %, 59 % → +9.5 %) — monotone, saturating across the dataset boundary.
+Remaining in this batch: smaller_3 (share 14 %, prediction +2–3 % class; learner started 20:38) and yelp small_6 (share 81 %,
+eval started 20:16, due ≈ 22:30).
+
+**20:41 — their verifier × their protocol × their retrained model (jobs 39686146 / 39696050).** Baseline (`origin`), 20 sentences,
+positions 1–3, 10 bisection steps, ≤ 32 tokens, ℓ∞: stock 0.02455 (paper Table 1: 0.0204) → CROWN-gauged **0.02661 = +8.4 %,
+larger on 52/52, smaller on 0** (median +5.9 %). Their own method's number on this row is +2.9 % with 44/50 wins. PBverifierI/T
+stock-vs-gauged on their model (8 sentences each) and the verifier-trained gauges still running.
+
+**20:58 — PBverifierI on their model (jobs 39696051/52; 8 sentences = 20 instances).** Their method reproduces on their own model:
+Baseline → PBverifierI on stock +2.4 % (20/20; paper +2.9 %). Gauge under PBverifierI: +6.1 % (20/20). Both together (Baseline
+stock → PBverifierI gauged): +8.6 % (20/20) — near-additive. Recorded in `NNs/transformer_rewrite/RELATED_WORK.md`.
+
+**21:11 — PBverifierT on their model (jobs 39696053/54):** their PBverifierT vs Baseline on stock −1.0 % (3/17; matches their Table 1
+tie); gauge under PBverifierT +6.0 % (20/20). Their-model summary with the CROWN-trained gauge in their verifier: Baseline +8.4 %
+(52/52), PBverifierI +6.1 % (20/20), PBverifierT +6.0 % (20/20); their methods on stock: PBverifierI +2.4 %, PBverifierT −1.0 %.
+
+**21:35 — SST smaller_3 RESULT (hidden 64, depth 3, share 13.6 %; job 39697876, `results/deept_smaller3_eval_short_seed0.json`):
+NEUTRAL and mixed — the low-share prediction holds, and the first DeepT model with reverse flips.** Gauge learned in 546 s on 73
+dev boxes (tuning mean lb +0.06 → +0.14, max cond(G) 2.1, fp64 gate 8.9e-16). Test (40 sentences ≤ 12 tokens, 277 positions):
+mean radius 0.0384 → 0.0389 (+1.0 % per-instance, +1.5 % of means; median +0.4 %, 10–90 % −3.8 … +7.8 %), larger on 140 /
+smaller on **115** / equal 22. Fixed-eps bounds are a coin flip (tighter 148 / 139 / 128 of 277 at the three eps, mean |Δ| 0.01 /
+0.15 / 0.52), verified 246 → 246, 167 → 169 (3 up, **1 down**), 88 → **85** (0 up, **3 down**; the lost margins were +0.030,
++0.016, +0.028 → −0.28, −0.25, −0.72). So at a 14 % attention share the dev-tuned gauge does not transfer as a one-sided
+improvement: it moves the test bounds by ±0.5 either way and the net is ≈ 0 — the SST small_3 result (+1.7 %, 0 reverse) was the
+benign end of the same regime. Rule confirmed in the direction that matters for practice: a low attention share means *don't
+gauge* (nothing to gain, small risk of loss), a share ≥ 30 % means a one-sided ≈ +10 % gain with 0 reverse (big_3, small_6,
+yelp small_3, and the ViT). Width at depth 3 on SST is therefore 64 → 128 → 256 hidden: share 14 / 9 / 34 %,
+gain +1.0 (mixed) / +1.7 / +9.3 % — the two low-share models are both neutral and their ordering is noise; only the jump to
+big_3 is a real, share-predicted effect.
+
+**22:15 — verifier-trained gauge on their model, evaluated under auto_LiRPA (job 39700391):** the gauge learned through THEIR
+Baseline bound on only 5 boxes gives +7.5 % certified radius under auto_LiRPA (240/276 larger, 0 smaller; eps 0.03 verified
+36 → 63) — close to the CROWN-trained gauge's +9.5 %. Its evaluation under their own Baseline (paper protocol) runs until ~02:40.
+
+**22:25 — Yelp small_6 RESULT (share 80.6 %; job 39697769, `results/deept_yelp6_eval_short_seed0.json`): one-sided but
+cliff-dominated, and SMALLER than yelp small_3 — the magnitude prediction fails again.** Gauge learned in 1498 s on 115 train
+boxes (tuning mean lb +1.61 → +2.79, max cond(G) 4.7, fp64 gate 1.8e-15). Test: 40 reviews ≤ 12 tokens = 277 positions, eps grid
+0.0029 / 0.0059 / 0.0088 (this model's stock radii are 4× smaller than yelp small_3's).
+- Mean radius 0.0061 → 0.0066: **+4.9 % per-instance (+7.2 % of means)**, larger on 176, smaller on 1, **equal on 100**.
+- The NaN cliff dominates and the gauge does *not* move it here: stock NaN 64 / 97 / 127 of 277 at the three eps, gauged 63 / 96
+  / 128 (1 rescued). 59 of the 100 equal-radius positions are NaN already at the smallest eps — both bisections hit the same
+  cliff, so those radii are numerics, not bounds. On the 213 positions with a finite stock bound at the smallest eps the gain is
+  **+6.2 %**; on the 177 positions whose radius moved at all +7.7 % (median +8.7 %, 10–90 % +2.2 … +11.7 %); on the provable
+  zero-crossing subgroup at the top eps (71 positions with a finite non-positive stock bound) **+6.4 %** (median +6.8 %).
+- Fixed-eps bounds where both are finite: tighter **212/213**, 174/180, **147/148** (looser 1 / 6 / 1, worst −1.8); verified
+  191 → 192, 135 → 140, 79 → **90** (+1 / +5 / +11, **0 reverse**). fp64 gate on test boxes 1.8e-15.
+Against the prediction: one-sidedness and 0 reverse hold; ">yelp small_3" does not (+6 % on the clean subset vs +9.5 %). Two
+reasons, the first visible in the data and the second a hypothesis: (i) the cliff removes the positions where the radius could grow most (the NaN rate at the stock
+radius is already 23 %, vs 0 % on yelp small_3 and big_3); (ii) as on SST small_12 vs small_6, once the attention share is
+above ≈ 60 % the lse-CROWN bound is numerically fragile and the gauge — which rotates operands but cannot shrink the softmax
+input range — has less clean slack to remove. Net reading of the whole batch: the share is a good *screen* (≤ 14 % neutral,
+≥ 30 % one-sided gain ≈ +6–13 %, 0 reverse on 5 of 5 such models) but not a dose-response calibration beyond ≈ 40 %.
+
+**Batch wrap-up (2026-09-06 22:30, jobs 39697769 + 39697876, 6 h 31 GPU total).** Four more separately trained transformers from
+the DeepT download were run through the unchanged pipeline (attribution → gauge learned on train/dev boxes → paired held-out
+eval), with the gain predicted from the attention share before each learner ran. Direction and one-sidedness were predicted
+correctly on all four (three one-sided gains with 0 reverse flips, one neutral/mixed at low share); magnitude was predicted
+correctly for big_3 (≈ +10 %) and smaller_3 (+2–3 % class) but over-predicted for both Yelp models. Together with the earlier
+runs the gauge result now stands on: VNN-COMP ViT (full official BaB pipeline, +7/100), DeepT SST small_6 (+13 %, alpha tier
+too), SST big_3 (+9 %), Yelp small_3 (+9.5 %), Yelp small_6 (+5–6 %, cliff-limited), SST small_12 (+16–27 %, cliff-limited); and
+is neutral on SST small_3, SST smaller_3, ibp ViT, GenBaB ViTs — every neutral case has attention share ≤ 14 %, every positive
+case ≥ 30 %. Correction to the 20:40 reading ("gains ordered exactly by share"): that did not survive smaller_3 (14 % < small_3's
+gain) and Yelp small_6 (81 % < Yelp small_3's gain) — the share is a screen with a threshold between 14 % and 30 %, not a
+calibration. Unchanged: BaB tier for DeepT out of memory reach (see above); the standard-LayerNorm variant not boundable.
