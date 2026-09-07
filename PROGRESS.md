@@ -2471,3 +2471,13 @@ tuned on boxes around *random token strings*, without any SST data or labels, re
 with the same one-sidedness. Preregistered reading applies: the gauge is substantially a property of the weights (and the generic
 scale of the input boxes), not of the tuning distribution — the strongest indicator so far that it is derivable rather than
 learned. Remaining: the Yelp-text-tuned twin (job 39722892, eval running) and the two-word run.
+
+**15:58 — YELP-TEXT-TUNED gauge on sst_bert_small_6 (job 39722892; 165 boxes on Yelp reviews pushed through the SST tokenizer, Yelp
+true labels; `results/deept_small6_oodyelp_eval_short_seed0.json`), same 294 SST test positions:** 0.0220 → 0.0250, **+13.6 % ratio of
+means (+11.0 % per-instance); larger on 271, smaller on 0, equal 23**; eps 0.03 verified 41 → **103** (SST-tuned gauge: 95; 48 finite
+flips up + NaN 20 → 6, 0 reverse), eps 0.02 181 → 183; lb tighter 274/294 at 0.03 (looser 0), 281 at 0.02, but only 197 (looser 97,
+all tiny: mean Δ +0.01) at 0.01. Head-to-head with the SST-dev-tuned gauge: +0.4 % (larger 142, smaller 134, equal 18) — a tie;
+vs the random-vocabulary gauge +1.8 %. **Both out-of-distribution tests pass:** text from another dataset gives an identical gauge in
+effect, and random vocabulary strings give 89 % of it. The three gauges (SST dev / Yelp text / random tokens) land within 2 % of
+each other on 294 held-out instances with 0 reverse flips each, so the learned gauge is a property of the weights plus the box
+scale, which is the precondition for deriving it without data. Both OOD runs complete; the two-word run is still evaluating.
