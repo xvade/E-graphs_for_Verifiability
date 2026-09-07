@@ -75,6 +75,9 @@ class DeepTNet(nn.Module):
     def __init__(self, m):
         super().__init__(); self.ln0 = m.bert.embeddings.LayerNorm; self.layers = m.bert.encoder.layer; self.pooler = m.bert.pooler; self.classifier = m.classifier
         a = self.layers[0].attention.self; self.H = a.num_attention_heads; self.dh = a.attention_head_size; self.hid = a.query.in_features; self.frozen_probs = None
+        # split attribution (diagnostic, inexact): lin_mode in {None, "qk", "sm", "av", "all"} linearises ONE attention nonlinearity
+        # (or all three) at the box centre; the centre tensors per layer are ParameterLists so BoundedModule traces them as constants.
+        self.lin_mode = None; self.c_q0 = self.c_k0 = self.c_s0 = self.c_p0 = self.c_v0 = None
     def attn_modules(self):   # per layer: (query, key, value, out_dense)
         return [(l.attention.self.query, l.attention.self.key, l.attention.self.value, l.attention.output.dense) for l in self.layers]
     # diagnostic: self.frozen_probs (nn.ParameterList per layer, or None) -> attention becomes a fixed linear map.  Must NOT be a class
@@ -84,11 +87,21 @@ class DeepTNet(nn.Module):
         for li, l in enumerate(self.layers):
             a = l.attention.self
             v = a.value(x).view(B, n, self.H, self.dh).transpose(1, 2)
+            lm = self.lin_mode
             if self.frozen_probs is not None: p = self.frozen_probs[li]   # constant attention (ParameterList so BoundedModule traces it on the right device)
             else:
                 q = a.query(x).view(B, n, self.H, self.dh).transpose(1, 2); k = a.key(x).view(B, n, self.H, self.dh).transpose(1, 2)
-                p = torch.softmax(torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(self.dh), dim=-1)
-            c = torch.matmul(p, v).transpose(1, 2).reshape(B, n, self.H * self.dh)
+                if lm in ("qk", "all"):   # QK^T -> first-order expansion at the centre: q0 k^T + q k0^T - q0 k0^T (linear in q, k)
+                    q0, k0 = self.c_q0[li], self.c_k0[li]
+                    sc = (torch.matmul(q0, k.transpose(-1, -2)) + torch.matmul(q, k0.transpose(-1, -2)) - torch.matmul(q0, k0.transpose(-1, -2))) / math.sqrt(self.dh)
+                else: sc = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(self.dh)
+                if lm in ("sm", "all"):   # softmax -> Jacobian at the centre: p0 + p0*(s-s0) - p0*<p0, s-s0>  (linear in s)
+                    p0, s0 = self.c_p0[li], self.c_s0[li]; d = sc - s0; p = p0 + p0 * d - p0 * (p0 * d).sum(-1, keepdim=True)
+                else: p = torch.softmax(sc, dim=-1)
+            if lm in ("av", "all") and self.frozen_probs is None:   # P V -> p0 v + p v0 - p0 v0 (linear in p, v)
+                p0, v0 = self.c_p0[li], self.c_v0[li]; cv = torch.matmul(p0, v) + torch.matmul(p, v0) - torch.matmul(p0, v0)
+            else: cv = torch.matmul(p, v)
+            c = cv.transpose(1, 2).reshape(B, n, self.H * self.dh)
             h = l.attention.output.LayerNorm(l.attention.output.dense(c) + x)
             x = l.output.LayerNorm(l.output.dense(torch.relu(l.intermediate.dense(h))) + h)
         return self.classifier(torch.tanh(self.pooler.dense(x[:, 0])))
@@ -389,24 +402,44 @@ def cmd_attrib(a):
         n = e.shape[1]; lp = lirpas[n]
         for i in positions(toks)[:a.pos_per_sent]:
             r = certified_radius(lp, e, i, ex["label"], dev, hi=a.hi, iters=8)
-            for f in (1.0, 1.5):
+        factors = [float(x) for x in a.factors.split(",")]; modes = ["qk", "sm", "av", "all"] if a.split_attrib else []
+        for i in positions(toks)[:a.pos_per_sent]:
+            r = certified_radius(lp, e, i, ex["label"], dev, hi=a.hi, iters=8)
+            for f in factors:
                 eps = f * r; lb = crown_lb(lp, e, i, eps, ex["label"], dev); ub = crown_lb(lp, e, i, eps, ex["label"], dev, with_ub=True)[1]
-                # frozen attention: separate BoundedModule with constant probs captured at the centre
-                probs = []
+                # centre activations per layer (identical for every linearisation, which is exact at the centre)
+                probs, C = [], {"q": [], "k": [], "s": [], "p": [], "v": []}
                 x = net.ln0(e.to(dev)); B, n_, _ = x.shape
                 with torch.no_grad():
                     for l in net.layers:
                         at = l.attention.self; q = at.query(x).view(B, n_, net.H, net.dh).transpose(1, 2); k = at.key(x).view(B, n_, net.H, net.dh).transpose(1, 2); v = at.value(x).view(B, n_, net.H, net.dh).transpose(1, 2)
-                        p = torch.softmax(torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(net.dh), dim=-1); probs.append(p)
+                        sc = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(net.dh); p = torch.softmax(sc, dim=-1); probs.append(p)
+                        for key, t in zip("qksp v".replace(" ", ""), (q, k, sc, p, v)): C[key].append(t)
                         c = torch.matmul(p, v).transpose(1, 2).reshape(B, n_, -1); h = l.attention.output.LayerNorm(l.attention.output.dense(c) + x); x = l.output.LayerNorm(l.output.dense(torch.relu(l.intermediate.dense(h))) + h)
-                net.frozen_probs = nn.ParameterList([nn.Parameter(p_, requires_grad=False) for p_ in probs]); lpf = BoundedModule(net, torch.empty(1, n, net.hid, device=dev), bound_opts={"softmax": a.softmax, "sparse_intermediate_bounds": False}, device=dev)
-                lbf, ubf = crown_lb(lpf, e, i, eps, ex["label"], dev, with_ub=True); net.frozen_probs = None
-                rows.append((j, i, n, f, eps, lb, ub, lbf, ubf))
-        print(f"  sentence {j} len {n}: " + "; ".join(f"x{f:g}: width {ub-lb:.3f} -> frozen-attn {ubf-lbf:.3f} (attn share {(1-(ubf-lbf)/max(ub-lb,1e-9))*100:.0f}%)" for (_, _, _, f, eps, lb, ub, lbf, ubf) in rows[-2:]), flush=True)
-    R = np.array([[x[3], x[6] - x[5], x[8] - x[7]] for x in rows])
-    for f in (1.0, 1.5):
-        w = R[(R[:, 0] == f) & np.isfinite(R[:, 1]) & np.isfinite(R[:, 2])]; print(f"# eps = {f:g} x stock radius over {len(w)} finite instances: mean CROWN width {w[:, 1].mean():.3f}, frozen-attention width {w[:, 2].mean():.3f} -> attention nonlinearities account for {(1 - w[:, 2].sum() / w[:, 1].sum())*100:.1f}% of the width")
-    if a.save_json: json.dump({"rows": rows}, open(a.save_json, "w"))
+                bo = {"softmax": a.softmax, "sparse_intermediate_bounds": False}
+                # frozen attention: separate BoundedModule with constant probs captured at the centre
+                net.frozen_probs = nn.ParameterList([nn.Parameter(p_, requires_grad=False) for p_ in probs]); lpf = BoundedModule(net, torch.empty(1, n, net.hid, device=dev), bound_opts=bo, device=dev)
+                lbf, ubf = crown_lb(lpf, e, i, eps, ex["label"], dev, with_ub=True); net.frozen_probs = None; del lpf
+                split = {}
+                if modes:
+                    PL = lambda ts: nn.ParameterList([nn.Parameter(t, requires_grad=False) for t in ts])
+                    net.c_q0, net.c_k0, net.c_s0, net.c_p0, net.c_v0 = PL(C["q"]), PL(C["k"]), PL(C["s"]), PL(C["p"]), PL(C["v"])
+                    for md in modes:
+                        net.lin_mode = md; lpm = BoundedModule(net, torch.empty(1, n, net.hid, device=dev), bound_opts=bo, device=dev)
+                        lbm, ubm = crown_lb(lpm, e, i, eps, ex["label"], dev, with_ub=True); split[md] = ubm - lbm; del lpm
+                    net.lin_mode = None; net.c_q0 = net.c_k0 = net.c_s0 = net.c_p0 = net.c_v0 = None
+                rows.append((j, i, n, f, eps, lb, ub, lbf, ubf, split))
+        for (_, i_, _, f, eps, lb, ub, lbf, ubf, sp) in rows[-len(factors) * len(positions(toks)[:a.pos_per_sent]):]:
+            w = ub - lb; sh = lambda v: f"{(1 - v / max(w, 1e-9)) * 100:.0f}%"
+            print(f"  sentence {j} len {n} pos {i_} x{f:g}: width {w:.3f}; frozen-attn {sh(ubf - lbf)}" + "".join(f"; lin-{md} {sh(v)}" for md, v in sp.items()), flush=True)
+    for f in factors:
+        rf = [x for x in rows if x[3] == f and np.isfinite(x[6] - x[5]) and np.isfinite(x[8] - x[7]) and all(np.isfinite(v) for v in x[9].values())]
+        if not rf: print(f"# eps = {f:g} x stock radius: no finite instances"); continue
+        W = sum(x[6] - x[5] for x in rf); Wf = sum(x[8] - x[7] for x in rf)
+        line = f"# eps = {f:g} x stock radius over {len(rf)} finite instances: mean CROWN width {W/len(rf):.3f}; share of width removed by: frozen attention {(1 - Wf / W)*100:.1f}%"
+        for md in modes: line += f"; lin-{md} {(1 - sum(x[9][md] for x in rf) / W)*100:.1f}%"
+        print(line, flush=True)
+    if a.save_json: json.dump({"rows": rows, "modes": modes, "factors": factors}, open(a.save_json, "w"))
 
 def load_gauge(path, L, H, dh):
     if path is None: return eye_gauge(L, H, dh, torch.float64)
@@ -420,5 +453,6 @@ if __name__ == "__main__":
     ap.add_argument("--out", default=None); ap.add_argument("--gauge", default=None); ap.add_argument("--eps_list", default="0.01,0.02,0.03")
     ap.add_argument("--obj", default="mean", help="mean | hinge"); ap.add_argument("--hinge_w", type=float, default=4.0)
     ap.add_argument("--max_len", type=int, default=12); ap.add_argument("--n_sent", type=int, default=20); ap.add_argument("--alpha", type=int, default=1); ap.add_argument("--hi", type=float, default=0.1); ap.add_argument("--iters", type=int, default=10); ap.add_argument("--save_json", default=None); ap.add_argument("--name", default="sst_bert_small_3"); ap.add_argument("--data", default="auto", help="sst | yelp | auto (from --name prefix)"); ap.add_argument("--eps", type=float, default=0.03); ap.add_argument("--softmax", default="lse"); ap.add_argument("--crown_batch", type=int, default=512)
+    ap.add_argument("--split_attrib", type=int, default=0, help="attrib: also linearise ONE nonlinearity at a time (qk / softmax / av) and all three"); ap.add_argument("--factors", default="1,1.5", help="attrib: eps as multiples of the stock radius")
     ap.add_argument("--k_words", type=int, default=1, help="perturb k embedding rows at once (1 = DeepT's one-word spec; 2 = two-word)"); ap.add_argument("--pairs_per_sent", type=int, default=7, help="eval: position sets per sentence when k_words > 1")
     a = ap.parse_args(); {"probe": cmd_probe, "radii": cmd_radii, "learn": cmd_learn, "eval": cmd_eval, "eval_alpha": cmd_eval_alpha, "attrib": cmd_attrib}[a.cmd](a)

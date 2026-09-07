@@ -2429,3 +2429,19 @@ two-word-trained gauge vs the one-word S6 gauge, eps grid 0.5/1/1.5 × the media
 `results/deept_small6_2w_eval_short_seed0.json`). Preregistered reading: if the Yelp- or random-tuned gauge recovers most of the
 one-word S6 gain (+13.1 %, 273/0), the gauge is a property of the weights and worth deriving; if the two-word-trained gauge beats
 the one-word gauge on two-word boxes by a clear margin, gauges are spec-specific.
+
+**12:28 — split attention-slack attribution on yelp_bert_small_6 (user: why did its +7 % fall short of its 81 % share?; job 39730086,
+A100, 28 min; `deept_gauge.py attrib --split_attrib 1`, `results/deept_yelp6_attrib_split.json`).** New diagnostic: besides freezing
+the attention probabilities, linearise ONE nonlinearity at the box centre (QKᵀ → q₀kᵀ + qk₀ᵀ − q₀k₀ᵀ; softmax → its Jacobian at
+the centre; P·V → p₀v + pv₀ − p₀v₀) or all three, and report the width-weighted share of the CROWN width removed (12 test reviews
+× 2 positions, seed 3, same instances as the 80.6 % figure). At ε = stock radius (23 finite instances, mean width 4.48): frozen
+attention 80.6 % (reproduces), **QK-only 56.2 %, softmax-only 71.5 %, AV-only 66.8 %, all three 82.3 %**. At 0.5 × radius (width
+0.55): frozen 26.1 %, QK 8.5 %, softmax 20.8 %, AV 14.7 %, all 32.7 %. At 1.5 × (13 finite, width 29): 93.9 / 77.0 / 70.9 / 88.3 /
+94.5 %. Reading: the three shares overlap almost completely (each alone removes more than half at ε = radius, together 82 %), so
+the slack is interactive through the six layers rather than owned by any one nonlinearity; the softmax is the largest single
+lever at every ε, but linearising either product alone also collapses most of the width, because the product boxes feed the
+softmax inputs and outputs. This does not by itself say whether the gauge's +6–7 % is a ceiling (softmax-owned slack) or an
+under-performance (product slack the gauge could reach), because linearising a product removes all of its slack, not only the
+basis-dependent part the gauge can move. Control queued: the same split on sst_bert_small_6 (share 40 %, gauge +13 %) and
+yelp_bert_small_3 (59 %, +10 %) — if their product shares are similar to Yelp small_6's, the small_6 shortfall is not explained by
+where the slack sits; if Yelp small_6 has a much larger softmax-only share relative to its product shares, it is.
