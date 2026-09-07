@@ -33,10 +33,21 @@ def load_yelp(split, max_words=14):
             if len(w) <= max_words: data.append({"label": int(l) - 1, "sent_a": w})
     return data
 
+def load_random(a, n=400, min_words=3, max_words=6):
+    """Out-of-distribution tuning data with NO dataset: sequences of random whole-word entries of the model's own vocabulary
+    (alphabetic, not word-piece continuations, not special tokens), 3-6 words each; label None -> short_instances() uses the
+    model's own prediction as the label, so every sequence passes the 'correctly classified' filter.  Seeded by --seed."""
+    d = os.path.join(DT, a.name); ck = os.path.join(d, "ckpt-%d" % int(open(os.path.join(d, "checkpoint")).readline()))
+    vocab = [w.strip() for w in open(os.path.join(ck, "vocab.txt"), encoding="utf-8")]
+    words = [w for w in vocab if w.isalpha() and w.islower() and len(w) >= 2]
+    rng = random.Random(1000 + a.seed)
+    return [{"label": None, "sent_a": [rng.choice(words) for _ in range(rng.randint(min_words, max_words))]} for _ in range(n)]
+
 def load_data(a, split):
-    """--data sst|yelp|auto (auto = from the model name prefix)"""
+    """--data sst|yelp|random|auto (auto = from the model name prefix). 'yelp' with an sst_* model = cross-dataset tuning text
+    (tokenised with the model's own tokenizer, Yelp's true sentiment labels); 'random' = random vocabulary sequences (no dataset)."""
     d = a.data if a.data != "auto" else ("yelp" if a.name.startswith("yelp") else "sst")
-    return load_yelp(split) if d == "yelp" else load_sst(split)
+    return load_random(a) if d == "random" else load_yelp(split) if d == "yelp" else load_sst(split)
 
 def load_sst(split):
     """DeepT's load_data_sst (test/dev): PTB trees -> tokens, binary label (neutral dropped)."""
@@ -106,7 +117,18 @@ def positions(toks):   # DeepT: i in [1, length-2], skip word-piece continuation
     return [i for i in range(1, len(toks) - 1) if not (toks[i][0] == "#" or toks[i + 1][0] == "#")]
 
 def box(e, i, eps):
-    xl = e.clone(); xu = e.clone(); xl[0, i] -= eps; xu[0, i] += eps; return xl, xu
+    """l_inf box of radius eps on one embedding row i (DeepT's spec) or on several rows (i = tuple/list of positions: k-word perturbation)"""
+    xl = e.clone(); xu = e.clone()
+    for j in (list(i) if isinstance(i, (list, tuple)) else [i]): xl[0, j] -= eps; xu[0, j] += eps
+    return xl, xu
+
+def pos_sets(toks, k, rng, cap):
+    """k-word position sets of a sentence: k = 1 -> single valid positions (shuffled, first `cap`; identical rng usage to the original
+    one-word code path); k = 2 -> all pairs of valid positions, shuffled, first `cap`."""
+    P = positions(toks)
+    if k == 1: rng.shuffle(P); return P[:cap]
+    from itertools import combinations
+    Q = [tuple(c) for c in combinations(P, k)]; rng.shuffle(Q); return Q[:cap]
 
 def spec_C(label):
     C = torch.zeros(1, 1, 2); C[0, 0, label] = 1; C[0, 0, 1 - label] = -1; return C
@@ -202,6 +224,7 @@ def short_instances(net, m, tok, data, max_len, n_max=None, seed=0):
         e, toks = g_embed(m, tok, ex)
         if e.shape[1] > max_len or not positions(toks): continue
         with torch.no_grad(): pred = net(e.to(next(net.parameters()).device)).argmax(1).item()
+        if ex["label"] is None: ex["label"] = pred   # label-free tuning data (--data random): the model's own prediction is the label
         if pred == ex["label"]: out.append((j, ex, e, toks))
     if n_max and len(out) > n_max: rng = random.Random(seed); out = rng.sample(out, n_max)
     return out
@@ -251,8 +274,8 @@ def cmd_learn(a):
     data = load_data(a, a.split); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed)
     rng = random.Random(a.seed); boxes = []   # (e, i, label, n)
     for j, ex, e, toks in S:
-        P = positions(toks); rng.shuffle(P)
-        for i in P[:a.pos_per_sent]: boxes.append([e, i, ex["label"], e.shape[1], None])
+        for i in pos_sets(toks, a.k_words, rng, a.pos_per_sent): boxes.append([e, i, ex["label"], e.shape[1], None])
+    if a.k_words > 1: print(f"# k-word perturbation: every tuning box widens {a.k_words} embedding rows at once", flush=True)
     lirpas = make_lirpas(net, [b[3] for b in boxes], dev, a.softmax)
     # per-box eps = stock certified radius (bisection, no grad) scaled by eps_scale -> the stock bound sits at ~0 on every tuning box
     t0 = time.time()
@@ -309,10 +332,13 @@ def cmd_eval(a):
     """paired stock vs gauged on TEST sentences: certified radii (same bisection grid) + fixed-eps verified counts; vanilla CROWN, no grad"""
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh = len(net.layers), net.H, net.dh; st = [[t.to(dev) for t in w] for w in stock_tensors(net)]
     data = load_data(a, "test"); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed); lirpas = make_lirpas(net, [e.shape[1] for _, _, e, _ in S], dev, a.softmax)
-    inst = [(j, i, e, ex["label"], toks) for j, ex, e, toks in S for i in positions(toks)]; print(f"# {a.name}: {len(S)} test sentences <= {a.max_len} tokens, {len(inst)} (sentence, position) instances", flush=True)
+    if a.k_words == 1: inst = [(j, i, e, ex["label"], toks) for j, ex, e, toks in S for i in positions(toks)]
+    else: prng = random.Random(a.seed); inst = [(j, i, e, ex["label"], toks) for j, ex, e, toks in S for i in pos_sets(toks, a.k_words, prng, a.pairs_per_sent)]
+    print(f"# {a.name}: {len(S)} test sentences <= {a.max_len} tokens, {len(inst)} (sentence, position{'-set' if a.k_words > 1 else ''}) instances; k_words = {a.k_words}", flush=True)
     eps_list = [float(x) for x in a.eps_list.split(",")]; res = {}
-    Gq, Ga = load_gauge(a.gauge, L, H, dh)
-    for tag, (gq, ga) in [("stock", eye_gauge(L, H, dh, torch.float64)), ("gauged", (Gq, Ga))]:
+    gauges = [load_gauge(g_, L, H, dh) for g_ in a.gauge.split(",")]; Gq, Ga = gauges[0]   # --gauge a.pt[,b.pt,...] -> tags gauged, gauged2, ...
+    tags = ["gauged" if k == 0 else f"gauged{k + 1}" for k in range(len(gauges))]
+    for tag, (gq, ga) in [("stock", eye_gauge(L, H, dh, torch.float64))] + list(zip(tags, gauges)):
         load_eff(net, effective(st, gq.float().to(dev), ga.float().to(dev), H, dh)); t0 = time.time()
         rad = np.array([certified_radius(lirpas[e.shape[1]], e, i, y, dev, hi=a.hi, iters=a.iters) for j, i, e, y, _ in inst])
         fixed = {eps: np.array([crown_lb(lirpas[e.shape[1]], e, i, eps, y, dev) for j, i, e, y, _ in inst]) for eps in eps_list}
@@ -320,13 +346,15 @@ def cmd_eval(a):
         if a.save_json:  # partial save after each half, so a job time-out keeps the finished half (small_12 eval lost 5 h this way)
             json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], **{f"{t}_rad": r[0].tolist() for t, r in res.items()}, "fixed": {str(eps): {t: r[1][eps].tolist() for t, r in res.items()} for eps in eps_list}}, open(a.save_json, "w"))
         print(f"# {tag}: certified radius mean {rad.mean():.4f} median {np.median(rad):.4f} | " + "; ".join(f"eps {eps}: verified {(v > 0).sum()}/{len(v)} (nan {np.isnan(v).sum()}) mean lb {np.nanmean(v):+.4f}" for eps, v in fixed.items()) + f"  [{time.time()-t0:.0f}s]", flush=True)
-    dr = res["gauged"][0] - res["stock"][0]
-    print(f"# PAIRED radius gauged-stock over {len(dr)} instances: larger on {(dr > 0).sum()}, smaller on {(dr < 0).sum()}, equal {(dr == 0).sum()}; mean rel change {np.mean(dr / np.maximum(res['stock'][0], 1e-9)):+.3f}; mean radius {res['stock'][0].mean():.4f} -> {res['gauged'][0].mean():.4f}")
-    for eps in eps_list:
-        s_, g_ = res["stock"][1][eps], res["gauged"][1][eps]; d = g_ - s_
-        print(f"# PAIRED eps {eps}: lb tighter on {(d > 0).sum()}/{len(d)}, looser {(d < 0).sum()}, mean delta {np.nanmean(d):+.4f}; verified {(s_ > 0).sum()} -> {(g_ > 0).sum()}; flips unverified->verified {((s_ <= 0) & (g_ > 0)).sum()}, verified->unverified {((s_ > 0) & (g_ <= 0)).sum()}")
-    print(f"# fp64 GATE (random points in 24 instance boxes at eps {eps_list[0]}): {fp64_gate(a.name, Gq, Ga, [(e, i, eps_list[0]) for j, i, e, y, _ in inst[:24]]):.2e}")
-    if a.save_json: json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], "stock_rad": res["stock"][0].tolist(), "gauged_rad": res["gauged"][0].tolist(), "fixed": {str(eps): {"stock": res["stock"][1][eps].tolist(), "gauged": res["gauged"][1][eps].tolist()} for eps in eps_list}}, open(a.save_json, "w"))
+    pairs = [(t, "stock") for t in tags] + [(t, "gauged") for t in tags[1:]]
+    for t, base in pairs:
+        dr = res[t][0] - res[base][0]
+        print(f"# PAIRED radius {t}-{base} over {len(dr)} instances: larger on {(dr > 0).sum()}, smaller on {(dr < 0).sum()}, equal {(dr == 0).sum()}; mean rel change {np.mean(dr / np.maximum(res[base][0], 1e-9)):+.3f}; mean radius {res[base][0].mean():.4f} -> {res[t][0].mean():.4f}")
+        for eps in eps_list:
+            s_, g_ = res[base][1][eps], res[t][1][eps]; d = g_ - s_
+            print(f"# PAIRED {t}-{base} eps {eps}: lb tighter on {(d > 0).sum()}/{len(d)}, looser {(d < 0).sum()}, mean delta {np.nanmean(d):+.4f}; verified {(s_ > 0).sum()} -> {(g_ > 0).sum()}; flips unverified->verified {((s_ <= 0) & (g_ > 0)).sum()}, verified->unverified {((s_ > 0) & (g_ <= 0)).sum()}")
+    for t, (gq, ga) in zip(tags, gauges): print(f"# fp64 GATE {t} (random points in 24 instance boxes at eps {eps_list[0]}): {fp64_gate(a.name, gq, ga, [(e, i, eps_list[0]) for j, i, e, y, _ in inst[:24]]):.2e}")
+    if a.save_json: json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], "k_words": a.k_words, "gauges": a.gauge.split(","), **{f"{t}_rad": r[0].tolist() for t, r in res.items()}, "fixed": {str(eps): {t: r[1][eps].tolist() for t, r in res.items()} for eps in eps_list}}, open(a.save_json, "w"))
 
 def cmd_eval_alpha(a):
     """paired stock vs gauged alpha-CROWN (CROWN-Optimized, 20 it) at fixed eps on test sentences <= max_len tokens (<= 8 fits the 44 GB GPU)"""
@@ -392,4 +420,5 @@ if __name__ == "__main__":
     ap.add_argument("--out", default=None); ap.add_argument("--gauge", default=None); ap.add_argument("--eps_list", default="0.01,0.02,0.03")
     ap.add_argument("--obj", default="mean", help="mean | hinge"); ap.add_argument("--hinge_w", type=float, default=4.0)
     ap.add_argument("--max_len", type=int, default=12); ap.add_argument("--n_sent", type=int, default=20); ap.add_argument("--alpha", type=int, default=1); ap.add_argument("--hi", type=float, default=0.1); ap.add_argument("--iters", type=int, default=10); ap.add_argument("--save_json", default=None); ap.add_argument("--name", default="sst_bert_small_3"); ap.add_argument("--data", default="auto", help="sst | yelp | auto (from --name prefix)"); ap.add_argument("--eps", type=float, default=0.03); ap.add_argument("--softmax", default="lse"); ap.add_argument("--crown_batch", type=int, default=512)
+    ap.add_argument("--k_words", type=int, default=1, help="perturb k embedding rows at once (1 = DeepT's one-word spec; 2 = two-word)"); ap.add_argument("--pairs_per_sent", type=int, default=7, help="eval: position sets per sentence when k_words > 1")
     a = ap.parse_args(); {"probe": cmd_probe, "radii": cmd_radii, "learn": cmd_learn, "eval": cmd_eval, "eval_alpha": cmd_eval_alpha, "attrib": cmd_attrib}[a.cmd](a)

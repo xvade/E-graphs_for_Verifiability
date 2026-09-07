@@ -2415,3 +2415,17 @@ CROWN-trained gauge's +3.3 % (35/0); head-to-head 0.0 % (14/21). Grid 2 is compl
 best or tied in all four verifiers on small_6 and in all four on their model; training through their bound on the thin sets
 memory allows never beat it (tangent-trained tied it under PBverifierT and their Baseline, lagged under auto_LiRPA;
 Baseline-trained overfit and was negative in three of four). All jobs of this thread are finished; nothing left in the queue.
+
+**11:05 — out-of-distribution tuning and two-word perturbation on sst_bert_small_6 (user: "is the gauge derivable rather than
+learned?" and "do we do multi-token perturbations?").** `deept_gauge.py` gains `--data random` (sequences of 3–6 random whole-word
+vocabulary entries, the model's own prediction as label) and cross-dataset use of `--data yelp` with an SST model (Yelp text through
+the SST tokenizer, Yelp true labels, correctly-classified filter as usual), plus `--k_words 2` (two embedding rows widened at once;
+tuning boxes = 3 random position pairs per dev sentence, eval = up to 7 pairs per test sentence) and a multi-gauge eval
+(`--gauge a.pt,b.pt` → tags gauged / gauged2). Jobs: 39722892 `deept_ood_chain.sh yelp` and 39722893 `deept_ood_chain.sh random`
+(L40S, 8 h each: learner on 60 sentences ≤ 8 tokens × 3 positions, then the standard paired one-word eval on the same 40 SST test
+sentences / 294 positions as the S6 gauge → `results/deept_small6_ood{yelp,random}_eval_short_seed0.json`); 39722894
+`deept_2w_chain.sh` (ckpt A100, 9 h: two-word gauge learned on dev pairs ≤ 8 tokens, then a two-word paired eval of stock vs the
+two-word-trained gauge vs the one-word S6 gauge, eps grid 0.5/1/1.5 × the median stock two-word tuning radius →
+`results/deept_small6_2w_eval_short_seed0.json`). Preregistered reading: if the Yelp- or random-tuned gauge recovers most of the
+one-word S6 gain (+13.1 %, 273/0), the gauge is a property of the weights and worth deriving; if the two-word-trained gauge beats
+the one-word gauge on two-word boxes by a clear margin, gauges are spec-specific.

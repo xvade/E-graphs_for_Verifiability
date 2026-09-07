@@ -42,6 +42,13 @@ a verification spec. Nothing hand-made; all models are the authors' released che
 - `deept_yelp_chain.sh attrib:<name>:<tag> | full:<name>:<tag>[:max_len:n_sent:pos:steps:accum] ...` — attribution → learn → paired eval
   for any DeepT-release checkpoint (Yelp models, SST width variants); the eval eps grid is 0.5 / 1 / 1.5 × the median stock radius
   from the attribution JSON. `diagnostics/_count_short_yelp.py` counts short, correctly classified Yelp test reviews.
+- `deept_ood_chain.sh yelp|random` — out-of-distribution tuning test on `sst_bert_small_6`: gauge tuned on Yelp-review boxes
+  (`--data yelp` with an SST model: Yelp text through the SST tokenizer, Yelp true labels) or on random vocabulary sequences
+  (`--data random`: 3–6 random whole-word vocab entries, the model's own prediction as label, no dataset), then the standard
+  one-word paired eval on the same SST test instances as the SST-tuned gauge.
+- `deept_2w_chain.sh` — two-word perturbation (`--k_words 2`: two embedding rows widened at once; tuning = 3 random position pairs
+  per dev sentence, eval = up to `--pairs_per_sent` 7 pairs per test sentence): two-word-trained gauge vs the one-word S6 gauge
+  vs stock in one eval (`--gauge a.pt,b.pt` → JSON tags `gauged`, `gauged2`).
 - `run_on_bigger_gpu.sh <chain args>` — sbatch wrapper for steps that need > 44 GB (alpha-CROWN on small_6): checks the card has
   ≥ 60 GB, then runs `deept_chain.sh`; used with `-p ckpt-all -A ckpt-amath --qos=ckpt-gpu --gres=gpu:a100:1`.
 - `diagnostics/` — the one-off memory / NaN / sharing investigations behind the facts below (`_mem_probe*.py`, `_alpha_mem_probe*.py` +
