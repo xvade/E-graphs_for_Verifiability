@@ -42,7 +42,7 @@ class DeepTNet(nn.Module):
     """Clean single-input forward (embeddings -> logits) over the DeepT model's modules; no dropout, no padding mask."""
     def __init__(self, m):
         super().__init__(); self.ln0 = m.bert.embeddings.LayerNorm; self.layers = m.bert.encoder.layer; self.pooler = m.bert.pooler; self.classifier = m.classifier
-        a = self.layers[0].attention.self; self.H = a.num_attention_heads; self.dh = a.attention_head_size; self.frozen_probs = None
+        a = self.layers[0].attention.self; self.H = a.num_attention_heads; self.dh = a.attention_head_size; self.hid = a.query.in_features; self.frozen_probs = None
     def attn_modules(self):   # per layer: (query, key, value, out_dense)
         return [(l.attention.self.query, l.attention.self.key, l.attention.self.value, l.attention.output.dense) for l in self.layers]
     # diagnostic: self.frozen_probs (nn.ParameterList per layer, or None) -> attention becomes a fixed linear map.  Must NOT be a class
@@ -149,7 +149,7 @@ def cmd_probe(a):
     net = net.to(dev); L, H, dh = len(net.layers), net.H, net.dh; st = stock_tensors(net)
     lirpas = {}
     def get_lirpa(n):
-        if n not in lirpas: lirpas[n] = BoundedModule(net, torch.empty(1, n, 128, device=dev), bound_opts={"softmax": a.softmax, "sparse_intermediate_bounds": False}, device=dev)   # sparse_intermediate_bounds=True (default) makes lse-CROWN peak 18.7 GiB at 12 tokens (OOM at 16); False: 0.24 GiB, identical bound
+        if n not in lirpas: lirpas[n] = BoundedModule(net, torch.empty(1, n, net.hid, device=dev), bound_opts={"softmax": a.softmax, "sparse_intermediate_bounds": False}, device=dev)   # sparse_intermediate_bounds=True (default) makes lse-CROWN peak 18.7 GiB at 12 tokens (OOM at 16); False: 0.24 GiB, identical bound
         return lirpas[n]
     # stock: softmax interval widths + CROWN lb at a fixed eps on the first sentence's positions
     j, ex, e, toks = S[0]; lp = get_lirpa(e.shape[1]); i = positions(toks)[0]
@@ -192,7 +192,7 @@ def cmd_radii(a):
     S = short_instances(net, m, tok, data, a.max_len, a.n_sent); print(f"# {a.name}: {len(S)} correctly classified test sentences with <= {a.max_len} tokens; positions {sum(len(positions(t)) for _, _, _, t in S)}")
     lirpas = {}
     def get_lirpa(n):
-        if n not in lirpas: lirpas[n] = BoundedModule(net, torch.empty(1, n, 128, device=dev), bound_opts={"softmax": a.softmax, "sparse_intermediate_bounds": False, "optimize_bound_args": {"iteration": 20, "lr_alpha": 0.1}}, device=dev)
+        if n not in lirpas: lirpas[n] = BoundedModule(net, torch.empty(1, n, net.hid, device=dev), bound_opts={"softmax": a.softmax, "sparse_intermediate_bounds": False, "optimize_bound_args": {"iteration": 20, "lr_alpha": 0.1}}, device=dev)
         return lirpas[n]
     rows = []; t0 = time.time()
     for j, ex, e, toks in S:
@@ -211,7 +211,7 @@ def make_lirpas(net, lengths, dev, softmax="lse", alpha=False):
     """one BoundedModule per sentence length; all share the net's parameter tensors (load_eff updates every one)"""
     opts = {"softmax": softmax, "sparse_intermediate_bounds": False}
     if alpha: opts["optimize_bound_args"] = {"iteration": 20, "lr_alpha": 0.1}
-    return {n: BoundedModule(net, torch.empty(1, n, 128, device=dev), bound_opts=opts, device=dev) for n in sorted(set(lengths))}
+    return {n: BoundedModule(net, torch.empty(1, n, net.hid, device=dev), bound_opts=opts, device=dev) for n in sorted(set(lengths))}
 
 def fp64_gate(name, Gq, Ga, boxes, n_pts=32, seed=0):
     """max |stock - gauged| logits in float64 over random points in the boxes (list of (e, i, eps))"""
@@ -350,7 +350,7 @@ def cmd_attrib(a):
                         at = l.attention.self; q = at.query(x).view(B, n_, net.H, net.dh).transpose(1, 2); k = at.key(x).view(B, n_, net.H, net.dh).transpose(1, 2); v = at.value(x).view(B, n_, net.H, net.dh).transpose(1, 2)
                         p = torch.softmax(torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(net.dh), dim=-1); probs.append(p)
                         c = torch.matmul(p, v).transpose(1, 2).reshape(B, n_, -1); h = l.attention.output.LayerNorm(l.attention.output.dense(c) + x); x = l.output.LayerNorm(l.output.dense(torch.relu(l.intermediate.dense(h))) + h)
-                net.frozen_probs = nn.ParameterList([nn.Parameter(p_, requires_grad=False) for p_ in probs]); lpf = BoundedModule(net, torch.empty(1, n, 128, device=dev), bound_opts={"softmax": a.softmax, "sparse_intermediate_bounds": False}, device=dev)
+                net.frozen_probs = nn.ParameterList([nn.Parameter(p_, requires_grad=False) for p_ in probs]); lpf = BoundedModule(net, torch.empty(1, n, net.hid, device=dev), bound_opts={"softmax": a.softmax, "sparse_intermediate_bounds": False}, device=dev)
                 lbf, ubf = crown_lb(lpf, e, i, eps, ex["label"], dev, with_ub=True); net.frozen_probs = None
                 rows.append((j, i, n, f, eps, lb, ub, lbf, ubf))
         print(f"  sentence {j} len {n}: " + "; ".join(f"x{f:g}: width {ub-lb:.3f} -> frozen-attn {ubf-lbf:.3f} (attn share {(1-(ubf-lbf)/max(ub-lb,1e-9))*100:.0f}%)" for (_, _, _, f, eps, lb, ub, lbf, ubf) in rows[-2:]), flush=True)

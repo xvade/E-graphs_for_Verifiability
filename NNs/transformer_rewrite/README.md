@@ -60,6 +60,8 @@ a verification spec. Nothing hand-made; all models are the authors' released che
 | verified at eps 0.02 / 0.03 | 181 / 41 | 183 / **95** (0 reverse flips) |
 | alpha-CROWN tier (A100 80 GB; 49 positions ≤ 6 tokens), verified at eps 0.02 | 24 | **27** (3 up, 0 down; tighter on 47/47 finite) |
 
+small_12 (5-box ≤ 5-token gauge, the most the 12-layer learner fits in 44 GB; 120 test positions ≤ 10 tokens): radius +26.6 % (120/120 larger), eps 0.01 verified 67 → 96 (0 reverse), NaN 39 → 13 — NaN-cliff-limited radii, so only indicative (`results/deept_small12_eval_short_seed0.json`).
+
 Attention nonlinearities are 9.2% of the CROWN width on small_3, 39.7% on small_6, 70.0% on small_12 (eps = stock radius;
 77% on the VNN-COMP ViT where the gauge flipped 7/100 at the full tier, 3% on `ibp_3_3_8` where it was neutral):
 **gauge leverage ≈ attention share of the width** — small_3 +1.7% radius, small_6 +13.1%.

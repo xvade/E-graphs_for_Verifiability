@@ -1967,7 +1967,7 @@ second real, downloaded transformer with its authors' spec. Three DeepT depths g
 |---|---|---|---|
 | small_3 | 9.2% | +1.7% / +1.2% (two seeds) | 147 → 149 / 150 of 278 |
 | small_6 | 39.7% | **+13.1%** (alpha tier, ≤ 6 tokens, eps 0.02: 24 → 27 of 49, tighter 47/47) | 41 → 95 of 294 |
-| small_12 | 70.0% | not measurable: learner OOMs at 44 GB for ≥ 6-token sentences, and the stock radius is set by the lse NaN cliff, not a zero crossing (5-box fallback gauge eval = job 39659465, footnote below) | |
+| small_12 | 70.0% | **+26.6 %** (5-box ≤ 5-token gauge; 120 test positions ≤ 10 tokens; larger 120/120) — but the stock radius is NaN-cliff-limited, so part of this is the cliff moving, not the zero crossing; see footnote | 67 → 96 of 120 at eps 0.01 (NaN 39 → 13), 0 reverse |
 
 Ops note (2026-09-05 20:15): the interactive allocation 39619518 ended (job COMPLETED after 6 h 50, the user's
 interactive step cancelled), which killed both long-sentence paired evals ~1.8 h into their gauged half (stock half
@@ -2061,8 +2061,12 @@ neutral). That is a two-point dose-response inside DeepT plus the ViT points; `s
 learner OOMs at 44 GB for ≥ 6-token sentences and its bisection radius is set by the lse NaN cliff rather than a zero crossing
 (the 5-box ≤ 5-token gauge eval, job 39659465, is appended below as a footnote only).
 
-Not done: the BaB tier for DeepT (the abcrown loader was never wired for these models; the alpha-CROWN tier is the top tier
-reported). Code provenance of the alpha numbers: small_3's row came from the earlier `eval_alpha` (module per sentence length,
+Not done, and why: the BaB tier for DeepT. The abcrown loader was never wired for these models, but the binding reason is
+memory, not plumbing — a single alpha-CROWN call already peaks at 36 GiB (5 tokens) / 62 GiB (6 tokens) on small_6 and only
+fits the 80 GB A100 for ≤ 6-token sentences; BaB multiplies that by the number of live domains, so the model where the effect is
+large (+13 %) cannot reach BaB on this hardware, and on small_3, where BaB would fit, the effect (+1.7 %) is below what a
+time-capped BaB verdict count can resolve. The alpha-CROWN tier is therefore the top tier reported for DeepT (the ViT result has
+the full official BaB pipeline). Code provenance of the alpha numbers: small_3's row came from the earlier `eval_alpha` (module per sentence length,
 weights with autograd on), small_6's from the current one (fresh BoundedModule per call, frozen weights, needed to fit the
 A100). A direct check (job 39666884, L40S, 3 small_3 test sentences = 18 positions, eps 0.03) reran those instances through the
 current code: all 18 alpha-CROWN and CROWN bounds, stock and gauged, are **bit-identical** to the earlier file (max |Δ| = 0;
@@ -2137,3 +2141,72 @@ size as the +13.1 % under auto_LiRPA. The small_6 gauge is therefore not an arte
 tightens Shi et al.'s independently implemented Baseline as well. Cross-check on the same 35 instances under auto_LiRPA (job 39673979,
 13:13): +17.5 % (larger 35/35). Their Baseline is much looser than auto_LiRPA on the 6-layer model (stock radii ≈ half),
 yet the gauge lifts both by a similar fraction. PBverifierI/T pairs still running.
+
+**Their own model (13:41–14:05).** Their archive ships no trained models, so `model_sst_3` was retrained with their script (5 min on
+an A100, test acc 0.836; their attention is bias-free, harness loads it with zero biases and `pbv_harness_check.py` verifies the
+logits). Running: their Baseline/PBverifierI/PBverifierT on it with the paper's protocol (jobs 39676401/2) = a direct reproduction
+attempt of their SST 3-layer row; and the full gauge pipeline on it (job 39680163: attrib → learn → auto_LiRPA eval → export →
+their verifier on stock vs gauged). Also landed: small_3 PBverifierI pair −1.0 % (21/12/2, neutral like its Baseline pair). See
+`NNs/transformer_rewrite/RELATED_WORK.md`.
+
+**Gauge on THEIR model (16:27, job 39686146).** `model_sst_3` (their code, hidden 256, bias-free attention): attention share
+26.7 %; learner margin +0.107 → +1.002 on the tuning boxes (fp64 gate 8.9e-16); out-of-sample (276 test positions ≤ 12 tokens)
+certified radius **0.0199 → 0.0218 (+9.5 %), larger on 244, smaller on 0**; eps 0.03 verified 36 → 79, eps 0.02 131 → 153, 0
+reverse; tighter 276/276 at every eps. Three times the +2.9 % their AAAI-26 method reports on this configuration. Their verifier
+on stock vs gauged exports is running. Details: `NNs/transformer_rewrite/RELATED_WORK.md`.
+
+**17:30 — alpha tier on their model.** alpha-CROWN OOMs at 80 GB for ≤ 8 and ≤ 6-token sentences on `model_sst_3` (hidden 256);
+at ≤ 5 tokens (29 instances) the gauge is tighter on 29/29 at both eps (0.02: +0.35; 0.03: +1.08), no flips because both eps
+exceed these sentences' radii (rerun at 0.01/0.015 queued). Ops: the paper-protocol reproduction jobs on their model were
+restructured — 39676401 was preempted at 2 h 50 with nothing saved and 39676402 could not finish 60 PBverifierT positions in
+9 h; both cancelled, replaced by five single-run jobs (Baseline gauged 20 sentences; PBverifierI/T stock+gauged 8 sentences).
+
+**18:10 — small_6 under their PBverifierT (job 39673560):** stock 0.01486 → gauged 0.01535 = **+3.3 %, larger on 35/35, smaller
+on 0** (range +1.2 … +6.9 %). Smaller than the +13.4 % under their Baseline but one-sided. Their PBverifierT itself is −11.8 %
+against their Baseline on stock small_6 (14 larger / 21 smaller). PBverifierI pair for small_6 due ~18:45.
+
+**18:20 — small_12 footnote (job 39672903, the other instance's rerun; 2 × 2 h 27).** Gauge learned on only 5 boxes (2 dev sentences
+≤ 5 tokens, the largest the 12-layer learner fits in 44 GB), evaluated on 20 test sentences ≤ 10 tokens = 120 positions:
+certified radius 0.0095 → 0.0121 (**+26.6 %**, larger on 120/120); eps 0.005 tighter 120/120 (all verified both ways); eps 0.01
+verified 67 → 96 (14 flips up, 0 down; NaN 39 → 13); eps 0.02 all NaN both ways. Caveat as before: on small_12 the bisection
+radius is where lse-CROWN turns NaN rather than where the bound crosses zero, so the radius gain conflates a real tightening
+(the eps-0.005 and finite eps-0.01 deltas are genuine, +1.17 mean) with the gauge pushing the NaN cliff outward (NaN 39 → 13).
+It is consistent with the leverage rule's ordering (70 % attention share > small_6's 40 %) but is not a clean third point.
+Decomposition from the saved JSON (`results/deept_small12_eval_short_seed0.json`): on the 81 positions whose stock bound is
+finite at eps 0.01 the gauged bound is tighter on 81/81 (0 gauged NaNs where stock was finite); of the 29 newly verified
+positions at eps 0.01, 14 are zero crossings and 15 are NaN rescues (11 further NaNs become finite but stay unverified, 13 stay
+NaN). The only subgroup whose stock radius is provably a zero crossing rather than a cliff — the 14 positions with a finite
+non-positive stock bound at eps 0.01 — gains **+16.2 %** (median +14.2 %, range +12 … +44 %), clearly less than the +26.6 %
+overall mean, so the cliff shift does inflate the headline radius number; the zero-crossing gain is the fairer figure and sits
+between small_6's +13 % and the headline. Per-instance relative radius gain overall: min +5.6 %, median +24.1 %, max +51.9 %.
+
+## More transformers from the DeepT release: Yelp models and SST width / LayerNorm variants (2026-09-06 18:40)
+
+The stop-hook review judged the replication scope too narrow (one family, three depths). The downloaded DeepT release
+(`deept_benchmarks/DeepT/Robustness-Verification-for-Transformers`) ships further *separately trained* checkpoints under the
+same published one-word ℓ∞ verification protocol, all loadable by `deept_gauge.py` unchanged apart from a data path:
+`yelp_bert_small_{3,6,12}` (Yelp Review Polarity, own 45 944-piece vocab, hidden 128, 4 heads), `sst_bert_big_3` (hidden 256,
+MLP 512), `sst_bert_smaller_3` (hidden 64), `sst_bert_standard_layer_norm_3` (full LayerNorm instead of the linear
+mean-subtraction 'no_var' norm). Yelp is also the second dataset in Huang et al. AAAI-26 (their Yelp ℓ∞ 3-layer: +8.7 %).
+
+Harness: `--data sst|yelp|auto` (auto from the model-name prefix) and `load_yelp` — Yelp has no dev split, so tuning boxes come
+from `train.csv` and evaluation from `test.csv` (disjoint); only reviews ≤ 14 words are read (856 of 38 000 test reviews;
+12 084 of 560 000 train). Short Yelp reviews are plentiful: ≤ 8 word pieces 212 test reviews (195 / 194 correctly classified by
+small_3 / small_6), ≤ 10: 334 (306 / 304), ≤ 12: 492 (450 / 450) — `diagnostics/_count_short_yelp.py`. Word splitting is a regex
+stand-in for DeepT's nltk (not in the venv); BERT's basic tokenizer re-splits punctuation so word pieces are unchanged.
+
+New chain `deept_yelp_chain.sh` (separate file so neither instance edits a running script): attribution on all five models
+first, then learn (train boxes ≤ 8 tokens, 40 reviews × 3 positions, 120 steps) + paired test eval (40 reviews ≤ 12 tokens) for
+yelp small_3 and small_6. The eval eps grid is derived from each model's attribution stock radii (median r → 0.5 r, r, 1.5 r) —
+on SST small_6 this rule reproduces the 0.01/0.02/0.03 grid used before (0.0109/0.0219/0.0328). Job `deept_yelp` (L40S, 12 h).
+
+**Preregistered prediction (written before any Yelp number exists):** by the leverage rule, the Yelp gain ordering follows the
+attention share — yelp small_6 ≫ yelp small_3; if the Yelp shares match SST's (≈ 9 % and ≈ 40 %) the radius gains should be
+≈ +2 % and ≈ +13 % with 0 reverse; stdln3 should have a *smaller* share than small_3 (the variance nonlinearity adds slack
+outside attention) and hence a smaller gain; big3 / smaller3 test whether width moves the share at fixed depth 3. The share
+numbers will be recorded here as soon as the attribution step lands, before the learners finish.
+
+**18:41 — small_6 under their PBverifierI (job 39672839):** stock 0.01422 → gauged 0.01463 = +2.9 % (larger 18 / smaller 17;
+median +4.5 %, range −2.9 … +13.7 %). PBverifierI itself is −15.6 % vs their Baseline on stock small_6 (9/26). All six DeepT
+stock-vs-gauged pairs in their verifier are now done; table in `NNs/transformer_rewrite/RELATED_WORK.md`. Their-model runs
+(Baseline 20 sentences; PBverifierI/T 8 sentences; stock and gauged) still running.
