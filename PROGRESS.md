@@ -2445,3 +2445,18 @@ under-performance (product slack the gauge could reach), because linearising a p
 basis-dependent part the gauge can move. Control queued: the same split on sst_bert_small_6 (share 40 %, gauge +13 %) and
 yelp_bert_small_3 (59 %, +10 %) — if their product shares are similar to Yelp small_6's, the small_6 shortfall is not explained by
 where the slack sits; if Yelp small_6 has a much larger softmax-only share relative to its product shares, it is.
+
+**13:05 — split attribution controls (jobs 39741703 sst_bert_small_6, 39741704 yelp_bert_small_3; A100, 22 + 7 min;
+`results/deept_{small6,yelp3}_attrib_split.json`).** Width-weighted share of the CROWN width removed at ε = stock radius (24 / 24 /
+23 finite instances), listed as frozen attention / QK-only / softmax-only / AV-only / all three:
+sst small_6 (gauge +13.1 %): 39.7 / 32.6 / 31.5 / 28.8 / 40.0 %; yelp small_3 (+10.1 %): 59.2 / 35.8 / 34.0 / 44.3 / 61.1 %;
+yelp small_6 (+7.2 %, cliff-limited): 80.6 / 56.2 / 71.5 / 66.8 / 82.3 %. Softmax-only as a fraction of the all-three share:
+0.79 / 0.56 / 0.87; QK-only: 0.82 / 0.59 / 0.68; AV-only: 0.72 / 0.73 / 0.81. **Verdict: the split does not explain the Yelp small_6
+shortfall.** The model that gains most (SST small_6) has a softmax fraction (0.79) close to Yelp small_6's (0.87), and Yelp small_3
+gains less than SST small_6 with the *smallest* softmax fraction (0.56); no single-nonlinearity share, absolute or relative, orders
+the three gains. On every model the three shares overlap heavily (their sum is 2.1–2.4 × the joint share), i.e. the slack is
+interactive across layers rather than owned by one nonlinearity. The remaining explanation for Yelp small_6 is the one visible in
+the data: the lse NaN cliff (stock NaN on 23 % of positions at the stock radius, 100 equal-radius positions) and the tiny radius
+scale, not a softmax-owned slack the gauge cannot reach. Diagnostic caveat: at 1.5 × radius the softmax-only share collapses
+(small_6 4.8 %, yelp small_3 −2.5 %) — the centre-Jacobian linearisation of the softmax over wide score boxes is itself a
+loose linear map, so the single-mode shares are only meaningful near the certified radius.
