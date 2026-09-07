@@ -2385,8 +2385,8 @@ differentiated; PBverifierT-trained approximated by its unoptimised midpoint-tan
 auto_LiRPA (240/0), +6.0 % their Baseline (52/52) — vs +9.5 % / +8.4 % for the 120-box CROWN-trained gauge. small_6, 13 boxes:
 tangent-trained generalised (+13.2 % their Baseline 35/35, +9.5 % auto_LiRPA 266/0, cond 2.9/4.5); Baseline-trained overfit
 (+6.9 % mixed 18/17, **−16.3 %** under auto_LiRPA 0/289, −6.1 % under PBverifierT; cond 28.3/15.5). The CROWN-trained gauge
-remained best or equal in every verifier. Pending as of this entry: PBverifierI on the Baseline-trained small_6 gauge (job
-39703632) and PBverifierT on the tangent-trained one (39713376, ~11:00); recorded below when they land.
+remained best or equal in every verifier. The last two cells (PBverifierI on the Baseline-trained small_6 gauge, job
+39703632; PBverifierT on the tangent-trained one, 39713376) landed 07:15 and 10:16 and are recorded below.
 
 **Method caveats.** Differentiating their backward bounds is memory-hungry (OOM 80 GB at ≤ 8 tokens small_6, ≤ 6 their model),
 hence the 5–13-box tuning sets. Their pooler-tanh slope 1/cosh² overflowed to NaN gradients; the gradient copy uses 1 − tanh²
@@ -2400,3 +2400,18 @@ half saved; a duplicate their-model Baseline half was truncated when two chains 
 written at the end), 39699643–50, 39699652/53, 39700047/48 (dependency chains restructured for the 9 h cap and OOM/NaN failures),
 39701472–80, 39701896–99, 39701946–50 (OOM and NaN chains before the ≤ 6 / ≤ 5-token and dtanh fixes), 39703634. The other
 Claude session (user's own) committed 07dac29 in between; PROGRESS.md carries both sessions' entries.
+
+**07:15 — Baseline-trained (overfit) small_6 gauge under their PBverifierI (job 39703632, ckpt, restarted once by preemption):
+−1.8 % (18/17)** vs +2.9 % (18/17) for the CROWN-trained gauge; head-to-head −4.5 % (6/29). Grid 2 in RELATED_WORK.md updated;
+one cell left (PBverifierT on the tangent-trained gauge, job 39713376).
+
+**07:55 — experiment record artifact.** All transformer gauge experiments (ViTs, GenBaB, DeepT SST/Yelp variants, Huang et al.'s
+model, composition grids) with metric / baseline / model / gauge-training data stated on every table, and a share-vs-gain chart:
+https://claude.ai/code/artifact/6eeacba6-2cea-4410-bae7-10ca1f929c05 (source `gauge_experiments.html` in the session scratchpad;
+radius gains recomputed from the eval JSONs as ratio of means, with the per-instance convention alongside).
+
+**10:16 — tangent-trained small_6 gauge under their PBverifierT (job 39713376, L40S): +3.3 % (35/35)**, identical to the
+CROWN-trained gauge's +3.3 % (35/0); head-to-head 0.0 % (14/21). Grid 2 is complete: the transferred 68-box CROWN gauge is
+best or tied in all four verifiers on small_6 and in all four on their model; training through their bound on the thin sets
+memory allows never beat it (tangent-trained tied it under PBverifierT and their Baseline, lagged under auto_LiRPA;
+Baseline-trained overfit and was negative in three of four). All jobs of this thread are finished; nothing left in the queue.

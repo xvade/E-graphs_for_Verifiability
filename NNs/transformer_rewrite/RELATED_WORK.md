@@ -86,8 +86,8 @@ max over heads of the condition number of the saved Gq / Ga; the CROWN-trained s
 | gauge (training bound, tuning boxes) | cond Gq / Ga | auto_LiRPA CROWN | their Baseline | PBverifierI | PBverifierT |
 |---|---|---|---|---|---|
 | their model, Baseline-trained, 5 boxes ≤ 5 tokens | 4.4 / 2.9 | +7.5 % (240 / 0) | +6.0 % (52 / 0) | — | — |
-| small_6, Baseline-trained, 13 boxes ≤ 6 tokens | **28.3 / 15.5** | **−16.3 %** (0 / 289) | +6.9 % (18 / 17) | pending (job 39703632) | −6.1 % (9 / 26) |
-| small_6, tangent-trained (`inner`), 13 boxes ≤ 6 tokens | 2.9 / 4.5 | +9.5 % (266 / 0) | **+13.2 %** (35 / 0) | — | pending (job 39713376) |
+| small_6, Baseline-trained, 13 boxes ≤ 6 tokens | **28.3 / 15.5** | **−16.3 %** (0 / 289) | +6.9 % (18 / 17) | −1.8 % (18 / 17) | −6.1 % (9 / 26) |
+| small_6, tangent-trained (`inner`), 13 boxes ≤ 6 tokens | 2.9 / 4.5 | +9.5 % (266 / 0) | **+13.2 %** (35 / 0) | — | +3.3 % (35 / 0) |
 | *reference:* small_6 CROWN-trained, 68 boxes ≤ 8 tokens | 4.9 / 4.5 | +13.1 % (273 / 0) | +13.4 % (29 / 6) | +2.9 % (18 / 17) | +3.3 % (35 / 0) |
 | *reference:* their model CROWN-trained, 120 boxes ≤ 10 tokens | 8.7 / 2.9 | +9.5 % (244 / 0) | +8.4 % (52 / 0) | +6.1 % (20 / 0) | +6.0 % (20 / 0) |
 
@@ -286,7 +286,9 @@ Results (verifier-trained gauges):
   larger on 0; `results/pbvtrained_small6_origin_eval_short_seed0.json`) — an ill-conditioned gauge (cond up to 28) tuned on 13
   boxes to one relaxation can wreck another; this is the strongest warning in the study against thin tuning sets. Under their
   `bilinear` (PBverifierT) it is also negative: 0.01486 → 0.01395 (−6.1 %; larger 9, smaller 26; `results/pbv_small6_bilinear_pbvorigin.json`),
-  where the CROWN-trained gauge was +3.3 % (35/0). Its `originPlus` (PBverifierI) evaluation: pending (job 39703632).
+  where the CROWN-trained gauge was +3.3 % (35/0). Under `originPlus` (PBverifierI; `results/pbv_small6_originPlus_pbvorigin.json`): 0.01422 → 0.01397 (−1.8 %; larger 18, smaller 17;
+  median +2.4 %, range −11.7 … +18.5 %), where the CROWN-trained gauge was +2.9 % (18/17); head-to-head against it −4.5 % (6/29).
+  So the overfit gauge is positive only in the relaxation it was trained on, and only on average.
 * **small_6, gauge learned against their midpoint-tangent bound (`inner`) on the same 13 boxes** —
   `gauges/pbvtrained_small6_inner_seed0.pt`, in-sample margin +0.66 → +2.00, saved gauge max cond 2.9 / 4.5. Under **their Baseline**
   (`results/pbv_small6_origin_pbvinner.json`): stock 0.01686 → 0.01908 (**+13.2 %; larger on 35/35, smaller on 0**; median +13.3 %,
@@ -294,7 +296,9 @@ Results (verifier-trained gauges):
   13 boxes one training bound overfit and the other generalised; with tuning sets this thin the outcome is seed/objective
   sensitive. Under **auto_LiRPA** (294 test positions, `results/pbvtrained_small6_inner_eval_short_seed0.json`): 0.0220 → 0.0241
   (**+9.5 %**; larger on 266, smaller on 0, equal 28) — vs +13.1 % for the CROWN-trained gauge on the same instances. Under
-  `bilinear` (its own family): pending (job 39713376).
+  `bilinear` (PBverifierT, the family it was trained toward; `results/pbv_small6_bilinear_pbvinner.json`): 0.01486 → 0.01535
+  (**+3.3 %; larger on 35/35**), identical to the CROWN-trained gauge's +3.3 % (35/0); head-to-head 0.0 % (14/21, range
+  −0.9 … +2.6 %). Training toward their tangent family bought nothing over the transferred CROWN gauge under that family.
 
 ## Other verifier-side work on transformers
 
