@@ -2460,3 +2460,14 @@ the data: the lse NaN cliff (stock NaN on 23 % of positions at the stock radius,
 scale, not a softmax-owned slack the gauge cannot reach. Diagnostic caveat: at 1.5 × radius the softmax-only share collapses
 (small_6 4.8 %, yelp small_3 −2.5 %) — the centre-Jacobian linearisation of the softmax over wide score boxes is itself a
 loose linear map, so the single-mode shares are only meaningful near the certified radius.
+
+**14:00 — RANDOM-VOCABULARY-TUNED gauge on sst_bert_small_6 (job 39722893; no dataset: 180 boxes on random 3–6-word sequences
+of vocabulary entries, the model's own prediction as label; `results/deept_small6_oodrandom_eval_short_seed0.json`), same 294 SST
+test positions as the SST-tuned gauge:** mean certified radius 0.0220 → 0.0245, **+11.6 % ratio of means (+9.4 % per-instance);
+larger on 271, smaller on 0, equal 23**; eps 0.03 verified 41 → 91 (36 finite flips up + NaN 20 → 6, 0 reverse), eps 0.02 181 → 183;
+lb tighter 279 / 286 / 274 of 294 at eps 0.01 / 0.02 / 0.03 (looser 15 / 8 / 0, all below the radius); fp64 gate 8.9e-16. Head-to-head
+with the SST-dev-tuned gauge on the same instances: 0.0245 vs 0.0249 (−1.3 %; larger on 2, smaller on 182, equal 110). So a gauge
+tuned on boxes around *random token strings*, without any SST data or labels, recovers ~89 % of the in-distribution gauge's gain
+with the same one-sidedness. Preregistered reading applies: the gauge is substantially a property of the weights (and the generic
+scale of the input boxes), not of the tuning distribution — the strongest indicator so far that it is derivable rather than
+learned. Remaining: the Yelp-text-tuned twin (job 39722892, eval running) and the two-word run.
