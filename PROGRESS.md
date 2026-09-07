@@ -2498,3 +2498,55 @@ eps-0.03 instance stopped after 1 step on a non-finite gradient near the NaN cli
 `pbv_learn.py`. Full runs: job 39771547 (verified counts at eps 0.02 / 0.03, 20 sentences ≤ 12 tokens, 20 steps) and 39771548
 (certified radius: optimise at the fixed gauge's radius, bisect upward with the optimised gauge frozen), ckpt A100, progressive
 save + resume. Goal set by the user meanwhile: **find the formula for the gauges** (work interleaved with landing results).
+
+**16:25 — per-query eps run (job 39771547) died of CUDA OOM after 9 instances; patched and resubmitted.** Grad-mode CROWN keeps
+every A matrix alive, and on small_6 the retained graph grows ≈ n³ in the token count: the radius run measured 74.5 of 80 GB at
+11 tokens, and the first 12-token instance of the eps run asked for ≈ 30 % more. The first nine instances needed no optimisation
+(the fixed gauge already verified both eps), so the crash hit the first instance that actually optimised. `cmd_eval_pq` now wraps
+the optimisation in `pq_safe`: on `torch.OutOfMemoryError` the instance is recorded with per-query := fixed gauge and an `oom` flag
+(stock and fixed values are still measured), the grads are cleared and the cache emptied, and the summary reports how many
+instances were skipped and at which lengths. eps run resubmitted as 39772157 (resumes from the 9 saved instances); the radius run
+39771548 will hit the same wall at its instance 9, so its resume 39772158 is queued `afterany` it (progressive JSON keeps 0–8).
+Consequence to report with the results: per-query optimisation on this model is measured on the ≤ 11-token instances only.
+Second failure of the resubmitted eps run (39772157): the guard caught the OOM on the eight 12-token instances, but the failed
+grad-mode pass leaves its A matrices and node bounds attached to the BoundedModule, so the next NO-grad call (a 10-token instance)
+also ran out of memory. Fix: `pq_safe` now skips the optimisation outright above `--pq_max_tokens` (default 11, the measured
+limit) and, if an OOM still happens, calls the module's own `_clear_and_set_new(None)` (the reset compute_bounds runs at start)
+plus gc before emptying the cache. Resubmitted as 39772595 (eps, 17 instances saved) and 39772599 (radius, 9 saved; the resume
+39772158 still had the old guard and was cancelled). Per-query numbers on this model are therefore for ≤ 11-token instances.
+Also noticed: the two-word job 39722894 was pre-empted at ≈ 14:35 and requeued from the top; it re-learned the gauge (bit-identical
+to the committed `deept_small6_2w_seed0.pt`, deterministic) and restarted the three-weight-set eval at 15:34.
+
+**16:30 — formula search, step 1 (the gate).** Model of the cost: CROWN's McCormick planes on a product pay ∝ w(x)·w(y), the widths
+of the paired coordinates q'_c = (GᵀW_q x)_c and k'_c = (G⁻¹W_k x)_c over the box. With the layer input varying as centre + M z
+(z in the unit ℓ∞ ball) the width of a linear functional is 2‖aᵀM‖₁, giving the surrogate Σ_c ‖(GᵀW_q)_c M‖_p ‖(G⁻¹W_k)_c M‖_p
+(+ the (W_v, W_o) analogue); it is invariant under diagonal G exactly as CROWN is, p = 2 is minimised in closed form by SVD
+balancing (nuclear norm of (W_qM)ᵀ(W_kM)), p = 1 by a 32×32 weight-only optimisation per head. `gauge_formula.py validate`
+scores gauges of KNOWN CROWN quality (identity; SST-, Yelp-, random-token-, two-word-trained; the two verifier-trained ones incl.
+the cond-28 overfit gauge) under the four surrogates {ℓ1, ℓ2} × {M = I, M = box-shape Jacobian at random-token boxes (exact at
+layer 1 because the no_var LayerNorm is linear)}, next to the held-in CROWN metric (mean lb at the stock radius on 24 random-token
+boxes and on the learner's own 48 SST-dev boxes), ablates the SST gauge (QK-only, AV-only, one layer at a time), and builds the
+four weight-only candidates svd_iso / svd_jac / l1_iso / l1_jac. A surrogate earns the right to be optimised only if it orders
+the known gauges like CROWN does. First smoke/full pair (39772195/6) died on argparse: the repo path contains spaces and the chain script word-splits its argument string → gauge paths are now relative and the script exits with python's code so `afterok` means what it says. Smoke 39772615, full 39772616, `results/formula_small6_validate.json`.
+
+**16:50 — formula search: the gate passed on the smoke (job 39772615: 2 random-token boxes for M, 4 SST-dev boxes), and the
+closed form already lands in the learned gauge's region.** Surrogate (Jacobian box shape, ℓ1 or ℓ2) relative to identity: learned
+SST gauge 0.61, cond-28 overfit gauge 1.53 — the right order; the isotropic surrogates (M = I) give 1.10 vs 1.11 and cannot tell
+the two apart, so the box shape is what makes the width model work. Ablations of the learned gauge on its own SST boxes (mean lb;
+identity +0.081, full gauge +0.841): AV side alone +0.794, QK side alone +0.344; per layer: layer 0 +0.171, 1 +0.077, 2 +0.074,
+3 +0.250, 4 +0.455, 5 +0.408 — the gain lives on the value/output side and in the deeper layers, and the surrogate's AV term
+tracks it (0.78 → 0.45 of the identity total). Candidates, no CROWN training: **svd_jac** (per head, SVD balancing of
+(W_q M_l, W_k M_l) and (W_v M_l, W_oᵀ) with M_l = stacked Jacobians of the layer input w.r.t. the perturbed row at 2 random-token
+centres, scaled by their stock radii) scores **+0.954** on the SST boxes and +0.032 on the random boxes — above the learned gauge
+(+0.841 / +0.025) on both, and those SST boxes are held-IN for the learned gauge and held-OUT for the candidate. svd_iso (M = I,
+the ViT-R45 construction) +0.578; l1_iso +0.239; l1_jac = svd_jac bit for bit (Adam found nothing below the SVD init in 20 steps).
+Caveats: 4 + 2 boxes; max cond 29.5 (QK layer 4 head 2; AV cond grows 2 → 12 with depth) — watch the fp64 gate. The candidate is
+NOT the learned matrix: diag-ness of learned⁻¹·candidate is 0.03 (random-like) on every head, so the formula reaches a flat
+optimum rather than reconstructing the learned gauge — which is also why the uniqueness comparison of learned gauges was inconclusive.
+Model limitation seen in the per-layer view: the learned layer-0 gauge raises the layer-0 AV surrogate (1.25×) while CROWN says
+layer 0 helps — M_l is treated as gauge-independent, but a tighter early layer shrinks the downstream widths. Launched: paired
+294-position eval of the 2-box candidates vs the learned gauge (job 39773109, L40S: stock / svd_jac_2box / learned S6 / svd_iso_2box,
+`results/deept_formula_small6_2box_eval_short_seed0.json`); full small_6 validate (39772616: 24 + 48 boxes, adds the CROWN-width
+surrogate that reads the q'/k'/v' widths auto_LiRPA actually derives); replication validates on big_3 (39773174) and Yelp small_3
+(39773175), which also carry two verifier-free variants (eps := 1 on every box, and a second seed's random centres) to test
+whether the CROWN radii in M matter at all.

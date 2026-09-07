@@ -510,6 +510,16 @@ def pq_optimise(net, st, lirpa, e, i, eps, label, dev, Gq0, Ga0, H, dh, steps, l
         opt.step(); opt.zero_grad(); run = step + 1
     return best[0], best[1], best[2], run
 
+def pq_safe(*args, **kw):
+    """pq_optimise, or None when grad-mode CROWN runs out of GPU memory (retained A matrices grow ~n^3: 80 GB holds 11 tokens of small_6)"""
+    net, lirpa, e = args[0], args[2], args[3]; cap = kw.pop("max_tokens", 0)
+    if cap and e.shape[1] > cap: return None                      # pre-emptive: the retained grad-mode graph would not fit (see --pq_max_tokens)
+    try: return pq_optimise(*args, **kw)
+    except torch.OutOfMemoryError as ex: print(f"    per-query optimisation OOM ({str(ex)[:60]}...) -> recorded as the fixed gauge", flush=True); r = None
+    for p_ in leaves(net): p_.grad = None
+    lirpa._clear_and_set_new(None)                                 # drop the node bounds / A matrices the failed pass left behind (they keep the whole graph alive)
+    import gc; gc.collect(); torch.cuda.empty_cache(); return r
+
 def cmd_eval_pq(a):
     """Route A: per-query gauge optimisation on TEST instances.  For each instance and each eps in --eps_list: stock lb, fixed
     learned-gauge lb, and the per-query lb (Adam from the learned gauge, --pq_steps steps, early stop once verified unless
@@ -533,21 +543,25 @@ def cmd_eval_pq(a):
             s_ = fixed_lb(I64[0], I64[1], lp, e, i, eps, y); f_ = fixed_lb(Gq0, Ga0, lp, e, i, eps, y)
             if f_ > 0 and a.pq_stop_verified: pq = (f_, 0, 0)
             else:
-                v, G, bs, run = pq_optimise(net, st, lp, e, i, eps, y, dev, Gq0, Ga0, H, dh, a.pq_steps, a.pq_lr, a.cond_pen, a.clip, stop_at=0.0 if a.pq_stop_verified else None); pq = (v, bs, run)
-            rec[str(eps)] = {"stock": s_, "fixed": f_, "pq": pq[0], "pq_best_step": pq[1], "pq_steps_run": pq[2]}
+                r_ = pq_safe(net, st, lp, e, i, eps, y, dev, Gq0, Ga0, H, dh, a.pq_steps, a.pq_lr, a.cond_pen, a.clip, stop_at=0.0 if a.pq_stop_verified else None, max_tokens=a.pq_max_tokens)
+                pq = (r_[0], r_[2], r_[3]) if r_ is not None else (f_, -1, 0)
+            rec[str(eps)] = {"stock": s_, "fixed": f_, "pq": pq[0], "pq_best_step": pq[1], "pq_steps_run": pq[2], "oom": pq[1] == -1}
         if a.pq_radius:
             load_eff(net, effective(st, I64[0].float().to(dev), I64[1].float().to(dev), H, dh)); r_s = certified_radius(lp, e, i, y, dev, hi=a.hi, iters=a.iters)
             load_eff(net, effective(st, Gq0.float().to(dev), Ga0.float().to(dev), H, dh)); r_f = certified_radius(lp, e, i, y, dev, hi=a.hi, iters=a.iters)
             m0 = crown_lb(lp, e, i, r_f, y, dev)
-            v, G, bs, run = pq_optimise(net, st, lp, e, i, r_f, y, dev, Gq0, Ga0, H, dh, a.pq_steps, a.pq_lr, a.cond_pen, a.clip, stop_at=None)
-            load_eff(net, effective(st, G[0], G[1], H, dh)); r_pq = certified_radius(lp, e, i, y, dev, lo=r_f, hi=a.hi, iters=a.iters) if r_f < a.hi else r_f
-            rec["radius"] = {"stock": r_s, "fixed": r_f, "pq": r_pq, "margin_at_rf_fixed": m0, "margin_at_rf_pq": v, "pq_best_step": bs}
+            r_ = pq_safe(net, st, lp, e, i, r_f, y, dev, Gq0, Ga0, H, dh, a.pq_steps, a.pq_lr, a.cond_pen, a.clip, stop_at=None, max_tokens=a.pq_max_tokens)
+            if r_ is None: v, bs, r_pq = m0, -1, r_f
+            else:
+                v, G, bs, run = r_; load_eff(net, effective(st, G[0], G[1], H, dh)); r_pq = certified_radius(lp, e, i, y, dev, lo=r_f, hi=a.hi, iters=a.iters) if r_f < a.hi else r_f
+            rec["radius"] = {"stock": r_s, "fixed": r_f, "pq": r_pq, "margin_at_rf_fixed": m0, "margin_at_rf_pq": v, "pq_best_step": bs, "oom": bs == -1}
         out["rec"][str(idx)] = rec
         if a.save_json: json.dump(out, open(a.save_json, "w"))
         msg = "; ".join(f"eps {eps}: {r['stock']:+.3f} / {r['fixed']:+.3f} / {r['pq']:+.3f} ({r['pq_steps_run']} st)" for eps, r in rec.items() if eps != "radius")
         if "radius" in rec: r = rec["radius"]; msg += f"; radius {r['stock']:.4f} / {r['fixed']:.4f} / {r['pq']:.4f} (margin at r_f {r['margin_at_rf_fixed']:+.3f} -> {r['margin_at_rf_pq']:+.3f})"
         print(f"  inst {idx:3d} (sent {j} pos {i} len {e.shape[1]}): stock / fixed / per-query -- {msg}  [{time.time()-t0:.0f}s, total {time.time()-t_all:.0f}s]", flush=True)
-    R = out["rec"]; n = len(R)
+    R = out["rec"]; n = len(R); oom = sorted({int(x) for x in R for k in R[x] if R[x][k].get("oom")})
+    if oom: print(f"# per-query optimisation skipped (per-query := fixed gauge) on {len(oom)} of {n} instances (lengths {sorted({out['inst'][x][2] for x in oom})}): --pq_max_tokens {a.pq_max_tokens} or CUDA OOM; grad-mode CROWN memory grows ~n^3 and 80 GB holds 11 tokens of this model", flush=True)
     for eps in eps_list:
         k = str(eps); s_ = np.array([R[x][k]["stock"] for x in R]); f_ = np.array([R[x][k]["fixed"] for x in R]); q_ = np.array([R[x][k]["pq"] for x in R])
         print(f"# eps {eps} over {n}: verified stock {(s_ > 0).sum()} / fixed gauge {(f_ > 0).sum()} / per-query {(q_ > 0).sum()}; per-query lb > fixed on {(q_ > f_).sum()}, mean lb {np.nanmean(s_):+.3f} / {np.nanmean(f_):+.3f} / {np.nanmean(q_):+.3f}", flush=True)
@@ -568,7 +582,7 @@ if __name__ == "__main__":
     ap.add_argument("--obj", default="mean", help="mean | hinge"); ap.add_argument("--hinge_w", type=float, default=4.0)
     ap.add_argument("--max_len", type=int, default=12); ap.add_argument("--n_sent", type=int, default=20); ap.add_argument("--alpha", type=int, default=1); ap.add_argument("--hi", type=float, default=0.1); ap.add_argument("--iters", type=int, default=10); ap.add_argument("--save_json", default=None); ap.add_argument("--name", default="sst_bert_small_3"); ap.add_argument("--data", default="auto", help="sst | yelp | auto (from --name prefix)"); ap.add_argument("--eps", type=float, default=0.03); ap.add_argument("--softmax", default="lse"); ap.add_argument("--crown_batch", type=int, default=512)
     ap.add_argument("--split_attrib", type=int, default=0, help="attrib: also linearise ONE nonlinearity at a time (qk / softmax / av) and all three"); ap.add_argument("--factors", default="1,1.5", help="attrib: eps as multiples of the stock radius")
-    ap.add_argument("--pq_steps", type=int, default=20); ap.add_argument("--pq_lr", type=float, default=0.01); ap.add_argument("--pq_stop_verified", type=int, default=1); ap.add_argument("--pq_radius", type=int, default=0)
+    ap.add_argument("--pq_steps", type=int, default=20); ap.add_argument("--pq_lr", type=float, default=0.01); ap.add_argument("--pq_stop_verified", type=int, default=1); ap.add_argument("--pq_radius", type=int, default=0); ap.add_argument("--pq_max_tokens", type=int, default=11, help="eval_pq: skip the per-query optimisation (per-query := fixed gauge) on longer instances; 0 = no cap")
     ap.add_argument("--weight_intervals", type=int, default=0, help="eval: also verify stock and gauged weights declared as 2-ulp fp32 intervals (rigorous transfer to the original network)")
     ap.add_argument("--k_words", type=int, default=1, help="perturb k embedding rows at once (1 = DeepT's one-word spec; 2 = two-word)"); ap.add_argument("--pairs_per_sent", type=int, default=7, help="eval: position sets per sentence when k_words > 1")
     a = ap.parse_args(); {"probe": cmd_probe, "radii": cmd_radii, "learn": cmd_learn, "eval": cmd_eval, "eval_alpha": cmd_eval_alpha, "attrib": cmd_attrib, "eval_pq": cmd_eval_pq}[a.cmd](a)
