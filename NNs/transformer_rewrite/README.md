@@ -91,6 +91,17 @@ Attention nonlinearities are 9.2% of the CROWN width on small_3, 39.7% on small_
 **gauge leverage ≈ attention share of the width** — small_3 +1.7% radius, small_6 +13.1%.
 fp64 exactness gate 8.9e-16; newly verified margins ≥ 1.3e-2 vs fp32 stock-vs-gauged discrepancy ≤ 4.8e-7.
 
+## Composition with Huang et al. (AAAI-26, parameterised abstract interpretation) — 2026-09-06/07
+
+Their verifier (`deept_benchmarks/PBVerification/`, a fork of Shi et al. 2020) run unchanged on stock vs gauge-folded checkpoints
+(`export_gauged_ckpt.py`). Same model, same verifier, same protocol on their SST 3-layer configuration (retrained with their
+script, ℓ∞, 20 sentences × positions 1–3, `--adv`): their PBverifierI gives +2.4 % over their Baseline (20/20; paper +2.9 %),
+the CROWN-trained gauge under that same Baseline gives **+8.4 %** (52/52), and under their optimised variants +6.1 % / +6.0 %
+(20/20 each). DeepT small_6: +13.4 % (29/6) in their Baseline, +2.9 % / +3.3 % under PBverifierI / T; small_3 neutral in all
+three. Gauges learned *through their bound* (`pbv_learn.py`, memory-limited to 5–13 tuning boxes): one generalised (+13.2 %,
+35/35 in their Baseline), one overfit (cond 28, −16 % under auto_LiRPA) — tuning-set size and conditioning, not the training
+bound, decide. Full grids, protocol comparison and the other prior art: `RELATED_WORK.md`.
+
 ## auto_LiRPA facts learned here
 - `sparse_intermediate_bounds` (default True) makes lse-CROWN on a 12-token BERT-style transformer peak at 18.7 GiB and
   OOM at 16 tokens; `False` gives the identical bound at 0.24 GiB. Always set it for transformers with >5 tokens.

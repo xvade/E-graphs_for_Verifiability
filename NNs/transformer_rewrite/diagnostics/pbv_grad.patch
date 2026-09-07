@@ -1,0 +1,22 @@
+--- deept_benchmarks/PBVerification/Verifiers/Edge.py	2026-09-06 10:57:18.687453375 -0700
++++ deept_benchmarks/PBVerification_grad/Verifiers/Edge.py	2026-09-06 21:21:10.636832130 -0700
+@@ -220,8 +220,8 @@
+         self.controller.lb =self.controller.lb+ _lb
+         self.controller.ub =self.controller.ub+ _ub
+ 
+-        self.controller.final_lb = self.controller.lb.reshape(_lb.shape).detach().clone()
+-        self.controller.final_ub = self.controller.ub.reshape(_lb.shape).detach().clone()
++        self.controller.final_lb = self.controller.lb.reshape(_lb.shape).clone()  # PATCHED (gauge learner): keep the graph so d(bound)/d(weights) flows through intermediate biases
++        self.controller.final_ub = self.controller.ub.reshape(_lb.shape).clone()  # PATCHED
+         '''
+         l, u = self.controller.concretize(self.controller.final_lw, self.controller.final_uw)
+         '''
+@@ -1363,7 +1363,7 @@
+         super(EdgeTanh, self).__init__(args, controller, par)
+ 
+         def dtanh(x):
+-            return 1. / torch.cosh(x).pow(2)
++            return 1. - torch.tanh(x).pow(2)  # PATCHED (gauge learner): same value, but 1/cosh(x)^2 overflows to inf for wide pooler bounds and gives NaN grads
+             
+         # lower bound for negative
+         m = (self.par.l + self.par.u) / 2

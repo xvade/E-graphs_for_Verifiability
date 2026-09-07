@@ -2342,3 +2342,61 @@ is neutral on SST small_3, SST smaller_3, ibp ViT, GenBaB ViTs — every neutral
 case ≥ 30 %. Correction to the 20:40 reading ("gains ordered exactly by share"): that did not survive smaller_3 (14 % < small_3's
 gain) and Yelp small_6 (81 % < Yelp small_3's gain) — the share is a screen with a threshold between 14 % and 30 %, not a
 calibration. Unchanged: BaB tier for DeepT out of memory reach (see above); the standard-LayerNorm variant not boundable.
+
+**00:04 — small_6 gauge learned through THEIR Baseline (13 boxes ≤ 6 tokens; job 39703629/31):** under their Baseline +6.9 % vs
+stock (18/17, range −10 … +42 %) — worse than the CROWN-trained gauge's +13.4 % (29/6) on the same instances. The thin tuning
+set the memory limit forces (13 vs 68 boxes) overfits; verifier-matched training is not automatically better than transfer.
+
+**00:50 — small_6 gauge learned through their midpoint-tangent bound (13 boxes; job 39703635/37):** under their Baseline +13.2 %
+vs stock, **larger on 35/35** — matches the CROWN-trained gauge (+13.4 %, 29/6) with a cleaner per-instance picture, while the
+Baseline-trained twin from the same 13 boxes overfit (+6.9 %, 18/17). `bilinear` and auto_LiRPA evaluations pending.
+
+**03:19 — midpoint-tangent-trained small_6 gauge under auto_LiRPA (job 39703638):** +9.5 % radius (266/294 larger, 0 smaller) vs
++13.1 % for the CROWN-trained gauge; transfer works in both directions on small_6, the native gauge is best in its own verifier.
+
+**05:00 — Baseline-trained small_6 gauge (13 boxes, cond ≈ 35) under auto_LiRPA (job 39710860): −16.3 % radius, smaller on
+289/294.** The overfit verifier-trained gauge that was +6.9 % (mixed) in their Baseline is strongly harmful under auto_LiRPA —
+thin tuning sets can produce gauges that help one relaxation and hurt another. (Contrast the tangent-trained twin: +9.5 %.)
+
+**05:04 — Baseline-trained small_6 gauge under their PBverifierT (job 39703633): −6.1 % (9/26)** vs +3.3 % (35/0) for the
+CROWN-trained gauge. The overfit gauge helps only the relaxation it was tuned on, and only on average.
+
+**05:47 — their-model gauge learned through THEIR Baseline (5 boxes), evaluated in their Baseline at the paper protocol
+(job 39710859, L40S after two ckpt preemptions): +6.0 % (52/52 larger)** vs +8.4 % for the CROWN-trained gauge. Remaining:
+PBverifierI on the overfit small_6 gauge and PBverifierT on the tangent-trained small_6 gauge (~11:00).
+
+### Wrap-up of the prior-art / composition thread (2026-09-07 ~06:30; two evaluation jobs still to land)
+
+**Verdict.** Huang et al. (AAAI-26) tighten the *verifier's* product relaxations per query; the gauge is an exact *network*
+rewrite. Their PBverifierI family is what auto_LiRPA's CROWN-Optimized already optimises, their Baseline is plain CROWN on
+Shi's relaxation. Novelty holds: no prior work found learns a reparametrisation to tighten bound propagation. The fair
+comparison — same model (their SST 3-layer, retrained with their script), same verifier (theirs), same protocol — reads:
+their PBverifierI +2.4 % over their Baseline (20/20; paper +2.9 %), the CROWN-trained gauge under that Baseline **+8.4 %**
+(52/52), under PBverifierI +6.1 % and under PBverifierT +6.0 % (20/20 each; the gauge's Baseline gain on those 20 instances
+is +7.5 %, so their optimisation absorbs ≈ 1.5 points and the rest survives). Composability is empirical and conditional
+(`NNs/transformer_rewrite/RELATED_WORK.md`, grids 1–2): the 68–120-box CROWN-trained gauges transferred to every relaxation
+tested with no reversals except the neutral small_3 cases (small_6: auto_LiRPA +17.5 % on their 35 instances, their Baseline
++13.4 %, PBverifierI +2.9 %, PBverifierT +3.3 %); their own optimised variants fall below their Baseline on stock DeepT
+weights (−2.7 … −15.6 %) because of their optimiser's initialisation/best-tracking, not the relaxation family (they reproduce
+on their own model).
+
+**Answer to "is that row a gauge trained on PBverifierT?" → it was not; now done** (`pbv_learn.py`, their bound
+differentiated; PBverifierT-trained approximated by its unoptimised midpoint-tangent centre). Their model, 5 boxes: +7.5 %
+auto_LiRPA (240/0), +6.0 % their Baseline (52/52) — vs +9.5 % / +8.4 % for the 120-box CROWN-trained gauge. small_6, 13 boxes:
+tangent-trained generalised (+13.2 % their Baseline 35/35, +9.5 % auto_LiRPA 266/0, cond 2.9/4.5); Baseline-trained overfit
+(+6.9 % mixed 18/17, **−16.3 %** under auto_LiRPA 0/289, −6.1 % under PBverifierT; cond 28.3/15.5). The CROWN-trained gauge
+remained best or equal in every verifier. Pending as of this entry: PBverifierI on the Baseline-trained small_6 gauge (job
+39703632) and PBverifierT on the tangent-trained one (39713376, ~11:00); recorded below when they land.
+
+**Method caveats.** Differentiating their backward bounds is memory-hungry (OOM 80 GB at ≤ 8 tokens small_6, ≤ 6 their model),
+hence the 5–13-box tuning sets. Their pooler-tanh slope 1/cosh² overflowed to NaN gradients; the gradient copy uses 1 − tanh²
+(`diagnostics/pbv_grad.patch`). After that fix the `origin` training masked no gradient entries, but `inner` training still had
+8 192 of 49 152 non-finite entries zeroed at every logged step (source not chased).
+
+**Disclosures (ops).** ckpt-partition preemptions cost repeats (39676401 lost 2 h 50; 39700390 twice; 39703632/36 restarted once,
+39703636 then cancelled and its step re-run on L40S as 39713376). Cancelled by me: 39672841 (bilinear chain superseded),
+39676401/02 (Table-1 reproduction chains, re-run inside the model chain), 39682385, 39682534, 39686146 (after its `origin_stock`
+half saved; a duplicate their-model Baseline half was truncated when two chains briefly overlapped — results unaffected, JSON
+written at the end), 39699643–50, 39699652/53, 39700047/48 (dependency chains restructured for the 9 h cap and OOM/NaN failures),
+39701472–80, 39701896–99, 39701946–50 (OOM and NaN chains before the ≤ 6 / ≤ 5-token and dtanh fixes), 39703634. The other
+Claude session (user's own) committed 07dac29 in between; PROGRESS.md carries both sessions' entries.

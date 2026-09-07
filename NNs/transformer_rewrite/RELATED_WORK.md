@@ -12,8 +12,12 @@ below. Not a systematic review; claims of "not found" are bounded by that.
 
 Every method found tightens the **verifier's abstraction** of a fixed network (better relaxations of the products, of the
 softmax, branch-and-bound, refinement). Ours **rewrites the network** into an exactly equivalent one on which the *same*
-verifier is tighter, learned once per model, zero verification-time overhead, composable with all of the below. The gauge
-symmetry itself is known (Wang & Wang 2025); using it as a learned, verification-driven rewrite was not found.
+verifier is tighter, learned once per model, zero verification-time overhead. The gauge symmetry itself is known (Wang &
+Wang 2025); using it as a learned, verification-driven rewrite was not found. Composability with the verifier-side methods
+is *empirical and conditional*: a gauge is a rewrite tuned to one relaxation, not a verifier-agnostic improvement. The
+well-tuned CROWN-trained gauges (68–120 tuning boxes) transferred to every relaxation tested with no per-instance reversal
+except on the neutral small_3 cases (grid below); thin verifier-trained gauges (5–13 boxes, forced by memory) were
+unreliable — one of them cost −16 % under auto_LiRPA.
 
 ## Closest prior art: parameterized abstract interpretation (Huang, Wei, Isac, Wu, Wu, Barrett — AAAI-26)
 
@@ -45,13 +49,53 @@ Paper: https://ojs.aaai.org/index.php/AAAI/article/view/40860 · code: https://g
   (the CROWN box on Gᵀq is not derivable from the box on q). Neither subsumes the other: their tangent family reaches
   off-centre planes the gauge never picks; the gauge reaches boxes their method never sees. Because the gauged net is an
   ordinary net, their verifier runs on it unchanged — which is the experiment below.
-* **Like-for-like numbers.** Their SST 3-layer ℓ∞ +2.9 % vs our DeepT small_3 seed 0 +2.7 % (ratio of means; the diary's
-  +1.7 % is the per-instance mean ratio) on the same model family and threat model; our small_6 +13.1 % (larger on 273/294,
-  smaller on 0) has no counterpart — they stop at 3 layers. Their depth trend is independent evidence for our leverage rule
-  (gain ≈ attention share of the CROWN width: 9 % / 40 % / 70 % at 3 / 6 / 12 layers).
+* **Like-for-like numbers (same model, same verifier, same protocol).** On their SST 3-layer configuration, retrained with
+  their script and verified with their code at their protocol (ℓ∞, 20 sentences, positions 1–3, `--adv`), their PBverifierI
+  gives **+2.4 %** over their Baseline (20/20 wins; paper: +2.9 %, 44/50), while the gauge under that *same* Baseline gives
+  **+8.4 %** (52/52 wins). Under auto_LiRPA CROWN on a different instance set the gauge gives +9.5 % (244/0/32); on DeepT
+  small_3 it gives +2.7 % (ratio of means) and on small_6 +13.1 % (273/294 larger, 0 smaller) — they stop at 3 layers, so
+  small_6 has no counterpart. Their depth trend is independent evidence for our leverage rule (gain ≈ attention share of the
+  CROWN width: 9 % / 27 % / 40 % / 70 % for small_3 / their model / small_6 / small_12).
 * **Honest deltas.** Theirs: no tuning data, never worse than Baseline in principle (superset, modulo non-convex opt), ~5×
   time per query. Ours: one-off learning (GPU-hour scale) on dev boxes, zero verification-time overhead, no out-of-sample
   guarantee (empirically 0 reverse on small_6; neutral on the ibp-trained ViT; the SVD closed form even hurt there).
+
+### Composition: summary grids (details in the sections that follow)
+
+**Grid 1 — CROWN-trained gauges (learned against auto_LiRPA plain CROWN on 68–120 dev boxes), gauge gain stock → gauged
+under each verifier.** Cells: ratio of mean certified radii, then instances larger / smaller. DeepT rows: the 35 instances of
+their protocol (12 distinct sentences, seed 0, ≤ 16 tokens; 3 duplicates from sampling with replacement); the bracketed
+auto_LiRPA figure is our own 40-sentence test protocol. Their-model row: 276 test positions under auto_LiRPA, 52 instances at
+their paper protocol for the Baseline, and 20 instances from 8 sentences for the two optimised variants (cost-limited).
+
+| model (attention share of CROWN width) | auto_LiRPA CROWN | their Baseline (`origin`) | PBverifierI (`originPlus`) | PBverifierT (`bilinear`) |
+|---|---|---|---|---|
+| DeepT small_3 (9 %) | +1.6 % (30 / 3) [+2.7 %, 278 inst.] | −1.3 % (10 / 18) | −1.0 % (21 / 12) | +0.9 % (32 / 0) |
+| DeepT small_6 (40 %) | **+17.5 %** (35 / 0) [+13.1 %, 294 inst.] | **+13.4 %** (29 / 6) | +2.9 % (18 / 17) | +3.3 % (35 / 0) |
+| their model_sst_3, retrained (27 %) | **+9.5 %** (244 / 0) | **+8.4 %** (52 / 0) | +6.1 % (20 / 0) | +6.0 % (20 / 0) |
+
+Reference, their method vs their Baseline on stock weights (what the paper claims): their model PBverifierI +2.4 % (20 / 0),
+PBverifierT −1.0 % (3 / 17); DeepT small_3 −2.7 % / −7.4 %, small_6 −15.6 % / −11.8 % (see the fairness note below the
+DeepT table). On the 20 their-model instances used for the optimised rows, the gauge's gain under their Baseline is +7.5 %
+(20 / 0), so their per-query optimisation absorbs about 1.5 points of the gauge's gain and the rest (+6 %) survives it.
+
+**Grid 2 — gauges learned AGAINST their verifier** (`pbv_learn.py`; "PBverifierT-trained" is approximated by training
+through its unoptimised midpoint-tangent centre `inner`, not through their 30-step inner Adam loop). Same cell format; cond =
+max over heads of the condition number of the saved Gq / Ga; the CROWN-trained small_6 gauge is repeated for reference.
+
+| gauge (training bound, tuning boxes) | cond Gq / Ga | auto_LiRPA CROWN | their Baseline | PBverifierI | PBverifierT |
+|---|---|---|---|---|---|
+| their model, Baseline-trained, 5 boxes ≤ 5 tokens | 4.4 / 2.9 | +7.5 % (240 / 0) | +6.0 % (52 / 0) | — | — |
+| small_6, Baseline-trained, 13 boxes ≤ 6 tokens | **28.3 / 15.5** | **−16.3 %** (0 / 289) | +6.9 % (18 / 17) | pending (job 39703632) | −6.1 % (9 / 26) |
+| small_6, tangent-trained (`inner`), 13 boxes ≤ 6 tokens | 2.9 / 4.5 | +9.5 % (266 / 0) | **+13.2 %** (35 / 0) | — | pending (job 39713376) |
+| *reference:* small_6 CROWN-trained, 68 boxes ≤ 8 tokens | 4.9 / 4.5 | +13.1 % (273 / 0) | +13.4 % (29 / 6) | +2.9 % (18 / 17) | +3.3 % (35 / 0) |
+| *reference:* their model CROWN-trained, 120 boxes ≤ 10 tokens | 8.7 / 2.9 | +9.5 % (244 / 0) | +8.4 % (52 / 0) | +6.1 % (20 / 0) | +6.0 % (20 / 0) |
+
+Reading of grid 2: training against the target verifier is not by itself what makes a gauge good — the two 13-box small_6
+gauges were trained on identical boxes and one generalised (tangent-trained: 35/0 in their Baseline, 266/0 under
+auto_LiRPA) while the other overfit into an ill-conditioned gauge that is harmful under auto_LiRPA. The 68–120-box
+CROWN-trained gauges remained best or within noise of best in every verifier. Tuning-set size and conditioning, not the
+training bound, separate the good gauges from the bad one.
 
 ### Composition experiment (their verifier on stock vs gauged DeepT checkpoints)
 
@@ -82,7 +126,11 @@ Results (filled in as the jobs land):
 Note on their own methods on our checkpoints (12:45): run as published (defaults, `--adv`), `originPlus` (PBverifierI) is −2.7 %
 and `bilinear` (PBverifierT) −7.4 % against their *own* Baseline on stock DeepT small_3 — the paper's +2.9 % (SST, 3 layers)
 does not reproduce on this hidden-128 DeepT checkpoint with default optimiser settings. Not tuned by us; the code-name →
-paper-method mapping is inferred from `Edge.py`. The stock-vs-gauged pairs below still measure whether the gauge helps *under*
+paper-method mapping is inferred from `Edge.py`. Fairness note: this is an optimiser artefact, not a weakness of their
+relaxation family — auto_LiRPA initialises the product parameters at r = 1 (exactly Shi's plane) and keeps the best iterate,
+so CROWN-Optimized can never be below plain CROWN; their code initialises at α ≈ −0.96 (not the Baseline plane), optimises
+each attention layer's own width before the margin (`Layer.optimize`), and tracks the best iterate only at the last layer
+(`last_layer_optimize`). Same family, more fragile optimiser; on their own hidden-256 model it does reproduce (+2.4 %). The stock-vs-gauged pairs below still measure whether the gauge helps *under*
 each relaxation, which is the composition question.
 
 **All DeepT pairs in (18:41).** Summary of the gauge's effect inside their verifier: small_6 Baseline +13.4 % (29/6/0),
@@ -159,8 +207,94 @@ Results so far:
   plain CROWN already flips 0 → 3 at 0.02). Rerun at eps 0.01 / 0.015 (`results/pbv_sst3_eval_alpha5b_seed0.json`): tighter on
   29/29 at both (mean Δ +0.014 / +0.075), verified 29 → 29 / 13 → 13 — so at the alpha tier on their model the gauge is
   tighter on every one of 29 × 4 pairings and flips no verdict in this small sample.
-* their verifier on stock vs gauged `model_sst_3`: Baseline (20 sentences, paper protocol) and PBverifierI/T (8 sentences each,
-  cut down so every run fits the 9 h checkpoint-partition cap after a preemption lost one 3 h run): running.
+* **their verifier, their Baseline, their protocol, their (retrained) model** (20 sentences, positions 1–3, 10 bisection
+  steps, ≤ 32 tokens, `--adv`, ℓ∞; 52 instances; `results/pbv_pbv_sst3_origin_stock.json` vs `results/pbv_pbv_sst3g_origin.json`):
+
+  | | mean certified radius |
+  |---|---|
+  | stock (= their Table 1 Baseline row, re-run; paper: 0.0204) | 0.02455 |
+  | CROWN-trained gauge folded in | 0.02661 (**+8.4 %**; larger on **52/52**, smaller on 0; median +5.9 %, range +0.2 … +15.1 %) |
+
+  On the configuration of their SST 3-layer row, where their parameterised relaxation reports +2.9 % over this Baseline
+  (44/50 wins), the exact rewrite gives +8.4 % under the *same* Baseline with wins on every instance — and the rewrite costs
+  nothing at verification time.
+
+* **PBverifierI on their model (8 sentences, 20 instances; `results/pbv_pbv_sst3{s8,g8}_originPlus.json`):**
+
+  | comparison (same 20 instances) | mean radius | larger / smaller |
+  |---|---|---|
+  | their Baseline → their PBverifierI, stock weights (= their paper's claim, reproduced here) | 0.02566 → 0.02627 (**+2.4 %**) | 20 / 0 |
+  | PBverifierI: stock → CROWN-gauged weights | 0.02627 → 0.02787 (**+6.1 %**) | 20 / 0 |
+  | their Baseline on stock → their PBverifierI on gauged (both contributions) | 0.02566 → 0.02787 (**+8.6 %**) | 20 / 0 |
+
+  So on their own model family their method does reproduce (+2.4 % here vs +2.9 % in the paper; it did *not* on DeepT's
+  hidden-128 checkpoints) and the gauge helps under their optimised relaxation too (+6.1 %, every instance). The third
+  row is just the product of the first two on the same instances; the non-trivial composition statement is that the
+  gauge's gain under their *Baseline* on these same 20 instances is +7.5 % (20/0; `pbv_compare.py` on the two `origin`
+  files restricted to these instances), so their optimisation absorbs ≈ 1.5 points of the gauge's gain and ≈ 6 % survives.
+* PBverifierT on their model, stock weights (same 20 instances): their Baseline → PBverifierT 0.02566 → 0.02540 (−1.0 %; larger
+  on 3, smaller on 17) — consistent with their own Table 1, where PBverifierT ties the Baseline on the SST 3-layer ℓ∞ row
+  (0.0205 vs 0.0204, 0 wins). Gauge under PBverifierT: 0.02540 → 0.02692 (**+6.0 %**, larger on 20/20); Baseline stock →
+  PBverifierT gauged +4.9 % (19/0/1).
+
+  Summary on their model (CROWN-trained gauge, their verifier): Baseline +8.4 % (52/52), PBverifierI +6.1 % (20/20),
+  PBverifierT +6.0 % (20/20). All their-model runs with the CROWN-trained gauge are complete.
+
+### Gauge learned AGAINST their verifier (the fair composition test) — launched 19:30
+
+The table above uses one gauge, learned against auto_LiRPA's plain CROWN, and only asks whether it *transfers* to their
+relaxations. `NNs/transformer_rewrite/pbv_learn.py` instead differentiates **their** bound: a copy of their package
+(`deept_benchmarks/PBVerification_grad/`, patch in `diagnostics/pbv_grad.patch`: the `final_lb/ub` detach removed so the graph
+reaches the folded weights) is driven without the `no_grad`/attack wrapper; the gauge is folded into their bias-free attention
+modules as plain tensors; the objective is their margin lower bound at each box's stock certified radius *under their bound*
+(same protocol as ours: dev sentences ≤ 8 tokens, 40 × 3 boxes, 120 Adam steps × 4, cond penalty, best-of-eval). Smoke test on
+small_3 (6 boxes, 6 steps): margin +1.62 → +1.88, their forward's logits unchanged. Two training targets: `origin` (their
+Baseline, also the α ≈ −1 starting point of PBverifierI) and `inner` (midpoint tangent planes = the unoptimised centre of the
+PBverifierT family; PBverifierT's own inner Adam loop is not unrolled). Jobs (A100 ckpt, dependency-chained): small_6 ×
+origin-trained → their `origin`/`originPlus`/`bilinear` + auto_LiRPA (39699642–46); small_6 × inner-trained → `bilinear`/`origin`
++ auto_LiRPA (39699647–50); their `model_sst_3` × origin-trained → their `origin` (paper protocol) + auto_LiRPA (39699651–53).
+Practicalities found on the way (20:00–21:10): differentiating their backward bounds is far more memory-hungry than
+auto_LiRPA's — the small_6 learner OOMs an 80 GB A100 at ≤ 8-token boxes and their hidden-256 model at ≤ 6, so the
+verifier-trained gauges use ≤ 6-token (small_6: 13 boxes from 5 dev sentences) and ≤ 5-token (their model: 5 boxes) tuning
+sets, far thinner than the CROWN-trained gauges' 68–120 boxes. Their pooler-tanh relaxation computes the tangent slope as
+1/cosh(x)², which overflows to ∞ for wide pooler bounds and turns the whole backward pass NaN (found with
+`torch.autograd.detect_anomaly`, `pbv_learn.py --anomaly 1`); the gradient copy uses the identical 1 − tanh(x)² instead
+(`diagnostics/pbv_grad.patch`), and the learner additionally zeroes any remaining non-finite gradient entries — after the
+fix none remained when training against `origin`, but training against `inner` still had 8 192 of the 49 152 gauge-gradient
+entries non-finite at every logged step, which were zeroed (source not chased down; so the `inner`-trained gauge was
+effectively trained with part of its gradient masked). Their stock radii under `origin` on these
+short boxes are ≈ ⅓ of auto_LiRPA's (mean 0.0060 vs 0.0184 on ≤ 8-token dev boxes), and under `inner` smaller still (0.0047).
+
+Results (verifier-trained gauges):
+
+* **their model, gauge learned against their Baseline on 5 boxes (≤ 5 tokens)** — `gauges/pbvtrained_sst3_origin_seed0.pt`,
+  in-sample margin +0.20 → +1.07. Under **auto_LiRPA** CROWN (276 test positions, `results/pbvtrained_sst3_origin_eval_short_seed0.json`):
+  certified radius 0.0199 → 0.0214 (**+7.5 %**; larger on 240, smaller on 0, equal 36); eps 0.02 verified 131 → 151, eps 0.03
+  36 → 63, 0 reverse; tighter 274–276/276. That is nearly the CROWN-trained gauge's +9.5 % from a 24× smaller tuning set and
+  a different verifier — the transfer works in this direction too. Under **their Baseline at the paper protocol** (52 instances,
+  `results/pbv_sst3_origin_pbvorigin.json`): 0.02455 → 0.02603 (**+6.0 %; larger on 52/52**; median +3.5 %), vs +8.4 % for the
+  CROWN-trained gauge under the same verifier (head-to-head 25/27, −2.2 %). Five boxes are enough for a one-sided gain in
+  their verifier, but not enough to beat the 120-box CROWN-trained gauge there.
+* **small_6, gauge learned against their Baseline on 13 boxes (≤ 6 tokens)** — `gauges/pbvtrained_small6_origin_seed0.pt`,
+  in-sample margin +0.66 → +2.44; the saved (best-of-eval, step 119) gauge has max cond(Gq) 28.3 and cond(Ga) 15.5, vs
+  4.9 / 4.5 for the CROWN-trained small_6 gauge (a mid-training reading was ≈ 35). Under **their Baseline** (same 35 test instances as the
+  earlier pairs, `results/pbv_small6_origin_pbvorigin.json`): stock 0.01686 → 0.01802 (**+6.9 %**; larger on 18, smaller on 17;
+  median +7.8 %, range −10 … +42 %). That is *worse* than the CROWN-trained gauge under the same verifier (+13.4 %, 29/6/0):
+  0.01912 → 0.01802 (−5.8 %, 15/20). Reading: with the memory-forced 13-box, ≤ 6-token tuning set the verifier-trained gauge
+  overfits (large per-instance swings both ways), while the 68-box CROWN-trained gauge generalises; training against the
+  target verifier does not, by itself, beat a well-tuned gauge transferred from auto_LiRPA. Under **auto_LiRPA** it is *harmful*: 0.0220 → 0.0179 (**−16.3 %**; smaller on 289/294,
+  larger on 0; `results/pbvtrained_small6_origin_eval_short_seed0.json`) — an ill-conditioned gauge (cond up to 28) tuned on 13
+  boxes to one relaxation can wreck another; this is the strongest warning in the study against thin tuning sets. Under their
+  `bilinear` (PBverifierT) it is also negative: 0.01486 → 0.01395 (−6.1 %; larger 9, smaller 26; `results/pbv_small6_bilinear_pbvorigin.json`),
+  where the CROWN-trained gauge was +3.3 % (35/0). Its `originPlus` (PBverifierI) evaluation: pending (job 39703632).
+* **small_6, gauge learned against their midpoint-tangent bound (`inner`) on the same 13 boxes** —
+  `gauges/pbvtrained_small6_inner_seed0.pt`, in-sample margin +0.66 → +2.00, saved gauge max cond 2.9 / 4.5. Under **their Baseline**
+  (`results/pbv_small6_origin_pbvinner.json`): stock 0.01686 → 0.01908 (**+13.2 %; larger on 35/35, smaller on 0**; median +13.3 %,
+  range +0.6 … +25.2 %) — as large as the CROWN-trained gauge's +13.4 % and cleaner per instance (35/0 vs 29/6). So from the same
+  13 boxes one training bound overfit and the other generalised; with tuning sets this thin the outcome is seed/objective
+  sensitive. Under **auto_LiRPA** (294 test positions, `results/pbvtrained_small6_inner_eval_short_seed0.json`): 0.0220 → 0.0241
+  (**+9.5 %**; larger on 266, smaller on 0, equal 28) — vs +13.1 % for the CROWN-trained gauge on the same instances. Under
+  `bilinear` (its own family): pending (job 39713376).
 
 ## Other verifier-side work on transformers
 
