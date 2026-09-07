@@ -52,7 +52,7 @@ Paper: https://ojs.aaai.org/index.php/AAAI/article/view/40860 · code: https://g
 * **Like-for-like numbers (same model, same verifier, same protocol).** On their SST 3-layer configuration, retrained with
   their script and verified with their code at their protocol (ℓ∞, 20 sentences, positions 1–3, `--adv`), their PBverifierI
   gives **+2.4 %** over their Baseline (20/20 wins; paper: +2.9 %, 44/50), while the gauge under that *same* Baseline gives
-  **+8.4 %** (52/52 wins). Under auto_LiRPA CROWN on a different instance set the gauge gives +9.5 % (244/0/32); on DeepT
+  **+8.4 %** (52/52 wins). Under auto_LiRPA CROWN on a different instance set the gauge gives +9.7 % (244/0/32); on DeepT
   small_3 it gives +2.7 % (ratio of means) and on small_6 +13.1 % (273/294 larger, 0 smaller) — they stop at 3 layers, so
   small_6 has no counterpart. Their depth trend is independent evidence for our leverage rule (gain ≈ attention share of the
   CROWN width: 9 % / 27 % / 40 % / 70 % for small_3 / their model / small_6 / small_12).
@@ -72,24 +72,24 @@ their paper protocol for the Baseline, and 20 instances from 8 sentences for the
 |---|---|---|---|---|
 | DeepT small_3 (9 %) | +1.6 % (30 / 3) [+2.7 %, 278 inst.] | −1.3 % (10 / 18) | −1.0 % (21 / 12) | +0.9 % (32 / 0) |
 | DeepT small_6 (40 %) | **+17.5 %** (35 / 0) [+13.1 %, 294 inst.] | **+13.4 %** (29 / 6) | +2.9 % (18 / 17) | +3.3 % (35 / 0) |
-| their model_sst_3, retrained (27 %) | **+9.5 %** (244 / 0) | **+8.4 %** (52 / 0) | +6.1 % (20 / 0) | +6.0 % (20 / 0) |
+| their model_sst_3, retrained (27 %) | **+9.7 %** (244 / 0) | **+8.4 %** (52 / 0) | +6.1 % (20 / 0) | +6.0 % (20 / 0) |
 
 Reference, their method vs their Baseline on stock weights (what the paper claims): their model PBverifierI +2.4 % (20 / 0),
 PBverifierT −1.0 % (3 / 17); DeepT small_3 −2.7 % / −7.4 %, small_6 −15.6 % / −11.8 % (see the fairness note below the
 DeepT table). On the 20 their-model instances used for the optimised rows, the gauge's gain under their Baseline is +7.5 %
 (20 / 0), so their per-query optimisation absorbs about 1.5 points of the gauge's gain and the rest (+6 %) survives it.
 
-**Grid 2 — gauges learned AGAINST their verifier** (`pbv_learn.py`; "PBverifierT-trained" is approximated by training
+**Grid 2 — gauges learned AGAINST their verifier** (all auto_LiRPA cells are ratio of means, recomputed from the eval JSONs on 2026-09-07; the diary quotes per-instance figures for some of these rows) (`pbv_learn.py`; "PBverifierT-trained" is approximated by training
 through its unoptimised midpoint-tangent centre `inner`, not through their 30-step inner Adam loop). Same cell format; cond =
 max over heads of the condition number of the saved Gq / Ga; the CROWN-trained small_6 gauge is repeated for reference.
 
 | gauge (training bound, tuning boxes) | cond Gq / Ga | auto_LiRPA CROWN | their Baseline | PBverifierI | PBverifierT |
 |---|---|---|---|---|---|
-| their model, Baseline-trained, 5 boxes ≤ 5 tokens | 4.4 / 2.9 | +7.5 % (240 / 0) | +6.0 % (52 / 0) | — | — |
-| small_6, Baseline-trained, 13 boxes ≤ 6 tokens | **28.3 / 15.5** | **−16.3 %** (0 / 289) | +6.9 % (18 / 17) | −1.8 % (18 / 17) | −6.1 % (9 / 26) |
-| small_6, tangent-trained (`inner`), 13 boxes ≤ 6 tokens | 2.9 / 4.5 | +9.5 % (266 / 0) | **+13.2 %** (35 / 0) | — | +3.3 % (35 / 0) |
+| their model, Baseline-trained, 5 boxes ≤ 5 tokens | 4.4 / 2.9 | +7.8 % (240 / 0) | +6.0 % (52 / 0) | — | — |
+| small_6, Baseline-trained, 13 boxes ≤ 6 tokens | **28.3 / 15.5** | **−18.8 %** (0 / 289) | +6.9 % (18 / 17) | −1.8 % (18 / 17) | −6.1 % (9 / 26) |
+| small_6, tangent-trained (`inner`), 13 boxes ≤ 6 tokens | 2.9 / 4.5 | +9.4 % (266 / 0) | **+13.2 %** (35 / 0) | — | +3.3 % (35 / 0) |
 | *reference:* small_6 CROWN-trained, 68 boxes ≤ 8 tokens | 4.9 / 4.5 | +13.1 % (273 / 0) | +13.4 % (29 / 6) | +2.9 % (18 / 17) | +3.3 % (35 / 0) |
-| *reference:* their model CROWN-trained, 120 boxes ≤ 10 tokens | 8.7 / 2.9 | +9.5 % (244 / 0) | +8.4 % (52 / 0) | +6.1 % (20 / 0) | +6.0 % (20 / 0) |
+| *reference:* their model CROWN-trained, 120 boxes ≤ 10 tokens | 8.7 / 2.9 | +9.7 % (244 / 0) | +8.4 % (52 / 0) | +6.1 % (20 / 0) | +6.0 % (20 / 0) |
 
 Reading of grid 2: training against the target verifier is not by itself what makes a gauge good — the two 13-box small_6
 gauges were trained on identical boxes and one generalised (tangent-trained: 35/0 in their Baseline, 266/0 under
@@ -193,7 +193,7 @@ Results so far:
 
   | metric | stock → gauged |
   |---|---|
-  | mean certified radius (ℓ∞, one word) | 0.0199 → 0.0218 (**+9.5 %** ratio of means; per-instance +7.2 %); larger on 244, smaller on 0, equal 32 |
+  | mean certified radius (ℓ∞, one word) | 0.0199 → 0.0218 (**+9.7 %** ratio of means; per-instance +7.2 %); larger on 244, smaller on 0, equal 32 |
   | verified at eps 0.02 | 131 → 153 of 276 (22 up, 0 down) |
   | verified at eps 0.03 | 36 → 79 of 276 (43 up, 0 down) |
   | bound tighter at every eps | 276/276 |
@@ -269,8 +269,8 @@ Results (verifier-trained gauges):
 
 * **their model, gauge learned against their Baseline on 5 boxes (≤ 5 tokens)** — `gauges/pbvtrained_sst3_origin_seed0.pt`,
   in-sample margin +0.20 → +1.07. Under **auto_LiRPA** CROWN (276 test positions, `results/pbvtrained_sst3_origin_eval_short_seed0.json`):
-  certified radius 0.0199 → 0.0214 (**+7.5 %**; larger on 240, smaller on 0, equal 36); eps 0.02 verified 131 → 151, eps 0.03
-  36 → 63, 0 reverse; tighter 274–276/276. That is nearly the CROWN-trained gauge's +9.5 % from a 24× smaller tuning set and
+  certified radius 0.0199 → 0.0214 (**+7.8 %** ratio of means, +5.7 % per-instance; larger on 240, smaller on 0, equal 36); eps 0.02 verified 131 → 151, eps 0.03
+  36 → 63, 0 reverse; tighter 274–276/276. That is nearly the CROWN-trained gauge's +9.7 % from a 24× smaller tuning set and
   a different verifier — the transfer works in this direction too. Under **their Baseline at the paper protocol** (52 instances,
   `results/pbv_sst3_origin_pbvorigin.json`): 0.02455 → 0.02603 (**+6.0 %; larger on 52/52**; median +3.5 %), vs +8.4 % for the
   CROWN-trained gauge under the same verifier (head-to-head 25/27, −2.2 %). Five boxes are enough for a one-sided gain in
@@ -282,7 +282,7 @@ Results (verifier-trained gauges):
   median +7.8 %, range −10 … +42 %). That is *worse* than the CROWN-trained gauge under the same verifier (+13.4 %, 29/6/0):
   0.01912 → 0.01802 (−5.8 %, 15/20). Reading: with the memory-forced 13-box, ≤ 6-token tuning set the verifier-trained gauge
   overfits (large per-instance swings both ways), while the 68-box CROWN-trained gauge generalises; training against the
-  target verifier does not, by itself, beat a well-tuned gauge transferred from auto_LiRPA. Under **auto_LiRPA** it is *harmful*: 0.0220 → 0.0179 (**−16.3 %**; smaller on 289/294,
+  target verifier does not, by itself, beat a well-tuned gauge transferred from auto_LiRPA. Under **auto_LiRPA** it is *harmful*: 0.0220 → 0.0179 (**−18.8 %** ratio of means, −16.3 % per-instance; smaller on 289/294,
   larger on 0; `results/pbvtrained_small6_origin_eval_short_seed0.json`) — an ill-conditioned gauge (cond up to 28) tuned on 13
   boxes to one relaxation can wreck another; this is the strongest warning in the study against thin tuning sets. Under their
   `bilinear` (PBverifierT) it is also negative: 0.01486 → 0.01395 (−6.1 %; larger 9, smaller 26; `results/pbv_small6_bilinear_pbvorigin.json`),
@@ -295,7 +295,7 @@ Results (verifier-trained gauges):
   range +0.6 … +25.2 %) — as large as the CROWN-trained gauge's +13.4 % and cleaner per instance (35/0 vs 29/6). So from the same
   13 boxes one training bound overfit and the other generalised; with tuning sets this thin the outcome is seed/objective
   sensitive. Under **auto_LiRPA** (294 test positions, `results/pbvtrained_small6_inner_eval_short_seed0.json`): 0.0220 → 0.0241
-  (**+9.5 %**; larger on 266, smaller on 0, equal 28) — vs +13.1 % for the CROWN-trained gauge on the same instances. Under
+  (**+9.4 %** ratio of means, +7.6 % per-instance; larger on 266, smaller on 0, equal 28) — vs +13.1 % for the CROWN-trained gauge on the same instances. Under
   `bilinear` (PBverifierT, the family it was trained toward; `results/pbv_small6_bilinear_pbvinner.json`): 0.01486 → 0.01535
   (**+3.3 %; larger on 35/35**), identical to the CROWN-trained gauge's +3.3 % (35/0); head-to-head 0.0 % (14/21, range
   −0.9 … +2.6 %). Training toward their tangent family bought nothing over the transferred CROWN gauge under that family.
