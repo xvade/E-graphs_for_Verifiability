@@ -2702,3 +2702,70 @@ got `--gauge` as a warm start, new `deept_init_chain.sh`. Jobs (all ckpt, 7 h li
 2026-09-08 04:00): smoke 39796636, hybrid validates Yelp 39796637 / small_6 39796639 / big_3 39796640, warm-start Yelp learn+eval
 39796638. The 24-probe Yelp candidate gauges used by the paired eval are kept as `*_24box.pt` (the 96-probe run overwrote the
 originals).
+
+**20:01 — warm-start learner on Yelp small_3 (job 39796638, first half): 40 Adam steps at lr 0.005 from the closed-form gauge
+(24-probe `svd_jacN_all`) on the learner's own boxes.** Held-in mean lb +1.510 → +1.714 (step 39, still rising; fraction verified
+0.958 → 1.000, cond 6.1 → 4.5, fp64 gate 6e-15), vs +1.785 for the 120-step learner from identity (its best step was 100). So 40
+cheap steps recover 89 % of the gap between the closed form and the learned gauge held-in; the paired eval against the learned
+gauge runs now (`results/deept_formula_yelp3_init_eval_short_seed0.json`). This is the hybrid reference, not the manual procedure.
+
+**20:20 — localisation on big_3 (job 39796640, held-in): the closed form falls short at LAYER 0, and the reason is the norm.**
+Side/layer swaps between the learned gauge and `svd_jacN_all` (share of the learned gain, random / learner boxes; candidate
+alone 0.75 / 0.77): learned QK + candidate AV 0.92 / 0.94, candidate QK + learned AV 0.86 / 0.86; candidate with the learned
+layer 0 **0.95 / 0.93**, with the learned layer 1 0.76 / 0.78 (no change), layer 2 0.81 / 0.84; learned with the candidate's
+layer 0 0.82 / 0.86, layer 1 0.99 / 0.99, layer 2 0.96 / 0.95. So the candidate's layers 1–2 are as good as the learned ones and
+the gap is layer 0 — the one layer where M_0 is exact. CROWN-measured width products at layer 0 (learner boxes, relative to
+identity): learned QK 0.87, candidate 0.97 (barely moves), ℓ1-refined `l1_jac` 0.79; N-weighted AV: learned 0.76, candidate
+0.82, l1_jac 0.86. Same pattern on small_6 (QK 0.89 / 0.98 / 0.78) and Yelp (0.91 / 1.00 / 0.87). Reading: at layer 0 there is
+a single token block, so the box width of a functional is its ℓ1 row norm, and the ℓ2 closed form (nuclear norm) is the wrong
+norm there; with many token blocks at deeper layers the ℓ2 proxy is close. `l1_jac` lost overall because its AV side ignores N.
+Round 3 (jobs 39801668–71, smoke + three models): ℓ1 surrogate WITH N minimised by Adam from the closed form (`cand:l1N`), its
+layer-0 splice into the closed form (`l1N@L0`), QK-only splices, an inflated-M variant, and `l1jac_qk+jacN_av`; held-out radius
+screen on SST *test* sentences for the SST models (SST dev has no short sentences beyond the learner's 40; there is no train.txt). Round 2 (sensitivity
+weights, inflation; jobs 39799465–67) still running; big_3's inflation: CROWN widths 1.33× / 2.22× the Jacobian shape at layers
+1 / 2, fixed point in one round.
+
+**20:35 — round 2 on big_3 (job 39799466): sensitivity-weighted token blocks and CROWN-inflation rescaling of M do nothing.**
+Held-in (random / learner boxes): `svd_jacN_all` +0.384 / +0.946; sensitivity-weighted (query/key blocks scaled by the rank-1
+factors of |∂margin/∂score|, value blocks by the first-order softmax widths) +0.385 / +0.951 with cond 46 (was 10.6); QK-only /
+AV-only / sqrt weights the same; inflation rescaling (CROWN width / Jacobian width per token, 1.34× at layer 1, 2.23× at layer 2,
+fixed point in one round) +0.384 / +0.945 for 1, 2 or 3 rounds; both together +0.385 / +0.952. Consistent with the localisation:
+the deeper layers were already matching the learned gauge, and neither idea touches layer 0 (a single token block, ρ ≡ 1). Both
+directions dropped for big_3; round 3 (ℓ1 with N at layer 0) is the live hypothesis.
+
+**21:00 — round 3 on big_3 (job 39802258, held-in): the ℓ1 surrogate WITH N closes most of the gap, and it is still a manual
+procedure.** Random / learner boxes, share of the learned gain: closed form `svd_jacN_all` 0.75 / 0.77 → **`l1N` 0.96 / 0.95**
+(+0.458 / +1.130 vs learned +0.473 / +1.186; cond 9.8): the ℓ1 (box-width) version of the same cost model, with the downstream
+functionals N on the value side, minimised by Adam for 400 steps from the closed form — weights and random-token probes only, no
+verifier. Splices: only layer 0 taken from `l1N` 0.94 / 0.93 (the layer-0 reading was right: that is where the norm matters);
+only the QK side 0.84 / 0.86; only layer-0 QK 0.83 / 0.84 — the layer-0 AV·N side is the other half. `l1jac_qk+jacN_av` (ℓ1 QK
+without N + closed-form AV) 0.84 / 0.86; inflated-M ℓ1N 0.95 / 0.95 (inflation irrelevant again). Held-out radius screen on 48
+SST-test boxes running for these rows; the paired eval of `l1N` follows as soon as the gauge file is saved.
+
+**21:10 — two jobs from the earlier queue landed.** (1) Two-word perturbation eval on small_6 (job 39773950, 269 two-word boxes,
+7 position pairs per sentence, eps 0.0047 / 0.0094 / 0.0141): the two-word-tuned gauge +13.7 % radius (243 larger / 0 smaller /
+26 equal) and the ordinary one-word-tuned gauge +13.8 % (same 243 / 0 / 26); eps-0.0141 verified 75 → 107 vs 110; 0 reverse
+flips at every eps; fp64 gates 1e-15. The one-word gauge transfers unchanged to the two-word specification, and two-word tuning
+adds nothing — the gauge is a property of the weights, not of the perturbation set. (2) Per-query gauge, radius mode (job
+39772599, old chain, 153 test instances of 20 sentences ≤ 12 tokens, 20 Adam steps per instance from the fixed gauge): radius
+stock 0.0249 / fixed gauge 0.0287 (+15.4 %) / per-query 0.0296 (+18.9 % vs stock, +3.1 % vs fixed); per-query larger than fixed
+on 99, equal on 54 (the 44 twelve-token instances could not be optimised on 80 GB and count as fixed), never smaller; at eps
+0.02 verified 125 / 125 / 125. So per-instance re-optimisation buys ≈ 4 % on the instances it can touch, at ~90 s per instance —
+the fixed gauge carries almost all of the value.
+
+**21:25 — round 2 on Yelp small_3 (job 39799465, held-in): also null.** Sensitivity weights +0.318 / +1.512 (cond 83) vs the
+closed form +0.327 / +1.521; inflation rescaling (1.14× / 1.67× at layers 1 / 2) +0.326 / +1.519 for 1–3 rounds. Token weighting
+and CROWN-consistent M are dropped on all models where they were tried (big_3, Yelp); the held-out radius screens of these rows
+are still running but cannot rescue a held-in tie with a 10× worse condition number.
+
+**21:50 — round 3 on Yelp small_3 (job 39801670, held-in): the ℓ1-with-N refinement replicates.** Random / learner boxes, share
+of the learned gain: closed form 0.64 / 0.83 → **`l1N` 0.85 / 0.94** (+0.407 / +1.687 vs learned +0.465 / +1.785, cond 9.6);
+layer-0 splice only 0.73 / 0.88 (on Yelp the gap is spread over the layers, as the swaps said); QK side only 0.70 / 0.87;
+inflated-M variant 0.87 / 0.92. Held-out radius screen on 46 Yelp-dev boxes running for these rows. Held-out screen facts so
+far (Yelp hybrid run): the closed form takes 0.66 of the learned radius gain there (paired eval: 0.64 — the screen predicts the
+paired protocol); the seed-1 candidate that "collapsed" on the learner's boxes takes 0.51 with 0 smaller radii, so the learner-box
+column exaggerated the seed dependence; unlabeled Yelp-text probes give 0.52 with 19 larger / 18 smaller (two-sided — worse than
+random tokens), random + text probes 0.68.
+
+**22:05 — round 2 on small_6 (job 39799467, held-in): null, three for three.** All sensitivity / inflation variants +0.428–0.431 /
++1.090–1.098 vs the closed form +0.430 / +1.097 (learned +0.468 / +1.184). Round 2 closed on every model.

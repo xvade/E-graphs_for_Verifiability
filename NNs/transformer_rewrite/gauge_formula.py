@@ -197,9 +197,9 @@ def inflate_M(net, lirpas, bnodes, boxes, Ms, Gq, Ga, H, dh, hid_in, dev):
     rho = 1 where the first-order width is zero (unperturbed tokens at layer 0).  Boxes in the order of box_shapes."""
     L = len(net.layers); mods = net.attn_modules(); rho = [[] for _ in range(L)]; col = [0] * L
     for e, i, y, n, eps in boxes:
-        crown_lb(lirpas[n], e, i, eps, y, dev); d = bnodes[n]
+        crown_lb(lirpas[n], e, i, eps, y, dev)
         for l in range(L):
-            T = e.shape[1]; Mb = Ms[l][:, col[l]:col[l] + T * hid_in].reshape(-1, T, hid_in); col[l] += T * hid_in
+            d = bnodes[n].get(l, {}); T = e.shape[1]; Mb = Ms[l][:, col[l]:col[l] + T * hid_in].reshape(-1, T, hid_in); col[l] += T * hid_in
             Wq = mods[l][0].weight.detach().double(); Wk = mods[l][1].weight.detach().double()                                              # folded (gauged) weights, (H*dh, hid)
             pred = (torch.einsum("rh,htk->rtk", Wq, Mb).abs().sum(-1) + torch.einsum("rh,htk->rtk", Wk, Mb).abs().sum(-1)).sum(0)          # (T,)
             if all(k in d for k in "qk"):
@@ -209,18 +209,19 @@ def inflate_M(net, lirpas, bnodes, boxes, Ms, Gq, Ga, H, dh, hid_in, dev):
             rho[l].append(r.repeat_interleave(hid_in))
     return [torch.cat(r_) for r_ in rho]
 
-def candidate_l1(st64, Ms, H, dh, init, steps=400, lr=0.02, cond_pen=1e-4, log=None):
-    """p = 1 surrogate minimised by Adam on all heads at once, from `init` (Gq, Ga)"""
-    Gq = nn.Parameter(init[0].clone()); Ga = nn.Parameter(init[1].clone()); opt = torch.optim.Adam([Gq, Ga], lr=lr); best = (float("inf"), None)
+def candidate_l1(st64, Ms, H, dh, init, steps=400, lr=0.02, cond_pen=1e-4, log=None, Ns=None):
+    """p = 1 surrogate (with the downstream functionals N when given) minimised by Adam on all heads at once, from `init` (Gq, Ga)"""
+    Gq = nn.Parameter(init[0].detach().clone()); Ga = nn.Parameter(init[1].detach().clone()); opt = torch.optim.Adam([Gq, Ga], lr=lr); best = (float("inf"), None)
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=max(steps, 1), eta_min=lr * 0.05)   # anneal so the last steps settle (best step is kept either way)
     for step in range(steps + 1):
         tot = 0.0
         for l, (Wq, bq, Wk, bk, Wv, bv, Wo) in enumerate(st64):
-            s1, s2 = surrogate(Wq, Wk, Wv, Wo, Gq[l], Ga[l], Ms[l] if Ms is not None else None, 1, H, dh); tot = tot + s1 + s2
+            s1, s2 = surrogate(Wq, Wk, Wv, Wo, Gq[l], Ga[l], Ms[l] if Ms is not None else None, 1, H, dh, Ns[l] if Ns is not None else None); tot = tot + s1 + s2
         val = tot.item()
         if val < best[0]: best = (val, (Gq.detach().clone(), Ga.detach().clone()))
         if step == steps: break
         loss = tot + cond_pen * sum((p ** 2).sum() + (torch.linalg.inv(p) ** 2).sum() for p in (Gq, Ga))
-        opt.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_([Gq, Ga], 10.0); opt.step()
+        opt.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_([Gq, Ga], 10.0); opt.step(); sched.step()
         if log and step % 100 == 0: print(f"    l1 step {step}: surrogate {val:.4g}", flush=True)
     return best[1], best[0]
 
@@ -233,6 +234,7 @@ def main():
     ap.add_argument("--radius_names", default="", help="held-out certified-radius screen on dev sentences the learner never saw: comma list of zoo names, or auto"); ap.add_argument("--n_dev", type=int, default=24); ap.add_argument("--dev_pos", type=int, default=2)
     ap.add_argument("--dev_probes", type=int, default=0, help="also build M / N_out from this many unlabeled dev sentences (disjoint from the learner's and the screen's) -> cand:svd_jacN_all_dev"); ap.add_argument("--tag", default="", help="suffix for the saved candidate gauge files")
     ap.add_argument("--sens", type=int, default=0, help="sensitivity-weighted token blocks (cand:svd_sens*)"); ap.add_argument("--infl", type=int, default=0, help="rounds of CROWN-inflation rescaling of M (cand:svd_infl<k>)")
+    ap.add_argument("--l1_lr", type=float, default=0.02); ap.add_argument("--l1N", type=int, default=0, help="l1 (box-width) surrogate with the downstream functionals N, minimised by Adam from svd_jacN_all: cand:l1N, cand:l1N@L0, cand:l1N_qk, cand:l1N_infl"); ap.add_argument("--dev_split", default="", help="split for the held-out radius screen / text probes (default: the learner's split, minus its sentences; SST models: train)")
     a = ap.parse_args(); torch.manual_seed(a.seed); random.seed(a.seed)
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh, hid = len(net.layers), net.H, net.dh, net.hid
     st = [[t.to(dev) for t in w] for w in stock_tensors(net)]; st64 = [[t.double() for t in w] for w in st]; I64 = eye_gauge(L, H, dh, torch.float64)
@@ -246,11 +248,12 @@ def main():
     Ss = short_instances(net, m, tok, D, ga.get("max_len", 8), ga.get("n_sent", 60), seed=la.seed); rng2 = random.Random(la.seed)
     boxes_s = [[e, i, ex["label"], e.shape[1], None] for j, ex, e, toks in Ss for i in pos_sets(toks, ga.get("k_words", 1), rng2, ga.get("pos_per_sent", 3))][:a.n_sst]
     print(f"# learner boxes rebuilt from {gpaths[0] if gpaths else '-'}: data {la.data} split {ga.get('split', 'dev')} max_len {ga.get('max_len', 8)} n_sent {ga.get('n_sent', 60)} pos {ga.get('pos_per_sent', 3)} seed {la.seed}", flush=True)
-    used = {j for j, ex, e, toks in Ss}; rngd = random.Random(a.seed + 7); rest = [s_ for s_ in short_instances(net, m, tok, D, ga.get("max_len", 8), None) if s_[0] not in used]; rngd.shuffle(rest)
+    used = {j for j, ex, e, toks in Ss}; rngd = random.Random(a.seed + 7); dsplit = a.dev_split or ga.get("split", "dev"); same = dsplit == ga.get("split", "dev")
+    rest = [s_ for s_ in short_instances(net, m, tok, D if same else load_data(la, dsplit), ga.get("max_len", 8), None) if not same or s_[0] not in used]; rngd.shuffle(rest)
     Sd = rest[:a.n_dev] if a.radius_names else []; Sp = rest[a.n_dev:a.n_dev + a.dev_probes] if a.dev_probes else []
     boxes_d = [(e, i, ex["label"], e.shape[1]) for j, ex, e, toks in Sd for i in pos_sets(toks, 1, rngd, a.dev_pos)]
     boxes_p = [(e, i, ex["label"], e.shape[1], 1.0) for j, ex, e, toks in Sp for i in pos_sets(toks, 1, rngd, a.pos)]
-    print(f"# held-out {la.data} {ga.get('split', 'dev')} sentences (not the learner's): {len(rest)} available; radius screen {len(Sd)} sentences -> {len(boxes_d)} boxes; text probes {len(Sp)} sentences -> {len(boxes_p)} boxes", flush=True)
+    print(f"# held-out {la.data} {dsplit} sentences (not the learner's): {len(rest)} available; radius screen {len(Sd)} sentences -> {len(boxes_d)} boxes; text probes {len(Sp)} sentences -> {len(boxes_p)} boxes", flush=True)
     lirpas = make_lirpas(net, [b[3] for b in boxes_r + boxes_s] + [b[3] for b in boxes_d], dev, a.softmax); set_gauge(*I64); t0 = time.time()
     for b in boxes_r + boxes_s: b[4] = certified_radius(lirpas[b[3]], b[0], b[1], b[2], dev, hi=a.hi, iters=8)
     print(f"# {a.name}: {len(boxes_r)} random-token boxes (eps = stock radius, mean {np.mean([b[4] for b in boxes_r]):.4f}) + {len(boxes_s)} SST-dev boxes (mean {np.mean([b[4] for b in boxes_s]):.4f})  [{time.time()-t0:.0f}s]", flush=True)
@@ -301,8 +304,16 @@ def main():
         set_gauge(*I64); print(f"# CROWN-inflation rescaling: mean rho per layer per round {rho_log} [{time.time()-t1:.0f}s]", flush=True)
     print(f"# svd candidates built [{time.time()-t0:.0f}s]; l1 candidates: {'skipped' if a.l1_steps <= 0 else ''}", flush=True)
     if a.l1_steps > 0:
-        (gq, ga), v = candidate_l1(st64, None, H, dh, zoo["cand:svd_iso"], steps=a.l1_steps, log=True); zoo["cand:l1_iso"] = (gq, ga)
-        (gq, ga), v = candidate_l1(st64, Ms, H, dh, zoo["cand:svd_jac"], steps=a.l1_steps, log=True); zoo["cand:l1_jac"] = (gq, ga)
+        (gq, ga), v = candidate_l1(st64, None, H, dh, zoo["cand:svd_iso"], steps=a.l1_steps, lr=a.l1_lr, log=True); zoo["cand:l1_iso"] = (gq, ga)
+        (gq, ga), v = candidate_l1(st64, Ms, H, dh, zoo["cand:svd_jac"], steps=a.l1_steps, lr=a.l1_lr, log=True); zoo["cand:l1_jac"] = (gq, ga)
+        zoo["cand:l1jac_qk+jacN_av"] = (gq, zoo["cand:svd_jacN_all"][1])   # l1 QK gauge (the layer-0 width product is an l1 problem: one token block) + N-weighted closed-form AV gauge
+    if a.l1N and a.l1_steps > 0:   # round 3: the l1 surrogate WITH N (both sides), Adam from the closed form; whole, layer-0-only, QK-only splices; inflated-M variant
+        t1 = time.time(); C = zoo["cand:svd_jacN_all"]; (gq, ga), v = candidate_l1(st64, Ms, H, dh, C, steps=a.l1_steps, lr=a.l1_lr, log=True, Ns=Na); zoo["cand:l1N"] = (gq, ga)
+        g0, a0 = C[0].clone(), C[1].clone(); g0[0], a0[0] = gq[0], ga[0]; zoo["cand:l1N@L0"] = (g0, a0); zoo["cand:l1N_qk"] = (gq, C[1])
+        g1 = C[0].clone(); g1[0] = gq[0]; zoo["cand:l1N_qk@L0"] = (g1, C[1])
+        if a.infl:
+            (gq, ga), v = candidate_l1(st64, [Ms[l] * rho[l] for l in range(L)], H, dh, zoo[f"cand:svd_infl{a.infl}"], steps=a.l1_steps, lr=a.l1_lr, log=True, Ns=Na); zoo["cand:l1N_infl"] = (gq, ga)
+        print(f"# l1N candidates built [{time.time()-t1:.0f}s]", flush=True)
     # ---- localisation: which side / layer of the candidate falls short of the learned gauge? (swap one side or one layer at a time)
     dd = lambda g: g.double().to(dev)
     if first and a.hybrids:
@@ -344,7 +355,7 @@ def main():
         print(f"  {name:28s} | {S['l1_iso'][0]/base['l1_iso']:7.3f}  {S['l1_jac'][0]/base['l1_jac']:7.3f}  {S['l2_iso'][0]/base['l2_iso']:7.3f}  {S['l2_jac'][0]/base['l2_jac']:7.3f}  (QK {S['l1_jac'][1]/base['l1_jac']:.3f}, AV {S['l1_jac'][2]/base['l1_jac']:.3f}) l1_jacN {S['l1_jacN'][0]/base['l1_jacN']:.3f} (AV·N {S['l1_jacN'][2]/base['l1_jacN']:.3f}) | CROWN-width rand {cwr['rand']:.3f} (QK {cwq['rand']:.3f}, AV {cwa['rand']:.3f}; with N {cwN['rand']:.3f}) sst {cwr['sst']:.3f} (QK {cwq['sst']:.3f}, AV {cwa['sst']:.3f}; with N {cwN['sst']:.3f}) | {np.nanmean(vr):+.4f} {np.mean(vr > 0):.2f} | {np.nanmean(vs):+.4f} {np.mean(vs > 0):.2f} | {cond:5.1f}  [{time.time()-t0:.0f}s]", flush=True)
     # ---- held-out certified-radius screen (the paired protocol's metric) on dev sentences the learner never saw
     if boxes_d:
-        names = [k for k in zoo if k in ("identity", first[0] if first else "", "cand:svd_jac", "cand:svd_jacN_all", "cand:svd_jacN_all_u2", "cand:svd_jacN_all_dev", "cand:svd_jacN_all_u+dev") or k.startswith(("hyb:", "cross:", "cand:svd_sens", "cand:svd_infl"))] if a.radius_names == "auto" else a.radius_names.split(",")
+        names = [k for k in zoo if k in ("identity", first[0] if first else "", "cand:svd_jac", "cand:svd_jacN_all", "cand:svd_jacN_all_u2", "cand:svd_jacN_all_dev", "cand:svd_jacN_all_u+dev") or k.startswith(("hyb:", "cross:", "cand:svd_sens", "cand:svd_infl", "cand:l1N", "cand:l1jac_qk"))] if a.radius_names == "auto" else a.radius_names.split(",")
         print(f"\n# held-out radius screen: {len(Sd)} sentences -> {len(boxes_d)} boxes, certified radius by bisection (hi {a.hi}, 8 iters); gain = ratio of means vs stock, share = gain / learned gain", flush=True); rad = {}
         for name in names:
             set_gauge(*zoo[name]); t0 = time.time(); rad[name] = np.array([certified_radius(lirpas[b[3]], b[0], b[1], b[2], dev, hi=a.hi, iters=8) for b in boxes_d]); rows[name]["dev_radius"] = rad[name].tolist()
