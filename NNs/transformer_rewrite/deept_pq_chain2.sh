@@ -11,7 +11,7 @@ W=$1; G="$T/gauges/deept_small6_seed0.pt"
 mark() { echo "$1 pq_$W $(date) job=${SLURM_JOB_ID:-none}" >> "$S/official_sequence.log"; }
 case $W in
   smoke)  ARGS="--max_len 6 --n_sent 1 --pq_steps 3 --eps_list 0.02,0.03 --pq_radius 1 --iters 4"; OUT="$T/results/deept_small6_pq_smoke.json" ;;
-  eps)    ARGS="--max_len 12 --n_sent 20 --pq_steps 20 --eps_list 0.02,0.03 --pq_radius 0 --iters 10"; OUT="$T/results/deept_small6_pq_eps_seed0.json" ;;
+  eps)    ARGS="--max_len 12 --n_sent 20 --pq_steps 20 --eps_list 0.02,0.03 --pq_radius 0 --iters 10 --pq_max_tokens 10"; OUT="$T/results/deept_small6_pq_eps_seed0.json" ;;
   radius) ARGS="--max_len 12 --n_sent 20 --pq_steps 20 --eps_list 0.02 --pq_stop_verified 1 --pq_radius 1 --iters 10"; OUT="$T/results/deept_small6_pq_radius_seed0.json" ;;
 esac
 for try in 1 2 3 4 5 6 7 8 9 10 11 12; do mark "START try=$try"; "$PY" -u deept_gauge.py eval_pq --name sst_bert_small_6 --gauge "$G" $ARGS --seed 0 --hi 0.1 --save_json "$OUT" >> "$S/deept_pq_$W.log" 2>&1; RC=$?; mark "DONE rc=$RC"; [ $RC -eq 3 ] || break; done; exit $RC

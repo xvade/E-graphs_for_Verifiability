@@ -12,5 +12,16 @@ case $W in
   full)  ARGS="--n_sent 12 --pos 2 --n_sst 48 --l1_steps 400 --hi 0.1 --gauges $ALL"; OUT="$T/results/formula_small6_validate.json" ;;
   big3)  NAME=sst_bert_big_3;   ARGS="--n_sent 12 --pos 2 --n_sst 48 --l1_steps 400 --hi 0.1 --gauges $G/deept_big3_seed0.pt";  OUT="$T/results/formula_big3_validate.json" ;;
   yelp3) NAME=yelp_bert_small_3; ARGS="--n_sent 12 --pos 2 --n_sst 48 --l1_steps 400 --hi 0.1 --gauges $G/deept_yelp3_seed0.pt"; OUT="$T/results/formula_yelp3_validate.json" ;;
+  yelp3_big) NAME=yelp_bert_small_3; ARGS="--n_sent 48 --pos 2 --n_sst 48 --l1_steps 100 --hi 0.1 --gauges $G/deept_yelp3_seed0.pt"; OUT="$T/results/formula_yelp3_validate_96box.json" ;;   # 4x the probes: does averaging remove the probe-seed dependence?
+  # ---- improvement goal (2026-09-07 eve): localisation hybrids, probe-seed cross, unlabeled dev-text probes, held-out radius screen
+  hyb_yelp3)  NAME=yelp_bert_small_3; ARGS="--n_sent 48 --pos 2 --n_sst 48 --l1_steps 0 --hi 0.1 --hybrids 1 --cross 1 --radius_names auto --n_dev 24 --dev_probes 48 --tag _h --gauges $G/deept_yelp3_seed0.pt";  OUT="$T/results/formula_yelp3_hyb.json" ;;
+  hyb_small6) NAME=sst_bert_small_6;  ARGS="--n_sent 12 --pos 2 --n_sst 48 --l1_steps 0 --hi 0.1 --hybrids 1 --cross 0 --radius_names auto --n_dev 24 --dev_probes 24 --tag _h --gauges $G/deept_small6_seed0.pt"; OUT="$T/results/formula_small6_hyb.json" ;;
+  hyb_big3)   NAME=sst_bert_big_3;    ARGS="--n_sent 12 --pos 2 --n_sst 48 --l1_steps 0 --hi 0.1 --hybrids 1 --cross 0 --radius_names auto --n_dev 24 --dev_probes 24 --tag _h --gauges $G/deept_big3_seed0.pt";   OUT="$T/results/formula_big3_hyb.json" ;;
+  smoke_hyb)  NAME=yelp_bert_small_3; ARGS="--n_sent 2 --pos 1 --n_sst 4 --l1_steps 0 --hi 0.05 --hybrids 1 --cross 1 --radius_names auto --n_dev 2 --dev_probes 2 --tag _smoke --gauges $G/deept_yelp3_seed0.pt"; OUT="$T/results/formula_hyb_smoke.json" ;;
+  # ---- round 2: sensitivity-weighted token blocks (--sens) and CROWN-inflation rescaling of M (--infl), held-out radius screen
+  r2_yelp3)  NAME=yelp_bert_small_3; ARGS="--n_sent 48 --pos 2 --n_sst 48 --l1_steps 0 --hi 0.1 --sens 1 --infl 3 --radius_names auto --n_dev 24 --tag _r2 --gauges $G/deept_yelp3_seed0.pt";  OUT="$T/results/formula_yelp3_r2.json" ;;
+  r2_small6) NAME=sst_bert_small_6;  ARGS="--n_sent 12 --pos 2 --n_sst 48 --l1_steps 0 --hi 0.1 --sens 1 --infl 3 --radius_names auto --n_dev 24 --tag _r2 --gauges $G/deept_small6_seed0.pt"; OUT="$T/results/formula_small6_r2.json" ;;
+  r2_big3)   NAME=sst_bert_big_3;    ARGS="--n_sent 12 --pos 2 --n_sst 48 --l1_steps 0 --hi 0.1 --sens 1 --infl 3 --radius_names auto --n_dev 24 --tag _r2 --gauges $G/deept_big3_seed0.pt";   OUT="$T/results/formula_big3_r2.json" ;;
+  smoke_r2)  NAME=yelp_bert_small_3; ARGS="--n_sent 2 --pos 1 --n_sst 4 --l1_steps 0 --hi 0.05 --sens 1 --infl 2 --radius_names auto --n_dev 2 --tag _smoke --gauges $G/deept_yelp3_seed0.pt"; OUT="$T/results/formula_r2_smoke.json" ;;
 esac
 mark START; "$PY" -u gauge_formula.py validate --name ${NAME:-sst_bert_small_6} $ARGS --seed 0 --out "$OUT" >> "$S/formula_$W.log" 2>&1; RC=$?; mark "DONE rc=$RC"; exit $RC

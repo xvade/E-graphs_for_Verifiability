@@ -329,12 +329,13 @@ def cmd_learn(a):
     for b in boxes: b[4] = a.eps_scale * certified_radius(lirpas[b[3]], b[0], b[1], b[2], dev, hi=a.hi, iters=a.radius_iters)
     R = np.array([b[4] for b in boxes]); print(f"# {a.name}: {len(S)} {a.split} sentences <= {a.max_len} tokens -> {len(boxes)} tuning boxes; per-box eps = {a.eps_scale} x stock radius: mean {R.mean():.4f} median {np.median(R):.4f} min {R.min():.4f} max {R.max():.4f}  [{time.time()-t0:.0f}s]", flush=True)
     for p in leaves(net): p.requires_grad_(True)
-    I, _ = eye_gauge(L, H, dh); Gq = nn.Parameter(I.clone().to(dev), requires_grad=a.which in ("both", "qk")); Ga = nn.Parameter(I.clone().to(dev), requires_grad=a.which in ("both", "av"))
+    I, _ = eye_gauge(L, H, dh); q0, a0 = (I.clone(), I.clone()) if a.gauge is None else [t.float() for t in load_gauge(a.gauge, L, H, dh)]   # learn --gauge: warm start (e.g. the closed-form gauge) instead of identity
+    Gq = nn.Parameter(q0.to(dev), requires_grad=a.which in ("both", "qk")); Ga = nn.Parameter(a0.to(dev), requires_grad=a.which in ("both", "av"))
     params = [p for p in (Gq, Ga) if p.requires_grad]; opt = torch.optim.Adam(params, lr=a.lr)
     def evaluate(bs):
         load_eff(net, effective(st, Gq.detach(), Ga.detach(), H, dh)); v = np.array([crown_lb(lirpas[b[3]], b[0], b[1], b[4], b[2], dev) for b in bs])
         return np.nanmean(v), float(np.mean(v > 0)), int(np.isnan(v).sum())
-    ev_boxes = boxes[:a.n_eval]; ev = evaluate(ev_boxes); print(f"# init=id: eval on {len(ev_boxes)} tuning boxes at their eps: mean lb {ev[0]:+.4f} frac_ver {ev[1]:.3f} nan {ev[2]}", flush=True)
+    ev_boxes = boxes[:a.n_eval]; ev = evaluate(ev_boxes); print(f"# init={'id' if a.gauge is None else a.gauge}: eval on {len(ev_boxes)} tuning boxes at their eps: mean lb {ev[0]:+.4f} frac_ver {ev[1]:.3f} nan {ev[2]}", flush=True)
     # sharing check: two BoundedModules must both see a weight change
     if len(lirpas) > 1:
         b1, b2 = boxes[0], next(b for b in boxes if b[3] != boxes[0][3]); v1 = [crown_lb(lirpas[b[3]], b[0], b[1], b[4], b[2], dev) for b in (b1, b2)]

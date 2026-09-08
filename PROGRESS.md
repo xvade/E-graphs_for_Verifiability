@@ -2661,3 +2661,44 @@ on small_6 the construction needs only the weights and a few random probe sequen
 learned gauge's layer-0 value effect is alignment here too (CROWN-width AV·N 0.84 at layer 0 where the plain AV product is 1.25);
 the QK product falls most at layers 4–5 (0.35 / 0.41). Paired 294-position eval of the 24-box candidates launched (job 39787014:
 stock / svd_jacN_all / svd_jac / learned), alongside the running 2-box eval (39773109).
+
+**18:50 — Yelp small_3 v3 (job 39787037): the CROWN radii are not needed, but the probe set still matters on this model.**
+svd_jacN_all_u (eps := 1 everywhere) +0.190 / +1.517 vs svd_jacN_all +0.192 / +1.510 — verifier-free confirmed. But
+svd_jacN_all_u2 (second probe seed for M and the margin gradients) +0.261 / +0.625: better than seed 0 on the random boxes
+(near the learned gauge's +0.275) and far worse on the learner's Yelp-dev boxes, the same pattern the plain svd_jac showed
+(+0.224 / +0.400). So N does not remove the probe dependence here; the gauge a probe set produces fits that probe set's own
+box shapes, and 24 random-token boxes are too few to average over on this model (on small_6 and big_3 the two seeds agree
+within 1 %). First paired number on the real protocol (job 39778637, first gauge set): svd_jacN_all +6.3 % certified radius
+(0.0223 → 0.0237), eps-0.024 verified 116 → 145 of 277; the learned gauge gave +9.5 % on the same instances (≈ 2/3 of it).
+Test of the remedy: the same validate with 96 probe boxes per seed (job 39789896, `gauge_formula_chain.sh yelp3_big`).
+
+**18:58 — big_3 v3 (job 39787038): verifier-free and probe-insensitive.** svd_jacN_all +0.384 / +0.946; with eps := 1 everywhere
++0.384 / +0.947; with the second probe seed (M and margin gradients) +0.382 / +0.941. Together with small_6 (all three within
+0.5 %), the construction on the two SST models needs the weights and any two dozen random-token probes; Yelp small_3 is the
+one model where the probe set matters (96-box test running).
+
+**19:20 — first paired eval of the formula gauges: Yelp small_3, 277 instances (job 39778637).** Certified radius (ratio of means):
+stock 0.02226 → svd_jacN_all 0.02370 (**+6.5 %**; larger on 234, smaller on 25, equal 18), svd_jac 0.02335 (+4.9 %; 196 / 62 / 19),
+learned 0.02450 (+10.1 %; 263 / 1 / 13). So the formula gauge takes 64 % of the learned radius gain here (svd_jac 45 %), below the
+80 % bar. Fixed-eps verified 255 / 209 / 116 (stock) → 256 / 219 / 145 (formula) vs 256 / 219 / 152 (learned); flips
+unverified→verified 1 / 10 / 29 (formula) vs 1 / 10 / 36 (learned), verified→unverified 0 for both. Head to head, learned − formula:
+radius larger on 225, smaller on 18; eps-0.024 lb tighter on 267/277 (+0.75). fp64 gates 2–4e-15. Consistent with the held-in
+screen (82 % on the learner's boxes, 58 % on random boxes → 64 % on test). User's goal updated: **improve the manual procedure to
+beat the learned gauges.**
+
+**19:42 — Yelp small_3 with 4× the probes (96 random-token boxes, job 39789896): more probes help a little on random boxes and
+not at all against the seed dependence.** svd_jacN_all +0.327 / +1.521 (random / learner boxes; learned +0.464 / +1.785, identity
++0.076 / +0.246): 65 % / 83 % of the learned gain vs 58 % / 82 % with 24 probes. The second probe seed, also with 96 probes, still
+gives +0.354 / +0.625 — better on random boxes, collapsed on Yelp text. The layer-0 gauges of the two seeds are identical (M_0 is
+sentence-independent under the linear LayerNorm); the layer-1 and layer-2 gauges are unrelated matrices (relative difference
+1.2–1.4). So the deeper Jacobian shapes of random-token sequences do not average into anything Yelp-like, and seed 0 was lucky.
+Advisor's plan for the new goal, in order: (1) localise the gap with side/layer swaps between the learned and the closed-form
+gauge, (2) screen on a held-out certified-radius metric (24 dev sentences the learner never saw; the learner-box column mispredicted
+Yelp), (3) diagnostic ceiling: warm-start the CROWN learner from the closed-form gauge for 40 low-lr steps and paired-eval it — if
+it beats the 120-step learned gauge, headroom exists in the formula's basin; (4) then CROWN-consistent M (coupling), sensitivity-
+weighted token blocks, text probes. Implemented (1)–(3) plus unlabeled dev-text probes as a candidate (`--dev_probes`,
+`cand:svd_jacN_all_dev`, `_u+dev`); `gauge_formula.py` got `--hybrids --cross --radius_names --n_dev --dev_probes --tag`, the learner
+got `--gauge` as a warm start, new `deept_init_chain.sh`. Jobs (all ckpt, 7 h limits because a 24 h cluster maintenance starts
+2026-09-08 04:00): smoke 39796636, hybrid validates Yelp 39796637 / small_6 39796639 / big_3 39796640, warm-start Yelp learn+eval
+39796638. The 24-probe Yelp candidate gauges used by the paired eval are kept as `*_24box.pt` (the 96-probe run overwrote the
+originals).

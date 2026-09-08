@@ -86,12 +86,19 @@ matrix; the cond-28 overfit gauge is ranked worst by every Jacobian-shaped surro
 
 ## Pending
 
+- Yelp small_3 paired eval (277 instances, job 39778637) is in: radius +6.5 % for `svd_jacN_all` (234 larger / 25 smaller),
+  +4.9 % for `svd_jac`, +10.1 % for the learned gauge (263 / 1) — 64 % of the learned gain; eps-0.024 verified 116 → 145 vs 152;
+  0 reverse flips at every eps for both; fp64 gate 3e-15.
 - Paired evals on the standard protocols (radius gain = ratio of means, eps verified counts, reverse flips, fp64 gate):
   small_6 294 positions — 2-box `svd_jac` (job 39773109), 24-box `svd_jacN_all` + `svd_jac` (39787014); Yelp small_3 277 instances
   (39778637); big_3 288 instances (39782433). Bar: ≥ 80 % of the learned radius gain with reverse flips at or near zero, on two models.
-- Verifier-free confirmation of the N construction (`svd_jacN_all_u`: eps := 1 everywhere) and its probe-seed sensitivity
-  (`svd_jacN_all_u2`) on big_3 and Yelp small_3 (jobs 39787038, 39787037). On Yelp small_3 the plain `svd_jac` collapsed under a
-  second probe seed (+0.40 vs +1.37 on the learner boxes at identical surrogate value); whether N removes that is open.
+- Verifier-free and probe-seed checks of the N construction: done for big_3 (`svd_jacN_all_u` +0.384 / +0.947, second seed
+  +0.382 / +0.941, vs +0.384 / +0.946 — no CROWN input, no probe dependence) and for Yelp small_3 (verifier-free +0.190 / +1.517
+  matches; but the second probe seed gives +0.261 / +0.625: better on random boxes, far worse on the learner's Yelp boxes — the
+  gauge fits the box shapes of its own probe set on this model). More probes do not average it out (96 boxes per seed, job
+  39789896: seed 0 +0.327 / +1.521, seed 1 +0.354 / +0.625; the random-box share rises 58 → 65 %). The layer-0 gauges of the
+  two seeds are identical (M_0 is sentence-independent), the layer-1/2 gauges are unrelated matrices; small_6 and big_3 show no
+  such dependence. Open: probes drawn from unlabeled dev text instead of random tokens (`--dev_probes`).
 
 ## Files
 

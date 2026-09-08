@@ -125,6 +125,9 @@ def crown_width_surrogate(net, nodes, H, dh, Ns=None):
 
 def svd_balance(A, B):
     """closed-form p=2 minimiser: G with G^T A = sqrt(S) U^T for A^T B = U S V^T (A, B: dh x N, full row rank); via the dh x dh problem"""
+    d = A.shape[0]   # fewer probe columns than d_h (tiny smoke runs only): append a tiny ridge so the operands have full row rank
+    if A.shape[1] < d: A = torch.cat([A, 1e-6 * A.norm() * torch.eye(d, dtype=A.dtype, device=A.device)], 1)
+    if B.shape[1] < d: B = torch.cat([B, 1e-6 * B.norm() * torch.eye(d, dtype=B.dtype, device=B.device)], 1)
     Qa, Ra = torch.linalg.qr(A.T); Qb, Rb = torch.linalg.qr(B.T)       # A^T = Qa Ra, B^T = Qb Rb
     U, S, Vh = torch.linalg.svd(Ra @ Rb.T)                                 # A^T B = Qa (Ra Rb^T) Qb^T
     # G = Ra^-1 U Λ: for ANY diagonal Λ the row-norm products are s_c (the diagonal freedom is CROWN-neutral); Λ = sqrt(S) balances the
@@ -142,6 +145,69 @@ def candidate_svd(st64, Ms, H, dh, Ns=None):
             gq.append(svd_balance(A, B)); Av = Wv[sl] if M is None else Wv[sl] @ M; ga.append(svd_balance(Av, Wo[:, sl].T if Ns is None else Wo[:, sl].T @ Ns[l]))
         Gq.append(torch.stack(gq)); Ga.append(torch.stack(ga))
     return torch.stack(Gq), torch.stack(Ga)
+
+def sens_shapes(net, boxes, dev):
+    """per layer, per probe box: token weights for the column blocks of M_l (all (H, T)) -- alpha / beta = rank-1 factors of
+    |d margin / d score_ij| at the centre (query side / key side: the bound reads score (i, j) this much), gamma_j = sum_i of the
+    first-order width of p_ij (the softmax uncertainty that multiplies value token j).  Boxes in the order of box_shapes."""
+    L = len(net.layers); hid = net.hid; out = [[] for _ in range(L)]
+    def fwd(e_, delta=None, keep=None):
+        x = net.ln0(e_ if delta is None else e_ + torch.zeros_like(e_).index_fill_(1, torch.tensor([i], device=dev), 1.0) * delta); B, nT, _ = x.shape; ps = []
+        for l in net.layers:
+            a = l.attention.self
+            q = a.query(x).view(B, nT, net.H, net.dh).transpose(1, 2); k = a.key(x).view(B, nT, net.H, net.dh).transpose(1, 2); v = a.value(x).view(B, nT, net.H, net.dh).transpose(1, 2)
+            sc = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(net.dh)
+            if keep is not None: sc.retain_grad(); keep.append(sc)
+            pr = torch.softmax(sc, dim=-1); ps.append(pr[0]); c = torch.matmul(pr, v).transpose(1, 2).reshape(B, nT, net.H * net.dh)
+            h = l.attention.output.LayerNorm(l.attention.output.dense(c) + x); x = l.output.LayerNorm(l.output.dense(torch.relu(l.intermediate.dense(h))) + h)
+        return torch.stack(ps), net.classifier(torch.tanh(net.pooler.dense(x[:, 0])))
+    for e, i, y, n, eps in boxes:
+        e = e.to(dev); scs = []
+        with torch.enable_grad():
+            _, logits = fwd(e.clone().requires_grad_(True), keep=scs); (logits[0, y] - logits[0, 1 - y]).backward()
+        Jp = torch.autograd.functional.jacobian(lambda d: fwd(e, d)[0], torch.zeros(hid, device=dev), vectorize=True)   # (L, H, T, T, hid)
+        wp = 2.0 * eps * Jp.abs().sum(-1)                                                                                  # first-order width of p_ij
+        for l in range(L):
+            g = scs[l].grad[0].abs().double(); U, S, Vh = torch.linalg.svd(g)                                             # (H, T, T), batched
+            out[l].append((S[:, :1].sqrt() * U[:, :, 0].abs(), S[:, :1].sqrt() * Vh[:, 0, :].abs(), wp[l].sum(1).double()))   # alpha, beta (H, T); gamma (H, T)
+    return out
+
+def col_scales(sens_l, hid_in, power=1.0):
+    """(H, cols) column scalings of M_l from per-box per-token weights (each token block of M_l has hid_in columns)"""
+    f = lambda k: torch.cat([w[k].repeat_interleave(hid_in, 1) for w in sens_l], 1) ** power
+    return f(0), f(1), f(2)
+
+def candidate_svd_w(st64, Ms, H, dh, Ns, sens, hid_in, use=("qk", "av"), power=1.0, rho=None):
+    """svd_jacN with weighted columns: QK pair (Wq_h M diag(alpha), Wk_h M diag(beta)), AV pair (Wv_h M diag(gamma), Wo_h^T N);
+    rho (per layer, (cols,)) = extra column scaling of M_l for every side (CROWN-measured width inflation, see inflate_M)"""
+    Gq, Ga = [], []
+    for l, (Wq, bq, Wk, bk, Wv, bv, Wo) in enumerate(st64):
+        M = Ms[l] if rho is None else Ms[l] * rho[l]; al, be, ga_ = col_scales(sens[l], hid_in, power) if sens is not None else (None, None, None); gq, ga = [], []
+        for h in range(H):
+            sl = slice(h * dh, (h + 1) * dh); wq = "qk" in use and sens is not None; wv = "av" in use and sens is not None
+            gq.append(svd_balance(Wq[sl] @ (M * al[h] if wq else M), Wk[sl] @ (M * be[h] if wq else M)))
+            ga.append(svd_balance(Wv[sl] @ (M * ga_[h] if wv else M), Wo[:, sl].T @ Ns[l]))
+        Gq.append(torch.stack(gq)); Ga.append(torch.stack(ga))
+    return torch.stack(Gq), torch.stack(Ga)
+
+def inflate_M(net, lirpas, bnodes, boxes, Ms, Gq, Ga, H, dh, hid_in, dev):
+    """per layer: column scaling rho_l (cols,) of M_l = CROWN's measured width of the head-split q'/k' at token t (summed over heads and
+    coordinates, under the CURRENT gauge, one plain CROWN pass per probe box at its eps) divided by the first-order width
+    |(G^T W_q)_c M_{b,t}|_1 -- how much the relaxation slack of the earlier layers has inflated this token's box beyond the Jacobian shape.
+    rho = 1 where the first-order width is zero (unperturbed tokens at layer 0).  Boxes in the order of box_shapes."""
+    L = len(net.layers); mods = net.attn_modules(); rho = [[] for _ in range(L)]; col = [0] * L
+    for e, i, y, n, eps in boxes:
+        crown_lb(lirpas[n], e, i, eps, y, dev); d = bnodes[n]
+        for l in range(L):
+            T = e.shape[1]; Mb = Ms[l][:, col[l]:col[l] + T * hid_in].reshape(-1, T, hid_in); col[l] += T * hid_in
+            Wq = mods[l][0].weight.detach().double(); Wk = mods[l][1].weight.detach().double()                                              # folded (gauged) weights, (H*dh, hid)
+            pred = (torch.einsum("rh,htk->rtk", Wq, Mb).abs().sum(-1) + torch.einsum("rh,htk->rtk", Wk, Mb).abs().sum(-1)).sum(0)          # (T,)
+            if all(k in d for k in "qk"):
+                meas = ((d["q"].upper - d["q"].lower)[0].sum((0, 2)) + (d["k"].upper - d["k"].lower)[0].sum((0, 1))).double()               # (T,)
+                r = torch.where(pred > 1e-9 * pred.max().clamp_min(1e-30), meas / pred.clamp_min(1e-30), torch.ones_like(pred))
+            else: r = torch.ones(T, dtype=torch.float64, device=dev)
+            rho[l].append(r.repeat_interleave(hid_in))
+    return [torch.cat(r_) for r_ in rho]
 
 def candidate_l1(st64, Ms, H, dh, init, steps=400, lr=0.02, cond_pen=1e-4, log=None):
     """p = 1 surrogate minimised by Adam on all heads at once, from `init` (Gq, Ga)"""
@@ -163,6 +229,10 @@ def main():
     ap.add_argument("--n_sent", type=int, default=12); ap.add_argument("--pos", type=int, default=2); ap.add_argument("--max_len", type=int, default=8); ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--n_sst", type=int, default=48); ap.add_argument("--l1_steps", type=int, default=400); ap.add_argument("--hi", type=float, default=0.1); ap.add_argument("--out", default=None)
     ap.add_argument("--data", default="random"); ap.add_argument("--split", default="dev"); ap.add_argument("--softmax", default="lse")
+    ap.add_argument("--hybrids", type=int, default=0, help="add learned/candidate side and layer swaps (where does the candidate fall short?)"); ap.add_argument("--cross", type=int, default=0, help="add probe-seed swaps (seed-0 candidate with layers/sides from the seed-1 candidate)")
+    ap.add_argument("--radius_names", default="", help="held-out certified-radius screen on dev sentences the learner never saw: comma list of zoo names, or auto"); ap.add_argument("--n_dev", type=int, default=24); ap.add_argument("--dev_pos", type=int, default=2)
+    ap.add_argument("--dev_probes", type=int, default=0, help="also build M / N_out from this many unlabeled dev sentences (disjoint from the learner's and the screen's) -> cand:svd_jacN_all_dev"); ap.add_argument("--tag", default="", help="suffix for the saved candidate gauge files")
+    ap.add_argument("--sens", type=int, default=0, help="sensitivity-weighted token blocks (cand:svd_sens*)"); ap.add_argument("--infl", type=int, default=0, help="rounds of CROWN-inflation rescaling of M (cand:svd_infl<k>)")
     a = ap.parse_args(); torch.manual_seed(a.seed); random.seed(a.seed)
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh, hid = len(net.layers), net.H, net.dh, net.hid
     st = [[t.to(dev) for t in w] for w in stock_tensors(net)]; st64 = [[t.double() for t in w] for w in st]; I64 = eye_gauge(L, H, dh, torch.float64)
@@ -176,7 +246,12 @@ def main():
     Ss = short_instances(net, m, tok, D, ga.get("max_len", 8), ga.get("n_sent", 60), seed=la.seed); rng2 = random.Random(la.seed)
     boxes_s = [[e, i, ex["label"], e.shape[1], None] for j, ex, e, toks in Ss for i in pos_sets(toks, ga.get("k_words", 1), rng2, ga.get("pos_per_sent", 3))][:a.n_sst]
     print(f"# learner boxes rebuilt from {gpaths[0] if gpaths else '-'}: data {la.data} split {ga.get('split', 'dev')} max_len {ga.get('max_len', 8)} n_sent {ga.get('n_sent', 60)} pos {ga.get('pos_per_sent', 3)} seed {la.seed}", flush=True)
-    lirpas = make_lirpas(net, [b[3] for b in boxes_r + boxes_s], dev, a.softmax); set_gauge(*I64); t0 = time.time()
+    used = {j for j, ex, e, toks in Ss}; rngd = random.Random(a.seed + 7); rest = [s_ for s_ in short_instances(net, m, tok, D, ga.get("max_len", 8), None) if s_[0] not in used]; rngd.shuffle(rest)
+    Sd = rest[:a.n_dev] if a.radius_names else []; Sp = rest[a.n_dev:a.n_dev + a.dev_probes] if a.dev_probes else []
+    boxes_d = [(e, i, ex["label"], e.shape[1]) for j, ex, e, toks in Sd for i in pos_sets(toks, 1, rngd, a.dev_pos)]
+    boxes_p = [(e, i, ex["label"], e.shape[1], 1.0) for j, ex, e, toks in Sp for i in pos_sets(toks, 1, rngd, a.pos)]
+    print(f"# held-out {la.data} {ga.get('split', 'dev')} sentences (not the learner's): {len(rest)} available; radius screen {len(Sd)} sentences -> {len(boxes_d)} boxes; text probes {len(Sp)} sentences -> {len(boxes_p)} boxes", flush=True)
+    lirpas = make_lirpas(net, [b[3] for b in boxes_r + boxes_s] + [b[3] for b in boxes_d], dev, a.softmax); set_gauge(*I64); t0 = time.time()
     for b in boxes_r + boxes_s: b[4] = certified_radius(lirpas[b[3]], b[0], b[1], b[2], dev, hi=a.hi, iters=8)
     print(f"# {a.name}: {len(boxes_r)} random-token boxes (eps = stock radius, mean {np.mean([b[4] for b in boxes_r]):.4f}) + {len(boxes_s)} SST-dev boxes (mean {np.mean([b[4] for b in boxes_s]):.4f})  [{time.time()-t0:.0f}s]", flush=True)
     # ---- box shapes from the random boxes
@@ -192,6 +267,9 @@ def main():
     t0 = time.time(); No = out_shapes(net, [(b[0], b[1], b[2], b[3], b[4]) for b in boxes_r], dev); Nf, Nn = weight_shapes(net, st64, dev); Na = [combine_N([Nf[l], Nn[l], No[l]]) for l in range(L)]
     No2 = out_shapes(net, boxes_r2, dev); Na2 = [combine_N([Nf[l], Nn[l], No2[l]]) for l in range(L)]   # second probe seed, verifier-free
     print(f"# output-side functionals: N_out {tuple(No[0].shape)}, N_ffn {tuple(Nf[0].shape)}, N_next {tuple(Nn[0].shape)}, N_all {tuple(Na[0].shape)}; seed {a.seed + 1}: N_all {tuple(Na2[0].shape)}  [{time.time()-t0:.0f}s]", flush=True)
+    try: bnodes = {n: attn_bound_nodes(lp) for n, lp in lirpas.items()}
+    except Exception as ex: bnodes = {n: {} for n in lirpas}; print(f"# CROWN-width surrogate disabled: node identification failed ({ex})", flush=True)
+    print(f"# CROWN-width surrogate: q/k/v bound nodes found for {[len(v) for v in bnodes.values()]} layers per sentence length", flush=True)
     # ---- gauge zoo
     zoo = {"identity": I64}
     for pth in gpaths: zoo[os.path.basename(pth).replace("_seed0.pt", "").replace("deept_", "").replace("pbvtrained_", "pbv_")] = load_gauge(pth, L, H, dh)
@@ -205,13 +283,41 @@ def main():
     zoo["cand:svd_jac_u"] = candidate_svd(st64, Mu, H, dh); zoo["cand:svd_jac_u2"] = candidate_svd(st64, Mu2, H, dh)
     for nm, NN in (("out", No), ("ffn", Nf), ("next", Nn), ("all", Na)): zoo[f"cand:svd_jacN_{nm}"] = candidate_svd(st64, Ms, H, dh, NN)
     zoo["cand:svd_jacN_all_u"] = candidate_svd(st64, Mu, H, dh, Na); zoo["cand:svd_jacN_all_u2"] = candidate_svd(st64, Mu2, H, dh, Na2)   # no CROWN radii anywhere; _u2 = other probe seed for M and N_out
-    print(f"# svd candidates built [{time.time()-t0:.0f}s]; l1 candidates:", flush=True)
-    (gq, ga), v = candidate_l1(st64, None, H, dh, zoo["cand:svd_iso"], steps=a.l1_steps, log=True); zoo["cand:l1_iso"] = (gq, ga)
-    (gq, ga), v = candidate_l1(st64, Ms, H, dh, zoo["cand:svd_jac"], steps=a.l1_steps, log=True); zoo["cand:l1_jac"] = (gq, ga)
+    if boxes_p:   # text probes: M and N_out from unlabeled held-out dev sentences (uniform eps), no verifier
+        Mp = box_shapes(net, boxes_p, dev); Np = out_shapes(net, boxes_p, dev); Nap = [combine_N([Nf[l], Nn[l], Np[l]]) for l in range(L)]
+        zoo["cand:svd_jac_dev"] = candidate_svd(st64, Mp, H, dh); zoo["cand:svd_jacN_all_dev"] = candidate_svd(st64, Mp, H, dh, Nap)
+        Mpu = [torch.cat([Mu[l], Mp[l]], 1) for l in range(L)]; zoo["cand:svd_jacN_all_u+dev"] = candidate_svd(st64, Mpu, H, dh, [combine_N([Nf[l], Nn[l], No[l], Np[l]]) for l in range(L)])
+    if a.sens:   # round 2a: token blocks of M weighted by how much the bound reads each score / each attended value (probe centres, no verifier)
+        t1 = time.time(); sens = sens_shapes(net, [(b[0], b[1], b[2], b[3], b[4]) for b in boxes_r], dev)
+        zoo["cand:svd_sens"] = candidate_svd_w(st64, Ms, H, dh, Na, sens, hid); zoo["cand:svd_sens_qk"] = candidate_svd_w(st64, Ms, H, dh, Na, sens, hid, use=("qk",))
+        zoo["cand:svd_sens_av"] = candidate_svd_w(st64, Ms, H, dh, Na, sens, hid, use=("av",)); zoo["cand:svd_sens_sqrt"] = candidate_svd_w(st64, Ms, H, dh, Na, sens, hid, power=0.5)
+        print(f"# sensitivity weights built [{time.time()-t1:.0f}s]", flush=True)
+    if a.infl:   # round 2b: rescale each token block of M_l by CROWN's measured / first-order width under the current candidate, rebuild, repeat
+        t1 = time.time(); cur = zoo["cand:svd_jacN_all"]; rho_log = []
+        for it in range(1, a.infl + 1):
+            set_gauge(*cur); rho = inflate_M(net, lirpas, bnodes, [(b[0], b[1], b[2], b[3], b[4]) for b in boxes_r], Ms, cur[0], cur[1], H, dh, hid, dev)
+            rho_log.append([f"{r_[r_ != 1].mean().item():.2f}" if (r_ != 1).any() else "1" for r_ in rho]); cur = candidate_svd_w(st64, Ms, H, dh, Na, None, hid, rho=rho); zoo[f"cand:svd_infl{it}"] = cur
+        if a.sens: zoo[f"cand:svd_sens_infl{a.infl}"] = candidate_svd_w(st64, Ms, H, dh, Na, sens, hid, rho=rho)
+        set_gauge(*I64); print(f"# CROWN-inflation rescaling: mean rho per layer per round {rho_log} [{time.time()-t1:.0f}s]", flush=True)
+    print(f"# svd candidates built [{time.time()-t0:.0f}s]; l1 candidates: {'skipped' if a.l1_steps <= 0 else ''}", flush=True)
+    if a.l1_steps > 0:
+        (gq, ga), v = candidate_l1(st64, None, H, dh, zoo["cand:svd_iso"], steps=a.l1_steps, log=True); zoo["cand:l1_iso"] = (gq, ga)
+        (gq, ga), v = candidate_l1(st64, Ms, H, dh, zoo["cand:svd_jac"], steps=a.l1_steps, log=True); zoo["cand:l1_jac"] = (gq, ga)
+    # ---- localisation: which side / layer of the candidate falls short of the learned gauge? (swap one side or one layer at a time)
+    dd = lambda g: g.double().to(dev)
+    if first and a.hybrids:
+        (Lq, La), (Cq, Ca) = map(dd, zoo[first[0]]), map(dd, zoo["cand:svd_jacN_all"])
+        zoo["hyb:lrnQK+candAV"] = (Lq, Ca); zoo["hyb:candQK+lrnAV"] = (Cq, La)
+        for l in range(L):
+            gq, ga = Cq.clone(), Ca.clone(); gq[l], ga[l] = Lq[l], La[l]; zoo[f"hyb:cand-lrn@L{l}"] = (gq, ga)
+            gq, ga = Lq.clone(), La.clone(); gq[l], ga[l] = Cq[l], Ca[l]; zoo[f"hyb:lrn-cand@L{l}"] = (gq, ga)
+    if a.cross:   # probe-seed dependence: the seed-0 candidate with one side / one layer taken from the seed-1 candidate
+        (Xq, Xa), (Yq, Ya) = map(dd, zoo["cand:svd_jacN_all_u"]), map(dd, zoo["cand:svd_jacN_all_u2"])
+        print("# probe-seed dependence of svd_jacN_all (relative Frobenius difference seed 0 vs 1, per layer): QK", [f"{((Xq[l] - Yq[l]).norm() / Xq[l].norm()).item():.2f}" for l in range(L)], "AV", [f"{((Xa[l] - Ya[l]).norm() / Xa[l].norm()).item():.2f}" for l in range(L)], flush=True)
+        zoo["cross:uQK+u2AV"] = (Xq, Ya); zoo["cross:u2QK+uAV"] = (Yq, Xa)
+        for l in range(L):
+            gq, ga = Xq.clone(), Xa.clone(); gq[l], ga[l] = Yq[l], Ya[l]; zoo[f"cross:u-u2@L{l}"] = (gq, ga)
     # ---- score everything
-    try: bnodes = {n: attn_bound_nodes(lp) for n, lp in lirpas.items()}
-    except Exception as ex: bnodes = {n: {} for n in lirpas}; print(f"# CROWN-width surrogate disabled: node identification failed ({ex})", flush=True)
-    print(f"# CROWN-width surrogate: q/k/v bound nodes found for {[len(v) for v in bnodes.values()]} layers per sentence length", flush=True)
     rows = {}; print(f"\n# {'gauge':28s} | surrogate / identity:  l1_iso   l1_jac   l2_iso   l2_jac  (QK+AV; QK, AV for l1_jac)  l1_jacN = with downstream functionals N | CROWN-width surrogate / identity (random boxes; learner boxes) | held-in CROWN: random mean lb, frac ver | SST-dev mean lb, frac ver | max cond", flush=True)
     base = {}
     for name, (Gq, Ga) in zoo.items():
@@ -236,6 +342,15 @@ def main():
         cwr = {k: cw[k][:, :2].sum() / base_cw[k] for k in cw}; cwq = {k: cw[k][:, 0].sum() / base_cw[k] for k in cw}; cwa = {k: cw[k][:, 1].sum() / base_cw[k] for k in cw}; cwN = {k: (cw[k][:, 0].sum() + cw[k][:, 2].sum()) / base_cwN[k] for k in cw}
         rows[name] = {"surr": {k: v[:3] for k, v in S.items()}, "per_layer_l1_jac": S["l1_jac"][3], "crown_width": {k: v.tolist() for k, v in cw.items()}, "random_lb": float(np.nanmean(vr)), "random_ver": float(np.mean(vr > 0)), "sst_lb": float(np.nanmean(vs)), "sst_ver": float(np.mean(vs > 0)), "cond": cond}
         print(f"  {name:28s} | {S['l1_iso'][0]/base['l1_iso']:7.3f}  {S['l1_jac'][0]/base['l1_jac']:7.3f}  {S['l2_iso'][0]/base['l2_iso']:7.3f}  {S['l2_jac'][0]/base['l2_jac']:7.3f}  (QK {S['l1_jac'][1]/base['l1_jac']:.3f}, AV {S['l1_jac'][2]/base['l1_jac']:.3f}) l1_jacN {S['l1_jacN'][0]/base['l1_jacN']:.3f} (AV·N {S['l1_jacN'][2]/base['l1_jacN']:.3f}) | CROWN-width rand {cwr['rand']:.3f} (QK {cwq['rand']:.3f}, AV {cwa['rand']:.3f}; with N {cwN['rand']:.3f}) sst {cwr['sst']:.3f} (QK {cwq['sst']:.3f}, AV {cwa['sst']:.3f}; with N {cwN['sst']:.3f}) | {np.nanmean(vr):+.4f} {np.mean(vr > 0):.2f} | {np.nanmean(vs):+.4f} {np.mean(vs > 0):.2f} | {cond:5.1f}  [{time.time()-t0:.0f}s]", flush=True)
+    # ---- held-out certified-radius screen (the paired protocol's metric) on dev sentences the learner never saw
+    if boxes_d:
+        names = [k for k in zoo if k in ("identity", first[0] if first else "", "cand:svd_jac", "cand:svd_jacN_all", "cand:svd_jacN_all_u2", "cand:svd_jacN_all_dev", "cand:svd_jacN_all_u+dev") or k.startswith(("hyb:", "cross:", "cand:svd_sens", "cand:svd_infl"))] if a.radius_names == "auto" else a.radius_names.split(",")
+        print(f"\n# held-out radius screen: {len(Sd)} sentences -> {len(boxes_d)} boxes, certified radius by bisection (hi {a.hi}, 8 iters); gain = ratio of means vs stock, share = gain / learned gain", flush=True); rad = {}
+        for name in names:
+            set_gauge(*zoo[name]); t0 = time.time(); rad[name] = np.array([certified_radius(lirpas[b[3]], b[0], b[1], b[2], dev, hi=a.hi, iters=8) for b in boxes_d]); rows[name]["dev_radius"] = rad[name].tolist()
+            r0 = rad["identity"]; r1 = rad.get(first[0]) if first else None; gain = rad[name].mean() / r0.mean() - 1
+            share = gain / (r1.mean() / r0.mean() - 1) if r1 is not None and name != "identity" else float("nan")
+            print(f"  {name:28s} mean radius {rad[name].mean():.5f}  vs stock {gain:+6.1%} (larger {int((rad[name] > r0 + 1e-9).sum()):3d} / smaller {int((rad[name] < r0 - 1e-9).sum()):3d})  share {share:5.2f}" + (f"  vs learned: larger {int((rad[name] > r1 + 1e-9).sum()):3d} / smaller {int((rad[name] < r1 - 1e-9).sum()):3d}" if r1 is not None and name != first[0] else "") + f"  [{time.time()-t0:.0f}s]", flush=True)
     # per-layer view of the l1_jac surrogate for identity vs the first learned gauge (layer 1 = exact box shape)
     if first:
         print(f"\n# per-layer l1_jac surrogate (QK, AV), identity -> {first[0]}:")
@@ -244,10 +359,10 @@ def main():
             c0 = base_cw_layers["sst"][l]; c1 = np.array(rows[first[0]]["crown_width"]["sst"][l])
             print(f"  layer {l}: l1_jac QK {i0[0]:.4g} -> {g0[0]:.4g} ({g0[0]/i0[0]:.3f}), AV {i0[1]:.4g} -> {g0[1]:.4g} ({g0[1]/i0[1]:.3f}) | CROWN-width (learner boxes) QK {c0[0]:.4g} -> {c1[0]:.4g} ({c1[0]/c0[0]:.3f}), AV {c0[1]:.4g} -> {c1[1]:.4g} ({c1[1]/c0[1]:.3f}), AV·N {c0[2]:.4g} -> {c1[2]:.4g} ({c1[2]/c0[2]:.3f})")
     if a.out:
-        os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True); json.dump({"rows": rows, "boxes_random": len(boxes_r), "boxes_sst": len(boxes_s)}, open(a.out, "w"), indent=1)
+        os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True); json.dump({"rows": rows, "boxes_random": len(boxes_r), "boxes_sst": len(boxes_s), "boxes_dev": len(boxes_d), "boxes_probe": len(boxes_p), "args": vars(a)}, open(a.out, "w"), indent=1)
         gd = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gauges")
-        for k in ("cand:svd_iso", "cand:svd_jac", "cand:svd_jac_u", "cand:svd_jac_u2", "cand:svd_jacN_out", "cand:svd_jacN_ffn", "cand:svd_jacN_next", "cand:svd_jacN_all", "cand:svd_jacN_all_u", "cand:svd_jacN_all_u2", "cand:l1_iso", "cand:l1_jac"):
-            torch.save({"qk": zoo[k][0].double().cpu(), "av": zoo[k][1].double().cpu(), "formula": k}, os.path.join(gd, f"formula_{a.name}_{k.split(':')[1]}.pt"))
+        for k in [k for k in zoo if k.startswith(("cand:", "hyb:", "cross:"))]:
+            torch.save({"qk": zoo[k][0].double().cpu(), "av": zoo[k][1].double().cpu(), "formula": k, "args": vars(a)}, os.path.join(gd, f"formula_{a.name}_{k.split(':', 1)[1].replace('+', '-').replace('@', '_')}{a.tag}.pt"))
         print(f"# saved candidates to gauges/formula_{a.name}_*.pt and {a.out}")
 
 if __name__ == "__main__": main()
