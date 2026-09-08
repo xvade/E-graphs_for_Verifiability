@@ -2784,3 +2784,47 @@ one-sided here (on Yelp it had 25 smaller). Fixed-eps verified 256 / 116 / 4 (st
 258 / 129 / 48 (learned); flips unverified → verified 1 / 8 / 28 vs 2 / 13 / 44; verified → unverified 0 for both; fp64 gates
 1–2e-15. The held-out SST-test screen predicted 0.56 for this gauge (paired: 0.61) and gives 0.84 for `l1N`, so its paired eval
 is the next number to get.
+
+**21:24 — round 3 on small_6 (job 39802259, held-in): the ℓ1 refinement helps on the QK side and HURTS on the value side here.**
+Closed form 0.90 / 0.92 → `l1N` (both sides) **0.83 / 0.84**, but `l1N_qk` (ℓ1 QK at every layer, closed-form N-weighted AV)
+**0.96 / 0.96** (cond 19); layer-0-only splices 0.90–0.91 / 0.92–0.93 (on this model the QK gain is spread over the layers, as
+the swaps said). Across models: the QK-side ℓ1 refinement helps everywhere (big_3 +0.10, Yelp +0.06, small_6 +0.06 held-in
+random); the AV-side ℓ1 refinement helps at layer 0 on big_3 (+0.10, all of its AV gain) and at all layers on Yelp (+0.15), and
+costs 0.13 on small_6 at the deeper layers. A verifier-free rule that never loses: ℓ1-refine QK at every layer and AV at layer 0
+only (`l1N_qk+av0`: predicted 0.95 big_3, 0.97 small_6, 0.77 / 0.91 Yelp held-in) — built from the saved parts for big_3 and
+submitted for a paired eval (job 39817354, with `l1N_qk`; the learned set comes from the finished job 39782433, same instances).
+Yelp keeps the full `l1N`. Also finished: the Yelp localisation held-out screen (job 39796637) — closed form 0.66; learned QK +
+candidate AV 0.88; candidate QK + learned AV 0.77; learned layer 0 / 1 / 2 in the candidate 0.76 / 0.80 / 0.75; the seed-1
+layer 2 in the seed-0 gauge 0.56 with 0 smaller (a 0.10 loss, not the collapse the learner-box column showed).
+
+**21:26 — warm-start ceiling test, 40 steps (job 39796638, paired, 277 Yelp instances):** +9.0 % radius (264 larger / 3 smaller /
+10 equal) vs +10.1 % for the learned-from-identity gauge (263 / 1 / 13); head to head the learned gauge is larger on 196, smaller
+on 15. Forty low-lr CROWN steps from the closed form do not reach the 120-step learner; the 100-step run (job 39802260) decides
+whether the learned gauge is the ceiling of this objective.
+
+**21:25 — round 4 (1500 annealed steps) converged: Yelp `l1N` 0.86 / 0.94 held-in, 0.88 on the held-out screen — identical to the
+400-step run; big_3 0.86 vs 0.84.** The surrogate's optimum is reached; nothing more comes from the optimiser. Paired evals of the
+refined gauges are running: big_3 `l1N` + layer-0 splice + learned (job 39816017), big_3 unified rule + `l1N_qk` (39817354), Yelp
+`l1N` + layer-0 splice + learned (39818135); small_6 follows its round-3 save. Round 5 (jobs just submitted): held-out screens of
+the unified rule on all three models, and a second probe seed for the whole refined procedure on Yelp.
+
+**21:58 — ceiling test answered: the learned gauge is the optimum of its own objective (job 39802260, Yelp small_3, paired).**
+The CROWN learner warm-started from the closed form, 100 steps at lr 0.005, reaches held-in +1.781 (learned from identity, 120
+steps: +1.785) and on the paired protocol +10.0 % radius (264 larger / 2 smaller) vs +10.1 % (263 / 1); head to head 94 larger,
+94 smaller, 89 equal; eps-0.024 verified 153 vs 152; fp64 gate 2e-15. Two unrelated starting points converge to the same
+performance, so no gauge in this family beats the learned one *on this objective* (mean CROWN lb on the learner's 120 boxes at
+their stock radii) by more than noise. "Better than the learned gauges" therefore cannot come from a better formula for the same
+target; it needs a target the learner is not optimising (more or different boxes, larger radii, worst-case), or it is a tie at
+best. The manual procedure's job is to reach parity: currently 0.84–0.88 of the learned gain on the held-out screens (paired
+evals of `l1N` running: big_3 39816017, Yelp 39818135; small_6 to follow), up from 0.56–0.66 for the closed form.
+
+**22:28 — held-out screens, rounds 3–5 (48 SST-test boxes for the SST models, 46–47 Yelp-dev boxes), share of the learned
+radius gain, larger / smaller vs stock.** small_6 (learned +14.1 %): closed form **1.06** (41 / 0; head to head 18 / 16), its
+layer-0 ℓ1N splice **1.08** (41 / 0; 18 / 15), second probe seed 1.06, inflation 1.03, both-sided `l1N` **0.54** (36 / 0; 0 / 42 —
+the deeper-layer value refinement is harmful here on held-out text, worse than held-in suggested). big_3 (learned +12.7 %): closed
+form 0.56, `l1N` 0.83–0.84, unified rule `l1N_qk+av0` 0.83 (46 / 0), QK-only 0.71. Yelp seed 0 (learned +10.7 %): closed form
+0.66, `l1N` 0.88, unified rule 0.82, QK-only 0.76; Yelp seed 1 (own screen, learned +12.8 %): closed form 0.28, `l1N` 0.59 (46 / 0),
+unified rule 0.56 — the probe draw still matters on Yelp after the refinement. So the value-side ℓ1 refinement is model-dependent
+(helps big_3 and Yelp, hurts small_6 beyond layer 0) and the QK-side one helps everywhere; on small_6 the closed form is already at
+or above the learned gauge on held-out text (paired eval of it: job 39787014, last set running). Paired eval of the unified rule
+and the QK-only refinement on small_6 submitted (job 39825991 at 22:27, 3 sets; learned set from the earlier paired eval).

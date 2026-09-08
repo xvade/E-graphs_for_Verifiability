@@ -311,6 +311,7 @@ def main():
         t1 = time.time(); C = zoo["cand:svd_jacN_all"]; (gq, ga), v = candidate_l1(st64, Ms, H, dh, C, steps=a.l1_steps, lr=a.l1_lr, log=True, Ns=Na); zoo["cand:l1N"] = (gq, ga)
         g0, a0 = C[0].clone(), C[1].clone(); g0[0], a0[0] = gq[0], ga[0]; zoo["cand:l1N@L0"] = (g0, a0); zoo["cand:l1N_qk"] = (gq, C[1])
         g1 = C[0].clone(); g1[0] = gq[0]; zoo["cand:l1N_qk@L0"] = (g1, C[1])
+        a1 = C[1].clone(); a1[0] = ga[0]; zoo["cand:l1N_qk+av0"] = (gq, a1)   # unified rule: l1 QK at every layer, l1 AV at layer 0 (exact M) only
         if a.infl:
             (gq, ga), v = candidate_l1(st64, [Ms[l] * rho[l] for l in range(L)], H, dh, zoo[f"cand:svd_infl{a.infl}"], steps=a.l1_steps, lr=a.l1_lr, log=True, Ns=Na); zoo["cand:l1N_infl"] = (gq, ga)
         print(f"# l1N candidates built [{time.time()-t1:.0f}s]", flush=True)
