@@ -2828,3 +2828,41 @@ unified rule 0.56 — the probe draw still matters on Yelp after the refinement.
 (helps big_3 and Yelp, hurts small_6 beyond layer 0) and the QK-side one helps everywhere; on small_6 the closed form is already at
 or above the learned gauge on held-out text (paired eval of it: job 39787014, last set running). Paired eval of the unified rule
 and the QK-only refinement on small_6 submitted (job 39825991 at 22:27, 3 sets; learned set from the earlier paired eval).
+
+**23:15 — paired eval of the refined gauges on Yelp small_3 (job 39818135, 277 instances).** Certified radius (ratio of means):
+stock 0.02226 → `l1N` 0.02415 (**+8.5 %**; larger on 255, smaller on 10, equal 12), layer-0 splice `l1N@L0` 0.02394 (+7.6 %;
+247 / 15 / 15), learned 0.02450 (+10.1 %; 263 / 1 / 13). So the refined manual gauge takes **84 %** of the learned radius gain on
+the headline protocol (closed form: 64 %, with 25 smaller radii; now 10); the held-out screen said 0.88. Head to head the learned
+gauge is larger on 174 instances, `l1N` on 62. Fixed-eps verified 255 / 209 / 116 (stock) → 256 / 219 / 147 (`l1N`) vs
+256 / 219 / 152 (learned); flips unverified → verified 1 / 10 / 31 vs 1 / 10 / 36, verified → unverified 0; fp64 gates 3e-15.
+Not parity, but the largest single step of the evening on this model.
+
+**23:16 — small_6 paired evals are slow (≈ 2.3 h per weight set at 294 instances), so the closed-form run (job 39787014, 2 of
+4 sets done) and the 2-box run (39773109, 3 of 4) will not reach their learned set before the 04:00 maintenance; the learned
+set exists in the earlier small_6 paired eval on the same instances (`results/deept_small6_eval_short_seed0.json`) and is joined
+by `paired_summary.py <json> <tag> <ref.json> <ref_tag>`. The refined-gauge run (39825991, stock set 47 min in) was cancelled and
+resubmitted as job 39828671 with a stock-only resume file built from the finished stock set (same instances), so its two gauges
+(unified rule, QK-only ℓ1N) get ≈ 4.6 h instead of 2.3 h. small_6 held-out screen, round 3 complete: closed form 1.06, layer-0
+splice 1.08, QK-only 1.06 (42 / 0; 17 / 12 head to head), `l1jac_qk+jacN_av` 1.07, both-sided `l1N` and its inflated variant 0.52.
+
+**23:45 — paired eval of the unified rule on big_3 (job 39817354, 288 instances; learned set joined from job 39782433, same
+instances).** Certified radius: stock 0.01662 → unified rule `l1N_qk+av0` 0.01842 (**+10.8 %**; larger on 276, smaller on 0,
+equal 12), QK-only `l1N_qk` 0.01817 (+9.4 %; 275 / 0 / 13), learned 0.01859 (+11.9 %; 274 / 0 / 14). The unified rule takes
+**91 %** of the learned radius gain (closed form: 61 %) and is one-sided; head to head against the learned gauge it is larger on
+100 instances and smaller on 97 (equal 91) — a per-instance tie, with the learned gauge ahead in the mean through the largest
+eps: verified 256 / 116 / 4 (stock) → 258 / 125 / 34 (unified) vs 258 / 129 / 48 (learned); flips unverified → verified
+2 / 9 / 30 vs 2 / 13 / 44, verified → unverified 0 for both; fp64 gates 1–2e-15. The full `l1N` (job 39816017) has the same
++10.8 % mean on its finished set; its per-instance lines are pending. Small_6 round-5 screen complete: unified rule **1.08**
+(42 / 0; 18 / 11 head to head), QK-only 1.06, closed form 1.06, both-sided `l1N` 0.56.
+
+**23:54 — small_6 closed form on the paired protocol (job 39787014, first gauge set done; learned set joined from the earlier
+paired eval on the same 294 instances).** Certified radius: stock 0.02199 → `svd_jacN_all` (24 boxes) 0.02465 (**+12.1 %**;
+larger on 276, smaller on 0, equal 18), learned 0.02486 (+13.1 %; 273 / 0 / 21): the closed form alone takes **92 %** of the
+learned gain on small_6 and is larger than the learned gauge on 142 instances, smaller on 133. The 2-box `svd_jac` (job 39773109)
+scores 0.90 (+11.8 %; 254 / 2 / 38; 142 / 138 vs learned), so the probe count barely matters here. Fixed-eps verified
+275 / 181 / 41 (stock) → 275 / 182 / 92 (closed form) vs 275 / 183 / 95 (learned); no reverse flips. Split check: `cmd_eval`
+hard-codes the test split, so every paired number is on sentences the learners never saw (they tuned on dev). The screen's
+1.06 for this gauge was slightly optimistic (paired 0.92) — small_6 is at parity per instance, not above it.
+User asked to finish the search for a better formula with sub-agents; three launched: paired-gap bucketing + gauge-matrix
+comparison, surrogate-cost-at-the-learned-gauge diagnostic (`--cost_only`), and a theory note on CROWN's bilinear slack vs the ℓ1
+surrogate. Maintenance at 04:00 caps any GPU round at ≈ 2.5 h.

@@ -3,10 +3,12 @@
 Status 2026-09-07 21:20. Goal (second phase): a *manual* procedure — weights plus a handful of random probe sequences, no
 verifier in the loop — whose gauge beats the learned one (`deept_gauge.py learn`, Adam on CROWN's lower bound over tuning boxes).
 What is settled: the closed form below reaches 61–64 % of the learned radius gain on the paired protocol (big_3, Yelp small_3);
-refining it on the ℓ1 version of the same cost model (step 2) lifts the held-out share to 84–88 % on those two models with zero
-or two smaller radii out of ~48. What is pending: the paired evals of the refined gauge (big_3 job 39816017, Yelp next), small_6
-round 3, and the warm-start ceiling test. The learned gauge is not beaten yet; the remaining gap is localised (see "Where the
-gap is").
+refining it on the ℓ1 version of the same cost model (step 2) lifts the paired share to 0.91 on big_3 (one-sided, per-instance
+tie with the learned gauge) and 0.84 on Yelp; on small_6 the closed form and the refined rule score 1.06–1.08 on held-out text
+(paired: closed form 0.92, per-instance tie 142 / 133; refined rule running). The CROWN learner warm-started from the closed form ties the learned gauge exactly, so the learned gauge
+is the optimum of its own objective: parity is the realistic target for a manual procedure, and beating it needs a different
+objective. The procedure of record is the **unified rule**: closed form, then ℓ1 refinement of the QK gauge at every layer and of
+the value gauge at layer 0 only (the both-sided refinement is harmful on small_6).
 
 ## The construction
 
@@ -91,19 +93,26 @@ tokens, 277–294 instances, ratio of means, fixed-eps verified counts, fp64 gat
 |---|---|---|---|---|
 | SST big_3 | learned | 1.00 / 1.00 | +12.7 % (46 / 0) | +11.9 % (274 / 0) |
 | | svd_jacN_all (step 1) | 0.75 / 0.77 | 0.56 (45 / 0) | **0.61** (+7.2 %, 273 / 0) |
-| | **l1N (step 2)** | 0.96 / 0.95 | **0.84** (46 / 0; > learned on 4) | job 39816017 |
+| | **l1N (step 2)** | 0.96 / 0.95 | **0.84** (46 / 0; > learned on 4) | **0.91** (+10.8 %; per-instance lines pending) |
 | | l1N, layer 0 only | 0.94 / 0.93 | 0.82 (46 / 0) | job 39816017 |
+| | **unified rule** (l1 QK all layers, l1 AV layer 0) | — | 0.83 (46 / 0) | **0.91** (+10.8 %, 276 / 0; vs learned 100 / 97) |
+| | l1N, QK side only | 0.85 / 0.86 | 0.71 (45 / 0) | 0.79 (+9.4 %, 275 / 0) |
 | | l1N, 1500 steps | 0.96 / 0.95 | 0.86 (46 / 0) | — |
 | Yelp small_3 | learned | 1.00 / 1.00 | +10.7 % (44 / 0) | +10.1 % (263 / 1) |
 | | svd_jacN_all (step 1) | 0.64 / 0.83 | 0.66 (39 / 2) | **0.64** (+6.5 %, 234 / 25) |
-| | **l1N (step 2)** | 0.85 / 0.94 | **0.88** (43 / 2; > learned on 5) | queued |
-| | l1N, layer 0 only | 0.73 / 0.88 | 0.75 (41 / 2) | queued |
+| | **l1N (step 2)** | 0.85 / 0.94 | **0.88** (43 / 2; > learned on 5) | **0.84** (+8.5 %, 255 / 10) |
+| | unified rule | — | 0.82 (42 / 2) | — |
+| | second probe seed: closed form / l1N / unified | — | 0.28 / 0.59 / 0.56 (own screen) | — |
+| | l1N, layer 0 only | 0.73 / 0.88 | 0.75 (41 / 2) | 0.75 (+7.6 %, 247 / 15) |
 | SST small_6 | learned | 1.00 / 1.00 | — | +13.1 % (273 / 0) |
-| | svd_jacN_all (step 1) | 0.90 / 0.92 | (no held-out short dev sentences) | jobs 39787014 / 39773109 |
-| | l1N (step 2) | job 39802259 | job 39802259 | — |
+| | svd_jacN_all (step 1) | 0.90 / 0.92 | **1.06** (41 / 0; 18 / 16; second probe seed 1.06) | **0.92** (+12.1 %, 276 / 0; vs learned 142 / 133); 2-box svd_jac 0.90 (254 / 2) |
+| | l1N (step 2, both sides) | 0.83 / 0.84 | 0.52–0.54 (36 / 0) — harmful beyond layer 0 | — |
+| | l1N, QK side only | 0.96 / 0.96 | 1.06 (42 / 0; head to head 17 / 12) | job 39828671 (second set) |
+| | l1N, layer 0 only | 0.91 / 0.93 | **1.08** (41 / 0; 18 / 15) | — |
+| | **unified rule** (l1 QK all layers, l1 AV layer 0) | — | **1.08** (42 / 0; 18 / 11) | job 39828671 |
 
-The held-out screen predicts the paired number (Yelp 0.66 → 0.64, big_3 0.56 → 0.61); the learner-box column does not (it said
-0.82–0.83 for Yelp). Fixed-eps verified counts and flips move with the radius; reverse flips are 0 everywhere; fp64 gates 1e-15.
+The held-out screen predicts the paired number (Yelp 0.66 → 0.64 and 0.88 → 0.84, big_3 0.56 → 0.61); the learner-box column
+does not (it said 0.82–0.83 for Yelp, and 0.86 for the both-sided l1N on small_6 that scores 0.54 held-out). Fixed-eps verified counts and flips move with the radius; reverse flips are 0 everywhere; fp64 gates 1e-15.
 
 ## Where the gap is (side / layer swaps between the learned gauge and step 1, held-in)
 
