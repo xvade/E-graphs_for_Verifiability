@@ -185,12 +185,13 @@ def main():
     # RATIOS -- which came from CROWN radii -- are dropped), on the same random centres (Mu) and on a second seed's centres (Mu2)
     Mu = box_shapes(net, [(b[0], b[1], b[2], b[3], 1.0) for b in boxes_r], dev)
     a2 = argparse.Namespace(name=a.name, data="random", seed=a.seed + 1); Sr2 = short_instances(net, m, tok, load_data(a2, "dev"), a.max_len, a.n_sent, seed=a.seed + 1); rng3 = random.Random(a.seed + 1)
-    Mu2 = box_shapes(net, [(e, i, ex["label"], e.shape[1], 1.0) for j, ex, e, toks in Sr2 for i in pos_sets(toks, 1, rng3, a.pos)], dev)
+    boxes_r2 = [(e, i, ex["label"], e.shape[1], 1.0) for j, ex, e, toks in Sr2 for i in pos_sets(toks, 1, rng3, a.pos)]; Mu2 = box_shapes(net, boxes_r2, dev)
     print(f"# uniform-eps box shapes: seed {a.seed} {tuple(Mu[0].shape)}, seed {a.seed + 1} {tuple(Mu2[0].shape)}  [{time.time()-t0:.0f}s]", flush=True)
     # output-side functionals N_l (how downstream reads the attention output): margin gradients at the random centres, the same
     # layer's FFN rows, the next layer's projections through the residual (weight-only), and all three combined
     t0 = time.time(); No = out_shapes(net, [(b[0], b[1], b[2], b[3], b[4]) for b in boxes_r], dev); Nf, Nn = weight_shapes(net, st64, dev); Na = [combine_N([Nf[l], Nn[l], No[l]]) for l in range(L)]
-    print(f"# output-side functionals: N_out {tuple(No[0].shape)}, N_ffn {tuple(Nf[0].shape)}, N_next {tuple(Nn[0].shape)}, N_all {tuple(Na[0].shape)}  [{time.time()-t0:.0f}s]", flush=True)
+    No2 = out_shapes(net, boxes_r2, dev); Na2 = [combine_N([Nf[l], Nn[l], No2[l]]) for l in range(L)]   # second probe seed, verifier-free
+    print(f"# output-side functionals: N_out {tuple(No[0].shape)}, N_ffn {tuple(Nf[0].shape)}, N_next {tuple(Nn[0].shape)}, N_all {tuple(Na[0].shape)}; seed {a.seed + 1}: N_all {tuple(Na2[0].shape)}  [{time.time()-t0:.0f}s]", flush=True)
     # ---- gauge zoo
     zoo = {"identity": I64}
     for pth in gpaths: zoo[os.path.basename(pth).replace("_seed0.pt", "").replace("deept_", "").replace("pbvtrained_", "pbv_")] = load_gauge(pth, L, H, dh)
@@ -203,6 +204,7 @@ def main():
     t0 = time.time(); zoo["cand:svd_iso"] = candidate_svd(st64, None, H, dh); zoo["cand:svd_jac"] = candidate_svd(st64, Ms, H, dh)
     zoo["cand:svd_jac_u"] = candidate_svd(st64, Mu, H, dh); zoo["cand:svd_jac_u2"] = candidate_svd(st64, Mu2, H, dh)
     for nm, NN in (("out", No), ("ffn", Nf), ("next", Nn), ("all", Na)): zoo[f"cand:svd_jacN_{nm}"] = candidate_svd(st64, Ms, H, dh, NN)
+    zoo["cand:svd_jacN_all_u"] = candidate_svd(st64, Mu, H, dh, Na); zoo["cand:svd_jacN_all_u2"] = candidate_svd(st64, Mu2, H, dh, Na2)   # no CROWN radii anywhere; _u2 = other probe seed for M and N_out
     print(f"# svd candidates built [{time.time()-t0:.0f}s]; l1 candidates:", flush=True)
     (gq, ga), v = candidate_l1(st64, None, H, dh, zoo["cand:svd_iso"], steps=a.l1_steps, log=True); zoo["cand:l1_iso"] = (gq, ga)
     (gq, ga), v = candidate_l1(st64, Ms, H, dh, zoo["cand:svd_jac"], steps=a.l1_steps, log=True); zoo["cand:l1_jac"] = (gq, ga)
@@ -244,7 +246,7 @@ def main():
     if a.out:
         os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True); json.dump({"rows": rows, "boxes_random": len(boxes_r), "boxes_sst": len(boxes_s)}, open(a.out, "w"), indent=1)
         gd = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gauges")
-        for k in ("cand:svd_iso", "cand:svd_jac", "cand:svd_jac_u", "cand:svd_jac_u2", "cand:svd_jacN_out", "cand:svd_jacN_ffn", "cand:svd_jacN_next", "cand:svd_jacN_all", "cand:l1_iso", "cand:l1_jac"):
+        for k in ("cand:svd_iso", "cand:svd_jac", "cand:svd_jac_u", "cand:svd_jac_u2", "cand:svd_jacN_out", "cand:svd_jacN_ffn", "cand:svd_jacN_next", "cand:svd_jacN_all", "cand:svd_jacN_all_u", "cand:svd_jacN_all_u2", "cand:l1_iso", "cand:l1_jac"):
             torch.save({"qk": zoo[k][0].double().cpu(), "av": zoo[k][1].double().cpu(), "formula": k}, os.path.join(gd, f"formula_{a.name}_{k.split(':')[1]}.pt"))
         print(f"# saved candidates to gauges/formula_{a.name}_*.pt and {a.out}")
 

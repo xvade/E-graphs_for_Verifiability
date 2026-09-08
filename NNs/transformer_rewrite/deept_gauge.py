@@ -533,8 +533,22 @@ def pq_safe(*args, **kw):
     for p_ in leaves(net): p_.grad = None
     # a grad-mode pass leaves its node bounds / A matrices (and so the whole retained graph) on the BoundedModule of that sentence length;
     # with several lengths in play these add up, so drop them after EVERY optimisation, not only after a failure
-    lirpa._clear_and_set_new(None); import gc; gc.collect(); torch.cuda.empty_cache(); return r
+    lirpa._clear_and_set_new(None); purge_graph_tensors(lirpa); import gc; gc.collect(); torch.cuda.empty_cache(); return r
 PQ_OOM = False
+
+def purge_graph_tensors(lirpa):
+    """drop every graph-attached tensor a grad-mode pass left on the BoundedModule or its nodes (attributes _clear_and_set_new does not
+    know about, e.g. relaxation caches): anything with a grad_fn is a product of a pass and is recomputed by the next compute_bounds"""
+    def purge(obj):
+        n = 0
+        for k, v in list(vars(obj).items()):
+            if k.startswith("_") or isinstance(v, (nn.Parameter, nn.Module)): continue
+            if isinstance(v, torch.Tensor) and v.grad_fn is not None: delattr(obj, k); n += 1
+            elif isinstance(v, (list, tuple)) and v and all(isinstance(t, torch.Tensor) for t in v) and any(t.grad_fn is not None for t in v): delattr(obj, k); n += 1
+            elif isinstance(v, dict) and v and all(isinstance(t, torch.Tensor) for t in v.values()) and any(t.grad_fn is not None for t in v.values()): delattr(obj, k); n += 1
+        return n
+    n = purge(lirpa) + sum(purge(node) for node in lirpa.nodes())
+    return n
 
 def cmd_eval_pq(a):
     """Route A: per-query gauge optimisation on TEST instances.  For each instance and each eps in --eps_list: stock lb, fixed
@@ -550,6 +564,9 @@ def cmd_eval_pq(a):
     out = {"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], "eps_list": eps_list, "args": vars(a), "rec": {}}
     if a.save_json and os.path.exists(a.save_json):
         prev = json.load(open(a.save_json)); out["rec"] = prev.get("rec", {}); print(f"# resuming: {len(out['rec'])} instances already done", flush=True)
+        oom_len = [out["inst"][int(k)][2] for k, r in out["rec"].items() if any(isinstance(v, dict) and v.get("oom") for v in r.values())]
+        if oom_len and min(oom_len) - 1 < a.pq_max_tokens:   # adaptive cap: a length that ran out of memory once will again; stop trying it (and longer)
+            a.pq_max_tokens = min(oom_len) - 1; print(f"# per-query token cap lowered to {a.pq_max_tokens} (an instance of length {min(oom_len)} ran out of memory earlier)", flush=True)
     def fixed_lb(gq, ga, lp, e, i, eps, y): load_eff(net, effective(st, gq.float().to(dev), ga.float().to(dev), H, dh)); return crown_lb(lp, e, i, eps, y, dev)
     t_all = time.time()
     for idx, (j, i, e, y, toks) in enumerate(inst):
@@ -560,7 +577,9 @@ def cmd_eval_pq(a):
             if f_ > 0 and a.pq_stop_verified: pq = (f_, 0, 0)
             else:
                 r_ = pq_safe(net, st, lp, e, i, eps, y, dev, Gq0, Ga0, H, dh, a.pq_steps, a.pq_lr, a.cond_pen, a.clip, stop_at=0.0 if a.pq_stop_verified else None, max_tokens=a.pq_max_tokens)
-                pq = (r_[0], r_[2], r_[3]) if r_ is not None else (f_, -1, 0)
+                if r_ is None: pq = (f_, -1, 0)                                              # OOM / token cap: per-query := fixed
+                elif not np.isfinite(r_[0]): pq = (f_, -2, r_[3])                            # NaN cliff: no finite iterate at all (fixed is NaN too) -- not an OOM
+                else: pq = (r_[0], r_[2], r_[3])
             rec[str(eps)] = {"stock": s_, "fixed": f_, "pq": pq[0], "pq_best_step": pq[1], "pq_steps_run": pq[2], "oom": pq[1] == -1}
         if a.pq_radius:
             load_eff(net, effective(st, I64[0].float().to(dev), I64[1].float().to(dev), H, dh)); r_s = certified_radius(lp, e, i, y, dev, hi=a.hi, iters=a.iters)
@@ -568,6 +587,7 @@ def cmd_eval_pq(a):
             m0 = crown_lb(lp, e, i, r_f, y, dev)
             r_ = pq_safe(net, st, lp, e, i, r_f, y, dev, Gq0, Ga0, H, dh, a.pq_steps, a.pq_lr, a.cond_pen, a.clip, stop_at=None, max_tokens=a.pq_max_tokens)
             if r_ is None: v, bs, r_pq = m0, -1, r_f
+            elif not np.isfinite(r_[0]): v, bs, r_pq = m0, -2, r_f
             else:
                 v, G, bs, run = r_; load_eff(net, effective(st, G[0], G[1], H, dh)); r_pq = certified_radius(lp, e, i, y, dev, lo=r_f, hi=a.hi, iters=a.iters) if r_f < a.hi else r_f
             rec["radius"] = {"stock": r_s, "fixed": r_f, "pq": r_pq, "margin_at_rf_fixed": m0, "margin_at_rf_pq": v, "pq_best_step": bs, "oom": bs == -1}
@@ -575,9 +595,13 @@ def cmd_eval_pq(a):
         if a.save_json: json.dump(out, open(a.save_json, "w"))
         if PQ_OOM:
             print(f"  inst {idx:3d} saved (per-query := fixed after OOM); exiting 3 for a clean restart (resume from the JSON)", flush=True); sys.exit(3)
+        ran_heavy = e.shape[1] >= a.pq_restart_len and any(isinstance(v, dict) and v.get("pq_steps_run", 0) > 0 or (isinstance(v, dict) and v.get("pq_best_step", 0) not in (-1, 0)) for v in rec.values())
+        if a.pq_restart_len and ran_heavy:   # a grad-mode optimisation on a long instance leaves ~20 GB behind that no cache/bound clearing recovers: restart the process (resume from the JSON)
+            print(f"  inst {idx:3d} saved; exiting 3 for a clean restart after a {e.shape[1]}-token optimisation (--pq_restart_len {a.pq_restart_len})", flush=True); sys.exit(3)
         msg = "; ".join(f"eps {eps}: {r['stock']:+.3f} / {r['fixed']:+.3f} / {r['pq']:+.3f} ({r['pq_steps_run']} st)" for eps, r in rec.items() if eps != "radius")
         if "radius" in rec: r = rec["radius"]; msg += f"; radius {r['stock']:.4f} / {r['fixed']:.4f} / {r['pq']:.4f} (margin at r_f {r['margin_at_rf_fixed']:+.3f} -> {r['margin_at_rf_pq']:+.3f})"
-        print(f"  inst {idx:3d} (sent {j} pos {i} len {e.shape[1]}): stock / fixed / per-query -- {msg}  [{time.time()-t0:.0f}s, total {time.time()-t_all:.0f}s]", flush=True)
+        mem = f", peak GPU {torch.cuda.max_memory_allocated() / 2**30:.1f} GiB" if torch.cuda.is_available() else ""; torch.cuda.reset_peak_memory_stats() if torch.cuda.is_available() else None
+        print(f"  inst {idx:3d} (sent {j} pos {i} len {e.shape[1]}): stock / fixed / per-query -- {msg}  [{time.time()-t0:.0f}s, total {time.time()-t_all:.0f}s{mem}]", flush=True)
     R = out["rec"]; n = len(R); oom = sorted({int(x) for x in R for k in R[x] if R[x][k].get("oom")})
     if oom: print(f"# per-query optimisation skipped (per-query := fixed gauge) on {len(oom)} of {n} instances (lengths {sorted({out['inst'][x][2] for x in oom})}): --pq_max_tokens {a.pq_max_tokens} or CUDA OOM; grad-mode CROWN memory grows ~n^3 and 80 GB holds 11 tokens of this model", flush=True)
     for eps in eps_list:
@@ -600,7 +624,7 @@ if __name__ == "__main__":
     ap.add_argument("--obj", default="mean", help="mean | hinge"); ap.add_argument("--hinge_w", type=float, default=4.0)
     ap.add_argument("--max_len", type=int, default=12); ap.add_argument("--n_sent", type=int, default=20); ap.add_argument("--alpha", type=int, default=1); ap.add_argument("--hi", type=float, default=0.1); ap.add_argument("--iters", type=int, default=10); ap.add_argument("--save_json", default=None); ap.add_argument("--name", default="sst_bert_small_3"); ap.add_argument("--data", default="auto", help="sst | yelp | auto (from --name prefix)"); ap.add_argument("--eps", type=float, default=0.03); ap.add_argument("--softmax", default="lse"); ap.add_argument("--crown_batch", type=int, default=512)
     ap.add_argument("--split_attrib", type=int, default=0, help="attrib: also linearise ONE nonlinearity at a time (qk / softmax / av) and all three"); ap.add_argument("--factors", default="1,1.5", help="attrib: eps as multiples of the stock radius")
-    ap.add_argument("--pq_steps", type=int, default=20); ap.add_argument("--pq_lr", type=float, default=0.01); ap.add_argument("--pq_stop_verified", type=int, default=1); ap.add_argument("--pq_radius", type=int, default=0); ap.add_argument("--pq_max_tokens", type=int, default=11, help="eval_pq: skip the per-query optimisation (per-query := fixed gauge) on longer instances; 0 = no cap")
+    ap.add_argument("--pq_steps", type=int, default=20); ap.add_argument("--pq_lr", type=float, default=0.01); ap.add_argument("--pq_stop_verified", type=int, default=1); ap.add_argument("--pq_radius", type=int, default=0); ap.add_argument("--pq_restart_len", type=int, default=10, help="eval_pq: exit 3 (chain restarts, resume) after any optimisation on an instance this long or longer; 0 = never"); ap.add_argument("--pq_max_tokens", type=int, default=11, help="eval_pq: skip the per-query optimisation (per-query := fixed gauge) on longer instances; 0 = no cap")
     ap.add_argument("--weight_intervals", type=int, default=0, help="eval: also verify stock and gauged weights declared as 2-ulp fp32 intervals (rigorous transfer to the original network)")
     ap.add_argument("--k_words", type=int, default=1, help="perturb k embedding rows at once (1 = DeepT's one-word spec; 2 = two-word)"); ap.add_argument("--pairs_per_sent", type=int, default=7, help="eval: position sets per sentence when k_words > 1")
     a = ap.parse_args(); {"probe": cmd_probe, "radii": cmd_radii, "learn": cmd_learn, "eval": cmd_eval, "eval_alpha": cmd_eval_alpha, "attrib": cmd_attrib, "eval_pq": cmd_eval_pq}[a.cmd](a)

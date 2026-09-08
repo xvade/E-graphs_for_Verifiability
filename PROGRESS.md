@@ -2616,3 +2616,48 @@ the SVD init, surrogate 0.697 < svd_jac's 0.703) +0.325 / +0.814 — a lower sur
 dropped: the closed form is the formula. Per layer the learned gauge cuts the QK width product most at layer 4 (0.46 / CROWN 0.35)
 and the AV product at layers 2–5 (0.5–0.6); layer 0 AV rises (1.25) as on the other models. Max cond of svd_jac 34.6 (pre-floor).
 Outputs archived as *_v1; v2 validate with the output-side functionals launched (39779153).
+
+**18:20 — big_3 v2 validate (job 39780094, floored balancing): the output-side functionals lift the closed form from 58–63 % to
+75–77 % of the learned gain on the held-in metric.** Identity +0.111 / +0.146, learned +0.473 / +1.186; svd_jacN_all **+0.384 /
++0.946**, svd_jacN_out +0.382 / +0.934, svd_jacN_ffn +0.363 / +0.899, svd_jacN_next +0.329 / +0.820, svd_jac +0.322 / +0.805,
+svd_iso +0.262 / +0.609, l1_jac +0.326 / +0.827. As on Yelp small_3, the learned gauge lowers the with-N cost at layer 0 (AV·N
+0.76) where the plain width product rises (1.04). Paired eval on the 288-instance big_3 protocol (stock / svd_jacN_all / svd_jac /
+learned; eps 0.00957 / 0.0191 / 0.0287): job 39782433.
+
+**18:35 — per-query eps run, first complete pass (job 39776320, four restarts): on the instances it could optimise, per-query
+beats the fixed gauge every time but rarely flips a verdict.** 153 instances (20 test sentences ≤ 12 tokens). eps 0.02: stock /
+fixed / per-query verified 125 / 125 / 125 — only 3 instances were unverified under the fixed gauge and short enough to optimise;
+all 3 improved (mean +0.36) without flipping. eps 0.03: verified 28 / 68 / 69; 22 instances optimised (lengths 5–8), all 22
+improved (fixed mean lb −2.13 → −1.39, mean gain +0.73, max +1.18), one flipped to verified. 63 instances were skipped: the 12-token
+ones by design, and lengths 9–11 after genuine OOMs in eps mode (a length-10 and a length-11 instance died at eps 0.03 with the
+cache emptied and bounds cleared — memory at eps 0.03 is higher than at the radius run's r_f ≈ 0.03 for the same lengths, still
+unexplained), plus a cascade: three 5-token instances sit on the NaN cliff at eps 0.03 (stock and fixed lb NaN, no finite
+iterate), the record-keeping mistook "no finite iterate" for an OOM, and the adaptive cap fell to 4 tokens. Fixed: NaN-cliff
+outcomes are recorded as fixed with step −2 (not oom), each instance line now logs peak GPU memory, and the 11 cap-cascade
+records (lengths 5, 9, 10) are being recomputed with a 10-token cap (job 39782573). The radius run (39772599) is at instance 67
+of 153 with no failures.
+
+**18:55 — per-query memory: measured, not guessed.** With peak-memory logging: a 5-token optimisation peaks at 8.4 GiB, a 10-token one
+at 61.7 GiB (n³ scaling; 11 tokens ≈ 82 GiB > the A100, so 10 is the real cap in eps mode), and after ONE 10-token optimisation a
+9-token one (≈ 45 GiB) no longer fits — i.e. ≈ 35 GiB stay allocated after a pass even with the cache emptied and the module's known
+bound attributes cleared. `pq_safe` now also purges every graph-attached tensor (anything with a grad_fn) from the BoundedModule and its
+nodes after each optimisation, and `cmd_eval_pq` exits 3 for a clean restart after any optimisation on an instance of ≥ 10 tokens
+(`--pq_restart_len`); `deept_pq_chain3.sh` allows 80 restarts. The 7 nine-token records that had been cap-skipped were dropped for
+recomputation; resubmitted as 39784132 (146 of 153 instances already final).
+
+**19:00 — per-query eps run complete (job 39784132; the purge works: seven consecutive 9-token optimisations at a flat 40.6 GiB
+peak, no restart needed).** 153 test instances (20 SST test sentences ≤ 12 tokens), 20 Adam steps from the learned S6 gauge, early
+stop once verified. eps 0.02: verified stock 125 / fixed gauge 125 / per-query 125 (3 instances optimised, all improved by ≈ +0.4,
+none flipped). eps 0.03: verified 28 / 68 / 69; 30 instances optimised (lengths 8–11): all 30 improved, fixed mean lb −2.41 →
+per-query −1.74 (mean gain +0.66, max +1.18), one flipped to verified; 3 five-token instances sit on the NaN cliff (no finite
+bound for stock, fixed or any iterate); 52 instances of 11–12 tokens were not optimised (grad-mode memory). Reading: per-query
+optimisation is a reliable but small refinement on top of the fixed gauge (+0.66 margin vs the fixed gauge's own +2.0 over stock
+at eps 0.03), and it rarely crosses zero — the fixed gauge already takes the instances that are close. `results/deept_small6_pq_eps_seed0.json`.
+
+**19:10 — small_6 v2 validate (job 39779153).** The output-side functionals change little on this model: svd_jacN_all +0.430 / +1.097
+(90 % / 92 % of the learned gain), svd_jacN_next +0.430 / +1.096, svd_jacN_out +0.428 / +1.091, svd_jacN_ffn +0.426 / +1.087, svd_jac
++0.426 / +1.087; the verifier-free variants are identical to svd_jac (uniform eps +0.425 / +1.085, second probe seed +0.425 / +1.085):
+on small_6 the construction needs only the weights and a few random probe sequences. l1_jac again worse (+0.309 / +0.777). The
+learned gauge's layer-0 value effect is alignment here too (CROWN-width AV·N 0.84 at layer 0 where the plain AV product is 1.25);
+the QK product falls most at layers 4–5 (0.35 / 0.41). Paired 294-position eval of the 24-box candidates launched (job 39787014:
+stock / svd_jacN_all / svd_jac / learned), alongside the running 2-box eval (39773109).
