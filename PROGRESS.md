@@ -2550,3 +2550,69 @@ layer 0 helps — M_l is treated as gauge-independent, but a tighter early layer
 surrogate that reads the q'/k'/v' widths auto_LiRPA actually derives); replication validates on big_3 (39773174) and Yelp small_3
 (39773175), which also carry two verifier-free variants (eps := 1 on every box, and a second seed's random centres) to test
 whether the CROWN radii in M matter at all.
+
+**17:00 — ops: third per-query failure, and the two-word chain job replaced by a resumable eval.** The eps run (39772595) got past the
+capped 12-token instances and then ran out of memory on an 11-token one at the edge (79.2 GB) — raised inside auto_LiRPA's
+TorchScript'd ops as a plain `RuntimeError`, which the `OutOfMemoryError` guard did not catch. The guard now catches both, empties
+the CUDA cache before each optimisation, and keeps the 11-token cap; resubmitted as 39773887 (36 instances saved). The radius run
+39772599 is healthy at 10 tokens (per instance: fixed gauge +8.5 % radius, per-query a further +3.6 % on top). The two-word chain job
+39722894 was pre-empted a second time and restarted from its learn step again, so it was cancelled; `cmd_eval` now resumes weight
+sets already stored in its JSON (same instance list), and `deept_2w_eval_resume.sh` (job 39773950) runs only the eval with the eps
+grid stored in the JSON (0.0047 / 0.0094 / 0.0141 = 0.5 / 1 / 1.5 × the median stock two-word tuning radius): stock is resumed from
+the first attempt, the two-word-trained and one-word-trained gauges remain (~3.6 h).
+
+**17:20 — replication validates (v1) on big_3 (job 39773174) and Yelp small_3 (39773175): the candidate transfers, the surrogate
+does not fully explain the learned gauges, and the value/output side is where the model is incomplete.** Held-in mean lb
+(random boxes / learner's own boxes); identity → learned → svd_jac → svd_iso:
+big_3: +0.111 / +0.146 → +0.473 / +1.186 → +0.322 / +0.805 → +0.262 / +0.609 — the closed form keeps 58 % / 63 % of the learned
+gain (svd_iso 42 % / 45 %), l1_jac 64 % / 66 %; the eps ratios and the probe seed do not matter (svd_jac_u, _u2 within 1 %).
+Yelp small_3: +0.076 / +0.246 → +0.275 / +1.785 → +0.144 / +1.373 → +0.065 / +1.157 — 34 % / 73 %; but here the second-seed
+candidate svd_jac_u2 gets +0.224 / +0.400 (better on random boxes, far worse on the learner's) with the SAME surrogate value as
+svd_jac (0.933), and the ℓ1-refined l1_jac (surrogate 0.912 < 0.933) is worse than svd_jac on CROWN (+1.16 vs +1.37). Two
+facts break the pure width-product model: (i) on Yelp small_3 the learned gauge scores 0.998 (ℓ1) / 1.094 (ℓ2) on the Jacobian
+surrogate and 0.94–0.99 on the CROWN-width surrogate — i.e. ≈ identity — while gaining +1.54 on its boxes; (ii) on all three models
+the learned gauge RAISES the layer-0 value-side width product (small_6 1.25×, big_3 1.04×, Yelp 1.14× — also in the widths CROWN
+actually derives), yet the layer-0 gauge alone is worth a large share of the gain, and the AV-only ablation is the bigger half on
+every model. So the value/output gauge is not (only) shrinking widths. Hypothesis: the relaxation slack of coordinate c of the
+context reaches the final bound through W_o's column c and the downstream backward functional λ, i.e. with weight |λᵀ W_o'_{:,c}|,
+not ‖W_o'_{:,c}‖₁ — and G_a can ROTATE the value coordinates so that the wide ones are the ones downstream barely reads. Same
+balancing form with B = W_oᵀ N instead of W_oᵀ, N = the downstream functionals: added to `gauge_formula.py` as N_out (margin
+gradients w.r.t. the attention output at the random centres), N_ffn ((W₁Γ₁P)ᵀ, the same layer's ReLU inputs — weight-only, the
+no_var LayerNorm being linear), N_next (next layer's projections through the residual, weight-only) and N_all (the three with equal
+Frobenius weight); surrogate column l1_jacN, CROWN-width column "with N", candidates svd_jacN_{out,ffn,next,all}. v2 runs:
+Yelp small_3 39776031, big_3 39776034 (v1 outputs kept as *_v1). Also from the full small_6 table so far: the SST-, Yelp-,
+random-token- and two-word-tuned gauges and the verifier-trained "inner" gauge all sit at surrogate 0.72–0.73 / CROWN-width
+0.53–0.57 with held-in +0.43–0.47 / +1.08–1.18 (identity +0.09 / +0.16) — one flat optimum reached from five different tuning sets.
+
+**17:30 — per-query eps run, fourth failure, root cause found.** The resumed run (39773887) hit OOM on an 8-token instance: a grad-mode
+CROWN pass leaves its node bounds and A matrices — hence the whole retained graph — on the BoundedModule of that sentence length,
+and with five lengths in play the leftovers of up to five graphs sit on the card at once; once the first OOM happened the caught
+exception did not give the memory back either, so every later instance (len 8, 10) was "skipped" too. Fix: `pq_safe` now calls the
+module's `_clear_and_set_new(None)` + gc after EVERY optimisation, and after a caught OOM the instance is saved as fixed-gauge and
+the process exits with code 3; the new `deept_pq_chain2.sh` restarts it (fresh CUDA context, resume from the JSON) up to 12 times.
+The 17 instances that were skipped only because of the leak (25–27 and 57–70, lengths 5–10) were removed from the JSON so they are recomputed;
+the 12-token ones stay capped. Resubmitted as 39776320. The radius run (39772599, old code) is still healthy at instance ~25.
+
+**17:45 — v2 Yelp small_3 (job 39776031): the output-side functionals explain the value gauge, and the closed form with them reaches
+82–86 % of the learned gain on the learner's boxes.** With N in the cost, the learned gauge now REDUCES the width-product cost
+CROWN actually incurs (with-N column 0.87 random / 0.83 learner boxes; per layer AV·N 0.93 / 0.91 / 0.89, where the plain AV column
+went 1.14 / 1.00 / 1.08) — the value gauge works by rotating the wide value coordinates away from the directions downstream reads,
+not by shrinking widths. Candidates (identity +0.076 / +0.246, learned +0.275 / +1.785): svd_jacN_out **+0.202 / +1.566** (63 % /
+86 % of the learned gain; margin-gradient functionals at the 24 random centres), svd_jacN_all +0.192 / +1.510 (58 % / 82 %; cond 6.5),
+svd_jacN_ffn +0.166 / +1.431, svd_jacN_next +0.163 / +1.371, vs svd_jac +0.144 / +1.373 (34 % / 73 %). svd_jacN_out came out with
+max cond 9e17 (a near-zero singular value of (W_v M)ᵀ(W_oᵀ N_out) makes G singular): the diagonal freedom Λ in G = R_a⁻¹ U Λ is
+CROWN-neutral, so `svd_balance` now floors the balancing scale at sqrt(1e-3 · s_max) — unchanged where conditioning was fine.
+The surrogate columns themselves are weak discriminators on this model (l1_jacN 0.95–0.98 for everything); the CROWN-width-with-N
+column and, above all, the held-in CROWN metric are what ranks candidates. Paired eval on the 277-instance Yelp small_3 protocol
+(stock / svd_jacN_all / svd_jac / learned; eps grid 0.00801 / 0.016 / 0.024 as in the learned gauge's eval): job 39778637.
+
+**18:00 — full small_6 validate v1 (job 39772616: 24 random-token boxes for M, 48 SST-dev learner boxes).** Held-in mean lb
+(random / learner boxes): identity +0.092 / +0.156; the five learned gauges (SST, Yelp, random-token, two-word, verifier-"inner")
++0.43–0.47 / +1.08–1.18 with surrogate 0.72–0.73 and CROWN-width 0.53–0.57 — one flat optimum; overfit gauge −1.24 / −2.77 with
+surrogate 1.07 (ℓ1) / 1.32 (ℓ2) and CROWN-width 2.4 / 3.6. Ablations of the SST gauge: AV-only +0.41 / +1.04, QK-only +0.32 / +0.73;
+layers 0…5 alone: +0.11 / +0.22, +0.10 / +0.17, +0.16 / +0.34, +0.23 / +0.56, +0.28 / +0.68, +0.23 / +0.45. Candidates:
+**svd_jac +0.426 / +1.087 = 88 % / 91 % of the learned gain** (svd_iso +0.272 / +0.716 = 48 % / 55 %); l1_jac (400 Adam steps from
+the SVD init, surrogate 0.697 < svd_jac's 0.703) +0.325 / +0.814 — a lower surrogate but a worse bound, so the ℓ1 refinement is
+dropped: the closed form is the formula. Per layer the learned gauge cuts the QK width product most at layer 4 (0.46 / CROWN 0.35)
+and the AV product at layers 2–5 (0.5–0.6); layer 0 AV rises (1.25) as on the other models. Max cond of svd_jac 34.6 (pre-floor).
+Outputs archived as *_v1; v2 validate with the output-side functionals launched (39779153).

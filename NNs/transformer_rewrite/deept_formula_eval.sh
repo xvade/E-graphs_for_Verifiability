@@ -4,7 +4,7 @@
 set -u
 REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 T="$REPO/NNs/transformer_rewrite"; export OMP_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; cd "$T"
-TAG=$1; GAUGES=$2; NAME=${3:-sst_bert_small_6}
+TAG=$1; GAUGES=$2; NAME=${3:-sst_bert_small_6}; EPS=${4:-0.01,0.02,0.03}   # eps grid of the model's earlier paired eval
 mark() { echo "$1 formula_eval_$TAG $(date) job=${SLURM_JOB_ID:-none}" >> "$S/official_sequence.log"; }
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
-mark START; "$PY" -u deept_gauge.py eval --name $NAME --gauge "$GAUGES" --max_len 12 --n_sent 40 --seed 0 --eps_list 0.01,0.02,0.03 --hi 0.1 --iters 10 --save_json "$T/results/deept_formula_${TAG}_eval_short_seed0.json" > "$S/deept_eval_short_formula_$TAG.log" 2>&1; RC=$?; mark "DONE rc=$RC"; exit $RC
+mark START; "$PY" -u deept_gauge.py eval --name $NAME --gauge "$GAUGES" --max_len 12 --n_sent 40 --seed 0 --eps_list "$EPS" --hi 0.1 --iters 10 --save_json "$T/results/deept_formula_${TAG}_eval_short_seed0.json" > "$S/deept_eval_short_formula_$TAG.log" 2>&1; RC=$?; mark "DONE rc=$RC"; exit $RC

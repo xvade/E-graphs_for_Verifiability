@@ -49,13 +49,48 @@ def box_shapes(net, boxes, dev):
         for l in range(L): cols[l].append((2.0 * eps * J[l]).permute(1, 0, 2).reshape(hid, -1))   # (hid, T*hid_in)
     return [torch.cat(c, 1).double() for c in cols]
 
-def surrogate(Wq, Wk, Wv, Wo, Gq, Ga, M, p, H, dh):
-    """per-layer (S_qk, S_av) for one layer's stock (Wq, Wk, Wv, Wo) (nn.Linear convention: Wq (H*dh x hid), Wo (hid x H*dh)), gauges Gq/Ga (H, dh, dh), box shape M (hid x N) or None (= I)"""
+def out_shapes(net, boxes, dev):
+    """N_l^out (hid x T*boxes): gradient of the centre margin w.r.t. the attention sub-layer's dense output u_l = W_o c' (per token), stacked
+    over boxes -- the functional through which the FINAL bound reads layer l's attention output (first order, at the box centre)"""
+    L = len(net.layers); cols = [[] for _ in range(L)]
+    for e, i, y, n, eps in boxes:
+        with torch.enable_grad():
+            x = net.ln0(e.to(dev).clone().requires_grad_(True)); B, nT, _ = x.shape; us = []
+            for l in net.layers:
+                a = l.attention.self
+                q = a.query(x).view(B, nT, net.H, net.dh).transpose(1, 2); k = a.key(x).view(B, nT, net.H, net.dh).transpose(1, 2); v = a.value(x).view(B, nT, net.H, net.dh).transpose(1, 2)
+                pr = torch.softmax(torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(net.dh), dim=-1); c = torch.matmul(pr, v).transpose(1, 2).reshape(B, nT, net.H * net.dh)
+                u = l.attention.output.dense(c); u.retain_grad(); us.append(u)
+                h = l.attention.output.LayerNorm(u + x); x = l.output.LayerNorm(l.output.dense(torch.relu(l.intermediate.dense(h))) + h)
+            logits = net.classifier(torch.tanh(net.pooler.dense(x[:, 0]))); (logits[0, y] - logits[0, 1 - y]).backward()
+        for l in range(L): cols[l].append(us[l].grad[0].T.detach())   # (hid, T)
+    return [torch.cat(c, 1).double() for c in cols]
+
+def weight_shapes(net, st64, dev):
+    """weight-only downstream functionals on u_l (the no_var LayerNorm is linear: LN(u) = Γ P u + β, P = I - 11ᵀ/hid):
+    N_ffn = (W_1 Γ_1 P)ᵀ  -- the same layer's FFN pre-activations (ReLU inputs CROWN must bound);
+    N_next = ([W_q; W_k; W_v]_{l+1} Γ_2 P Γ_1 P)ᵀ -- the next layer's projections through the residual path (FFN branch skipped); last layer: the pooler"""
+    hid = net.hid; P = torch.eye(hid, dtype=torch.float64, device=dev) - torch.ones(hid, hid, dtype=torch.float64, device=dev) / hid; Nf, Nn = [], []
+    for l, layer in enumerate(net.layers):
+        G1 = torch.diag(layer.attention.output.LayerNorm.weight.detach().double()); G2 = torch.diag(layer.output.LayerNorm.weight.detach().double())
+        Nf.append((layer.intermediate.dense.weight.detach().double() @ G1 @ P).T)
+        Wn = torch.cat([st64[l + 1][0], st64[l + 1][2], st64[l + 1][4]], 0) if l + 1 < len(net.layers) else net.pooler.dense.weight.detach().double()
+        Nn.append((Wn @ G2 @ P @ G1 @ P).T)
+    return Nf, Nn
+
+def combine_N(blocks):
+    """concatenate functional blocks with equal Frobenius weight (their natural scales are unrelated)"""
+    return torch.cat([b / b.norm() for b in blocks], 1)
+
+def surrogate(Wq, Wk, Wv, Wo, Gq, Ga, M, p, H, dh, N=None):
+    """per-layer (S_qk, S_av) for one layer's stock (Wq, Wk, Wv, Wo) (nn.Linear convention: Wq (H*dh x hid), Wo (hid x H*dh)), gauges Gq/Ga (H, dh, dh),
+    box shape M (hid x N) or None (= I); N (hid x F) = downstream functionals reading the attention output (None = every hidden coordinate, i.e. the l1 column norm)"""
     Sqk = torch.zeros((), dtype=torch.float64, device=Wq.device); Sav = torch.zeros((), dtype=torch.float64, device=Wq.device)
     for h in range(H):
         sl = slice(h * dh, (h + 1) * dh); G = Gq[h]; A = Ga[h]
         qa = G.T @ Wq[sl]; kb = torch.linalg.inv(G) @ Wk[sl]; va = A.T @ Wv[sl]; ob = Wo[:, sl] @ torch.linalg.inv(A).T          # rows of qa/kb/va (dh x hid); ob (hid_out x dh)
         if M is not None: qa, kb, va = qa @ M, kb @ M, va @ M
+        if N is not None: ob = N.T @ ob                                                                                                  # (F x dh): how each downstream functional reads coordinate c
         Sqk = Sqk + (qa.norm(p=p, dim=1) * kb.norm(p=p, dim=1)).sum(); Sav = Sav + (va.norm(p=p, dim=1) * ob.norm(p=p, dim=0)).sum()
     return Sqk, Sav
 
@@ -75,32 +110,36 @@ def attn_bound_nodes(lirpa):
         if cur is not None: out.setdefault(int(mm.group(1)), {})[mm.group(2)[0]] = cur
     return out
 
-def crown_width_surrogate(net, nodes, H, dh):
+def crown_width_surrogate(net, nodes, H, dh, Ns=None):
     """right after a compute_bounds call: per layer (S_qk, S_av) with the widths CROWN actually derived for q', k', v'
     (summed over tokens) and the live folded W_o columns -- the width-product cost model with NO box-shape approximation"""
     res = []
     for l in range(len(net.layers)):
         d = nodes.get(l, {})
-        if not all(k in d for k in "qkv"): res.append((float("nan"), float("nan"))); continue
+        if not all(k in d for k in "qkv"): res.append((float("nan"), float("nan"), float("nan"))); continue
         wq = (d["q"].upper - d["q"].lower)[0].sum(1); wk = (d["k"].upper - d["k"].lower)[0].sum(2); wv = (d["v"].upper - d["v"].lower)[0].sum(1)   # (H, dh)
         Wo = net.attn_modules()[l][3].weight.detach()                                                                                     # (hid, H*dh)
-        res.append(((wq * wk).sum().item(), (wv * Wo.abs().sum(0).view(H, dh)).sum().item()))
+        avN = (wv * (Ns[l].T.float() @ Wo).abs().sum(0).view(H, dh)).sum().item() if Ns is not None else float("nan")
+        res.append(((wq * wk).sum().item(), (wv * Wo.abs().sum(0).view(H, dh)).sum().item(), avN))
     return res
 
 def svd_balance(A, B):
     """closed-form p=2 minimiser: G with G^T A = sqrt(S) U^T for A^T B = U S V^T (A, B: dh x N, full row rank); via the dh x dh problem"""
     Qa, Ra = torch.linalg.qr(A.T); Qb, Rb = torch.linalg.qr(B.T)       # A^T = Qa Ra, B^T = Qb Rb
     U, S, Vh = torch.linalg.svd(Ra @ Rb.T)                                 # A^T B = Qa (Ra Rb^T) Qb^T
-    return torch.linalg.solve(Ra, U) @ torch.diag(S.sqrt())                # G = Ra^-1 U sqrt(S)
+    # G = Ra^-1 U Λ: for ANY diagonal Λ the row-norm products are s_c (the diagonal freedom is CROWN-neutral); Λ = sqrt(S) balances the
+    # two factors, but a near-zero s_c would make G singular in fp32, so the balancing scale is floored at sqrt(1e-3 · s_max)
+    lam = S.clamp_min(1e-3 * S.max()).sqrt()
+    return torch.linalg.solve(Ra, U) @ torch.diag(lam)
 
-def candidate_svd(st64, Ms, H, dh):
-    """per head: Gq from (Wq_h M, Wk_h M), Ga from (Wv_h M, Wo_h^T)"""
+def candidate_svd(st64, Ms, H, dh, Ns=None):
+    """per head: Gq from (Wq_h M, Wk_h M), Ga from (Wv_h M, Wo_h^T N) (N = I: plain columns of W_o)"""
     Gq, Ga = [], []
     for l, (Wq, bq, Wk, bk, Wv, bv, Wo) in enumerate(st64):
         M = Ms[l] if Ms is not None else None; gq, ga = [], []
         for h in range(H):
             sl = slice(h * dh, (h + 1) * dh); A = Wq[sl] if M is None else Wq[sl] @ M; B = Wk[sl] if M is None else Wk[sl] @ M
-            gq.append(svd_balance(A, B)); Av = Wv[sl] if M is None else Wv[sl] @ M; ga.append(svd_balance(Av, Wo[:, sl].T))
+            gq.append(svd_balance(A, B)); Av = Wv[sl] if M is None else Wv[sl] @ M; ga.append(svd_balance(Av, Wo[:, sl].T if Ns is None else Wo[:, sl].T @ Ns[l]))
         Gq.append(torch.stack(gq)); Ga.append(torch.stack(ga))
     return torch.stack(Gq), torch.stack(Ga)
 
@@ -148,6 +187,10 @@ def main():
     a2 = argparse.Namespace(name=a.name, data="random", seed=a.seed + 1); Sr2 = short_instances(net, m, tok, load_data(a2, "dev"), a.max_len, a.n_sent, seed=a.seed + 1); rng3 = random.Random(a.seed + 1)
     Mu2 = box_shapes(net, [(e, i, ex["label"], e.shape[1], 1.0) for j, ex, e, toks in Sr2 for i in pos_sets(toks, 1, rng3, a.pos)], dev)
     print(f"# uniform-eps box shapes: seed {a.seed} {tuple(Mu[0].shape)}, seed {a.seed + 1} {tuple(Mu2[0].shape)}  [{time.time()-t0:.0f}s]", flush=True)
+    # output-side functionals N_l (how downstream reads the attention output): margin gradients at the random centres, the same
+    # layer's FFN rows, the next layer's projections through the residual (weight-only), and all three combined
+    t0 = time.time(); No = out_shapes(net, [(b[0], b[1], b[2], b[3], b[4]) for b in boxes_r], dev); Nf, Nn = weight_shapes(net, st64, dev); Na = [combine_N([Nf[l], Nn[l], No[l]]) for l in range(L)]
+    print(f"# output-side functionals: N_out {tuple(No[0].shape)}, N_ffn {tuple(Nf[0].shape)}, N_next {tuple(Nn[0].shape)}, N_all {tuple(Na[0].shape)}  [{time.time()-t0:.0f}s]", flush=True)
     # ---- gauge zoo
     zoo = {"identity": I64}
     for pth in gpaths: zoo[os.path.basename(pth).replace("_seed0.pt", "").replace("deept_", "").replace("pbvtrained_", "pbv_")] = load_gauge(pth, L, H, dh)
@@ -159,6 +202,7 @@ def main():
     # ---- candidates
     t0 = time.time(); zoo["cand:svd_iso"] = candidate_svd(st64, None, H, dh); zoo["cand:svd_jac"] = candidate_svd(st64, Ms, H, dh)
     zoo["cand:svd_jac_u"] = candidate_svd(st64, Mu, H, dh); zoo["cand:svd_jac_u2"] = candidate_svd(st64, Mu2, H, dh)
+    for nm, NN in (("out", No), ("ffn", Nf), ("next", Nn), ("all", Na)): zoo[f"cand:svd_jacN_{nm}"] = candidate_svd(st64, Ms, H, dh, NN)
     print(f"# svd candidates built [{time.time()-t0:.0f}s]; l1 candidates:", flush=True)
     (gq, ga), v = candidate_l1(st64, None, H, dh, zoo["cand:svd_iso"], steps=a.l1_steps, log=True); zoo["cand:l1_iso"] = (gq, ga)
     (gq, ga), v = candidate_l1(st64, Ms, H, dh, zoo["cand:svd_jac"], steps=a.l1_steps, log=True); zoo["cand:l1_jac"] = (gq, ga)
@@ -166,41 +210,41 @@ def main():
     try: bnodes = {n: attn_bound_nodes(lp) for n, lp in lirpas.items()}
     except Exception as ex: bnodes = {n: {} for n in lirpas}; print(f"# CROWN-width surrogate disabled: node identification failed ({ex})", flush=True)
     print(f"# CROWN-width surrogate: q/k/v bound nodes found for {[len(v) for v in bnodes.values()]} layers per sentence length", flush=True)
-    rows = {}; print(f"\n# {'gauge':28s} | surrogate / identity:  l1_iso   l1_jac   l2_iso   l2_jac  (QK+AV; QK, AV for l1_jac) | CROWN-width surrogate / identity (random boxes; sst boxes) | held-in CROWN: random mean lb, frac ver | SST-dev mean lb, frac ver | max cond", flush=True)
+    rows = {}; print(f"\n# {'gauge':28s} | surrogate / identity:  l1_iso   l1_jac   l2_iso   l2_jac  (QK+AV; QK, AV for l1_jac)  l1_jacN = with downstream functionals N | CROWN-width surrogate / identity (random boxes; learner boxes) | held-in CROWN: random mean lb, frac ver | SST-dev mean lb, frac ver | max cond", flush=True)
     base = {}
     for name, (Gq, Ga) in zoo.items():
         Gq, Ga = Gq.double().to(dev), Ga.double().to(dev); S = {}
-        for key, (M, p) in {"l1_iso": (None, 1), "l1_jac": (Ms, 1), "l2_iso": (None, 2), "l2_jac": (Ms, 2)}.items():
+        for key, (M, p, NN) in {"l1_iso": (None, 1, None), "l1_jac": (Ms, 1, None), "l2_iso": (None, 2, None), "l2_jac": (Ms, 2, None), "l1_jacN": (Ms, 1, Na)}.items():
             sq = sa = 0.0; per_layer = []
             for l, (Wq, bq, Wk, bk, Wv, bv, Wo) in enumerate(st64):
-                s1, s2 = surrogate(Wq, Wk, Wv, Wo, Gq[l], Ga[l], M[l] if M is not None else None, p, H, dh); sq += s1.item(); sa += s2.item(); per_layer.append((s1.item(), s2.item()))
+                s1, s2 = surrogate(Wq, Wk, Wv, Wo, Gq[l], Ga[l], M[l] if M is not None else None, p, H, dh, NN[l] if NN is not None else None); sq += s1.item(); sa += s2.item(); per_layer.append((s1.item(), s2.item()))
             S[key] = (sq + sa, sq, sa, per_layer)
         if name == "identity": base = {k: v[0] for k, v in S.items()}; base_layers = {k: v[3] for k, v in S.items()}
-        set_gauge(Gq, Ga); t0 = time.time(); cw = {"rand": np.zeros((L, 2)), "sst": np.zeros((L, 2))}
+        set_gauge(Gq, Ga); t0 = time.time(); cw = {"rand": np.zeros((L, 3)), "sst": np.zeros((L, 3))}
         def held_in(bs, key):
             vals = []
             for b in bs:
                 vals.append(crown_lb(lirpas[b[3]], b[0], b[1], b[4], b[2], dev))
-                try: cw[key] += np.array(crown_width_surrogate(net, bnodes[b[3]], H, dh))
+                try: cw[key] += np.array(crown_width_surrogate(net, bnodes[b[3]], H, dh, Na))
                 except Exception as ex: cw[key] += np.nan; print(f"    (crown-width surrogate failed: {ex})", flush=True)
             return np.array(vals)
         vr = held_in(boxes_r, "rand"); vs = held_in(boxes_s, "sst")
         cond = max(torch.linalg.cond(Gq.reshape(-1, dh, dh)).max().item(), torch.linalg.cond(Ga.reshape(-1, dh, dh)).max().item())
-        if name == "identity": base_cw = {k: v.sum() for k, v in cw.items()}; base_cw_layers = {k: v.copy() for k, v in cw.items()}
-        cwr = {k: cw[k].sum() / base_cw[k] for k in cw}; cwq = {k: cw[k][:, 0].sum() / base_cw[k] for k in cw}; cwa = {k: cw[k][:, 1].sum() / base_cw[k] for k in cw}
+        if name == "identity": base_cw = {k: v[:, :2].sum() for k, v in cw.items()}; base_cwN = {k: v[:, 0].sum() + v[:, 2].sum() for k, v in cw.items()}; base_cw_layers = {k: v.copy() for k, v in cw.items()}
+        cwr = {k: cw[k][:, :2].sum() / base_cw[k] for k in cw}; cwq = {k: cw[k][:, 0].sum() / base_cw[k] for k in cw}; cwa = {k: cw[k][:, 1].sum() / base_cw[k] for k in cw}; cwN = {k: (cw[k][:, 0].sum() + cw[k][:, 2].sum()) / base_cwN[k] for k in cw}
         rows[name] = {"surr": {k: v[:3] for k, v in S.items()}, "per_layer_l1_jac": S["l1_jac"][3], "crown_width": {k: v.tolist() for k, v in cw.items()}, "random_lb": float(np.nanmean(vr)), "random_ver": float(np.mean(vr > 0)), "sst_lb": float(np.nanmean(vs)), "sst_ver": float(np.mean(vs > 0)), "cond": cond}
-        print(f"  {name:28s} | {S['l1_iso'][0]/base['l1_iso']:7.3f}  {S['l1_jac'][0]/base['l1_jac']:7.3f}  {S['l2_iso'][0]/base['l2_iso']:7.3f}  {S['l2_jac'][0]/base['l2_jac']:7.3f}  (QK {S['l1_jac'][1]/base['l1_jac']:.3f}, AV {S['l1_jac'][2]/base['l1_jac']:.3f}) | CROWN-width rand {cwr['rand']:.3f} (QK {cwq['rand']:.3f}, AV {cwa['rand']:.3f}) sst {cwr['sst']:.3f} (QK {cwq['sst']:.3f}, AV {cwa['sst']:.3f}) | {np.nanmean(vr):+.4f} {np.mean(vr > 0):.2f} | {np.nanmean(vs):+.4f} {np.mean(vs > 0):.2f} | {cond:5.1f}  [{time.time()-t0:.0f}s]", flush=True)
+        print(f"  {name:28s} | {S['l1_iso'][0]/base['l1_iso']:7.3f}  {S['l1_jac'][0]/base['l1_jac']:7.3f}  {S['l2_iso'][0]/base['l2_iso']:7.3f}  {S['l2_jac'][0]/base['l2_jac']:7.3f}  (QK {S['l1_jac'][1]/base['l1_jac']:.3f}, AV {S['l1_jac'][2]/base['l1_jac']:.3f}) l1_jacN {S['l1_jacN'][0]/base['l1_jacN']:.3f} (AV·N {S['l1_jacN'][2]/base['l1_jacN']:.3f}) | CROWN-width rand {cwr['rand']:.3f} (QK {cwq['rand']:.3f}, AV {cwa['rand']:.3f}; with N {cwN['rand']:.3f}) sst {cwr['sst']:.3f} (QK {cwq['sst']:.3f}, AV {cwa['sst']:.3f}; with N {cwN['sst']:.3f}) | {np.nanmean(vr):+.4f} {np.mean(vr > 0):.2f} | {np.nanmean(vs):+.4f} {np.mean(vs > 0):.2f} | {cond:5.1f}  [{time.time()-t0:.0f}s]", flush=True)
     # per-layer view of the l1_jac surrogate for identity vs the first learned gauge (layer 1 = exact box shape)
     if first:
         print(f"\n# per-layer l1_jac surrogate (QK, AV), identity -> {first[0]}:")
         for l in range(L):
             i0 = base_layers["l1_jac"][l]; g0 = rows[first[0]]["per_layer_l1_jac"][l]
             c0 = base_cw_layers["sst"][l]; c1 = np.array(rows[first[0]]["crown_width"]["sst"][l])
-            print(f"  layer {l}: l1_jac QK {i0[0]:.4g} -> {g0[0]:.4g} ({g0[0]/i0[0]:.3f}), AV {i0[1]:.4g} -> {g0[1]:.4g} ({g0[1]/i0[1]:.3f}) | CROWN-width (sst boxes) QK {c0[0]:.4g} -> {c1[0]:.4g} ({c1[0]/c0[0]:.3f}), AV {c0[1]:.4g} -> {c1[1]:.4g} ({c1[1]/c0[1]:.3f})")
+            print(f"  layer {l}: l1_jac QK {i0[0]:.4g} -> {g0[0]:.4g} ({g0[0]/i0[0]:.3f}), AV {i0[1]:.4g} -> {g0[1]:.4g} ({g0[1]/i0[1]:.3f}) | CROWN-width (learner boxes) QK {c0[0]:.4g} -> {c1[0]:.4g} ({c1[0]/c0[0]:.3f}), AV {c0[1]:.4g} -> {c1[1]:.4g} ({c1[1]/c0[1]:.3f}), AV·N {c0[2]:.4g} -> {c1[2]:.4g} ({c1[2]/c0[2]:.3f})")
     if a.out:
         os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True); json.dump({"rows": rows, "boxes_random": len(boxes_r), "boxes_sst": len(boxes_s)}, open(a.out, "w"), indent=1)
         gd = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gauges")
-        for k in ("cand:svd_iso", "cand:svd_jac", "cand:svd_jac_u", "cand:svd_jac_u2", "cand:l1_iso", "cand:l1_jac"):
+        for k in ("cand:svd_iso", "cand:svd_jac", "cand:svd_jac_u", "cand:svd_jac_u2", "cand:svd_jacN_out", "cand:svd_jacN_ffn", "cand:svd_jacN_next", "cand:svd_jacN_all", "cand:l1_iso", "cand:l1_jac"):
             torch.save({"qk": zoo[k][0].double().cpu(), "av": zoo[k][1].double().cpu(), "formula": k}, os.path.join(gd, f"formula_{a.name}_{k.split(':')[1]}.pt"))
         print(f"# saved candidates to gauges/formula_{a.name}_*.pt and {a.out}")
 

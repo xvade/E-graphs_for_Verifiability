@@ -385,7 +385,16 @@ def cmd_eval(a):
     eps_list = [float(x) for x in a.eps_list.split(",")]; res = {}
     gauges = [load_gauge(g_, L, H, dh) for g_ in a.gauge.split(",")]; Gq, Ga = gauges[0]   # --gauge a.pt[,b.pt,...] -> tags gauged, gauged2, ...
     tags = ["gauged" if k == 0 else f"gauged{k + 1}" for k in range(len(gauges))]
+    inst_key = json.loads(json.dumps([(j, i, e.shape[1], y) for j, i, e, y, _ in inst]))
+    if a.save_json and os.path.exists(a.save_json):   # resume: weight sets already in the JSON (same instances) are not recomputed (ckpt pre-emptions restart the job)
+        prev = json.load(open(a.save_json))
+        if prev.get("inst") == inst_key:
+            for t in ["stock"] + tags + ["stock_wint", "gauged_wint"]:
+                if f"{t}_rad" in prev and all(t in prev["fixed"].get(str(eps), {}) for eps in eps_list):
+                    res[t] = (np.array(prev[f"{t}_rad"]), {eps: np.array(prev["fixed"][str(eps)][t]) for eps in eps_list}); print(f"# resumed weight set '{t}' from {a.save_json}", flush=True)
+        else: print(f"# {a.save_json} exists but its instances differ -> recomputing everything", flush=True)
     for tag, (gq, ga) in [("stock", eye_gauge(L, H, dh, torch.float64))] + list(zip(tags, gauges)):
+        if tag in res: continue
         load_eff(net, effective(st, gq.float().to(dev), ga.float().to(dev), H, dh)); t0 = time.time()
         rad = np.array([certified_radius(lirpas[e.shape[1]], e, i, y, dev, hi=a.hi, iters=a.iters) for j, i, e, y, _ in inst])
         fixed = {eps: np.array([crown_lb(lirpas[e.shape[1]], e, i, eps, y, dev) for j, i, e, y, _ in inst]) for eps in eps_list}
@@ -396,6 +405,7 @@ def cmd_eval(a):
     if a.weight_intervals:   # rigorous-transfer tier: fp32-neighbour intervals on the folded attention weights (see install_weight_intervals)
         st64 = [[t.double() for t in w] for w in st]; lengths = [e.shape[1] for _, _, e, _ in S]
         for tag, (gq, ga) in [("stock_wint", eye_gauge(L, H, dh, torch.float64)), ("gauged_wint", gauges[0])]:
+            if tag in res: continue
             effs64 = effective(st64, gq.double().to(dev), ga.double().to(dev), H, dh); worst = install_weight_intervals(net, effs64)
             lw = make_lirpas(net, lengths, dev, a.softmax); t0 = time.time()
             print(f"# {tag}: attention weights as 2-ulp fp32 intervals (largest fp32 rounding of the folded weights {worst:.2e})", flush=True)
@@ -514,11 +524,17 @@ def pq_safe(*args, **kw):
     """pq_optimise, or None when grad-mode CROWN runs out of GPU memory (retained A matrices grow ~n^3: 80 GB holds 11 tokens of small_6)"""
     net, lirpa, e = args[0], args[2], args[3]; cap = kw.pop("max_tokens", 0)
     if cap and e.shape[1] > cap: return None                      # pre-emptive: the retained grad-mode graph would not fit (see --pq_max_tokens)
-    try: return pq_optimise(*args, **kw)
-    except torch.OutOfMemoryError as ex: print(f"    per-query optimisation OOM ({str(ex)[:60]}...) -> recorded as the fixed gauge", flush=True); r = None
+    global PQ_OOM
+    torch.cuda.empty_cache()
+    try: r = pq_optimise(*args, **kw)
+    except (torch.OutOfMemoryError, RuntimeError) as ex:   # auto_LiRPA's scripted ops re-raise CUDA OOM as a plain RuntimeError
+        if "out of memory" not in str(ex): raise
+        print(f"    per-query optimisation OOM ({str(ex)[:60]}...) -> recorded as the fixed gauge; the process will exit 3 after saving so the chain restarts it with a clean GPU", flush=True); r = None; PQ_OOM = True
     for p_ in leaves(net): p_.grad = None
-    lirpa._clear_and_set_new(None)                                 # drop the node bounds / A matrices the failed pass left behind (they keep the whole graph alive)
-    import gc; gc.collect(); torch.cuda.empty_cache(); return r
+    # a grad-mode pass leaves its node bounds / A matrices (and so the whole retained graph) on the BoundedModule of that sentence length;
+    # with several lengths in play these add up, so drop them after EVERY optimisation, not only after a failure
+    lirpa._clear_and_set_new(None); import gc; gc.collect(); torch.cuda.empty_cache(); return r
+PQ_OOM = False
 
 def cmd_eval_pq(a):
     """Route A: per-query gauge optimisation on TEST instances.  For each instance and each eps in --eps_list: stock lb, fixed
@@ -557,6 +573,8 @@ def cmd_eval_pq(a):
             rec["radius"] = {"stock": r_s, "fixed": r_f, "pq": r_pq, "margin_at_rf_fixed": m0, "margin_at_rf_pq": v, "pq_best_step": bs, "oom": bs == -1}
         out["rec"][str(idx)] = rec
         if a.save_json: json.dump(out, open(a.save_json, "w"))
+        if PQ_OOM:
+            print(f"  inst {idx:3d} saved (per-query := fixed after OOM); exiting 3 for a clean restart (resume from the JSON)", flush=True); sys.exit(3)
         msg = "; ".join(f"eps {eps}: {r['stock']:+.3f} / {r['fixed']:+.3f} / {r['pq']:+.3f} ({r['pq_steps_run']} st)" for eps, r in rec.items() if eps != "radius")
         if "radius" in rec: r = rec["radius"]; msg += f"; radius {r['stock']:.4f} / {r['fixed']:.4f} / {r['pq']:.4f} (margin at r_f {r['margin_at_rf_fixed']:+.3f} -> {r['margin_at_rf_pq']:+.3f})"
         print(f"  inst {idx:3d} (sent {j} pos {i} len {e.shape[1]}): stock / fixed / per-query -- {msg}  [{time.time()-t0:.0f}s, total {time.time()-t_all:.0f}s]", flush=True)
