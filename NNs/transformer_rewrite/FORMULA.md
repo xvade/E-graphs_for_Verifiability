@@ -1,11 +1,12 @@
 # The formula for the attention gauge
 
-Status 2026-09-07 19:20. Goal: derive the per-head gauge (G_q, G_a) that the learner (`deept_gauge.py learn`, Adam on CROWN's lower
-bound over tuning boxes) finds, from the weights alone. What is settled: a closed-form construction that reaches 90 % of the
-learned gain on the learner's own boxes for small_6 and 75–86 % on big_3 / Yelp small_3, from the weights plus a handful of random
-probe sequences. What is pending: the paired 294-position evals (the headline numbers) and the verifier-free confirmation on the
-two smaller models. Numbers in the tables below are the *held-in screen* (mean CROWN lower bound at each box's stock radius), not
-the headline metric.
+Status 2026-09-07 21:20. Goal (second phase): a *manual* procedure — weights plus a handful of random probe sequences, no
+verifier in the loop — whose gauge beats the learned one (`deept_gauge.py learn`, Adam on CROWN's lower bound over tuning boxes).
+What is settled: the closed form below reaches 61–64 % of the learned radius gain on the paired protocol (big_3, Yelp small_3);
+refining it on the ℓ1 version of the same cost model (step 2) lifts the held-out share to 84–88 % on those two models with zero
+or two smaller radii out of ~48. What is pending: the paired evals of the refined gauge (big_3 job 39816017, Yelp next), small_6
+round 3, and the warm-start ceiling test. The learned gauge is not beaten yet; the remaining gap is localised (see "Where the
+gap is").
 
 ## The construction
 
@@ -23,6 +24,17 @@ and for each pair (A, B) take the **SVD balancing**
 
 G_q,h is the gauge of the (A_qk, B_qk) pair, G_a,h of the (A_av, B_av) pair. Then fold: W_q ← G_qᵀ W_q, W_k ← G_q⁻¹ W_k, W_v ← G_aᵀ W_v,
 W_o ← W_o G_a⁻ᵀ (biases likewise). This is exact for any invertible G (the network function is unchanged).
+
+**Step 2 (`l1N`, 2026-09-07 evening): refine on the ℓ1 cost.** Starting from the closed form, minimise
+
+    Σ_l Σ_h Σ_c ‖(G_qᵀ W_q)_c M_l‖₁ ‖(G_q⁻¹ W_k)_c M_l‖₁ + ‖(G_aᵀ W_v)_c M_l‖₁ ‖(W_o G_a⁻ᵀ)_{:,c}ᵀ N_l‖₁
+
+with Adam (400 steps, lr 0.02, cosine-annealed; keep the best step; penalty 1e-4 on ‖G‖² + ‖G⁻¹‖²). Same inputs as step 1,
+still no verifier. The reason it matters: at layer 0 the box perturbs one token, so M_0 has a single block and the width of a
+functional over the box is exactly its ℓ1 row norm; the ℓ2 closed form barely moves the layer-0 width product (0.97–1.00 of
+identity on all three models) while the ℓ1 optimum reaches 0.78–0.87, below the learned gauge's 0.87–0.91. With many token blocks
+at deeper layers the ℓ2 proxy is close. The earlier ℓ1 refinement *without* N (`l1_jac`) lost overall because its value gauge
+ignored where downstream reads; with N both sides improve.
 
 Why this G: with A' = Gᵀ A and B' = G⁻¹ B, the rows satisfy ‖A'_c‖₂ ‖B'_c‖₂ = s_c for every diagonal Λ, and
 Σ_c ‖A'_c‖ ‖B'_c‖ = ‖Aᵀ B‖_* (the nuclear norm) is the minimum of that sum over all factorisations Aᵀ B = Σ_c a_c b_cᵀ. Λ is
@@ -67,17 +79,58 @@ every width surrogate while gaining a lot. The surrogate earns its place by orde
 all three models and by producing the construction. Coupling across layers (a tighter early layer shrinks the widths of every
 later one) is not in the model; M_l and N_l are taken as gauge-independent.
 
-## Evidence so far (held-in screen; `gauge_formula.py validate`, 24 random-token boxes for M/N, 48 learner boxes)
+## Evidence (share of the learned gauge's gain; `gauge_formula.py validate`, `deept_gauge.py eval`)
 
-Mean CROWN lower bound at the stock radius, random boxes / learner's own boxes. The learner's boxes are held-in for the learned
-gauge and held-out for every candidate.
+Three metrics, from cheapest to the headline: **held-in** = mean CROWN lower bound at each box's stock radius on 24–96 random-token
+boxes / the learner's own 48 boxes (held-in for the learned gauge only); **held-out screen** = certified radius (bisection) on
+~48 boxes from 24 sentences the learner never saw (Yelp: dev; SST: test, since SST dev has no short sentences beyond the
+learner's), ratio of means, with larger / smaller counts vs stock; **paired** = the standard protocol (40 dev sentences ≤ 12
+tokens, 277–294 instances, ratio of means, fixed-eps verified counts, fp64 gate).
 
-| model | identity | learned | svd_iso (M=I) | svd_jac | svd_jacN_all | share of learned gain (jacN_all) |
-|---|---|---|---|---|---|---|
-| SST small_6 | +0.092 / +0.156 | +0.468 / +1.184 | +0.272 / +0.716 | +0.426 / +1.087 | **+0.430 / +1.097** | 90 % / 92 % |
-| SST big_3 | +0.111 / +0.146 | +0.473 / +1.186 | +0.262 / +0.609 | +0.322 / +0.805 | **+0.384 / +0.946** | 75 % / 77 % |
-| Yelp small_3 | +0.076 / +0.246 | +0.275 / +1.785 | +0.065 / +1.157 | +0.144 / +1.373 | **+0.192 / +1.510** | 58 % / 82 % |
+| model | gauge | held-in random / learner | held-out screen (larger / smaller) | paired radius gain (larger / smaller) |
+|---|---|---|---|---|
+| SST big_3 | learned | 1.00 / 1.00 | +12.7 % (46 / 0) | +11.9 % (274 / 0) |
+| | svd_jacN_all (step 1) | 0.75 / 0.77 | 0.56 (45 / 0) | **0.61** (+7.2 %, 273 / 0) |
+| | **l1N (step 2)** | 0.96 / 0.95 | **0.84** (46 / 0; > learned on 4) | job 39816017 |
+| | l1N, layer 0 only | 0.94 / 0.93 | 0.82 (46 / 0) | job 39816017 |
+| | l1N, 1500 steps | 0.96 / 0.95 | 0.86 (46 / 0) | — |
+| Yelp small_3 | learned | 1.00 / 1.00 | +10.7 % (44 / 0) | +10.1 % (263 / 1) |
+| | svd_jacN_all (step 1) | 0.64 / 0.83 | 0.66 (39 / 2) | **0.64** (+6.5 %, 234 / 25) |
+| | **l1N (step 2)** | 0.85 / 0.94 | **0.88** (43 / 2; > learned on 5) | queued |
+| | l1N, layer 0 only | 0.73 / 0.88 | 0.75 (41 / 2) | queued |
+| SST small_6 | learned | 1.00 / 1.00 | — | +13.1 % (273 / 0) |
+| | svd_jacN_all (step 1) | 0.90 / 0.92 | (no held-out short dev sentences) | jobs 39787014 / 39773109 |
+| | l1N (step 2) | job 39802259 | job 39802259 | — |
 
+The held-out screen predicts the paired number (Yelp 0.66 → 0.64, big_3 0.56 → 0.61); the learner-box column does not (it said
+0.82–0.83 for Yelp). Fixed-eps verified counts and flips move with the radius; reverse flips are 0 everywhere; fp64 gates 1e-15.
+
+## Where the gap is (side / layer swaps between the learned gauge and step 1, held-in)
+
+- **big_3:** the learned *layer 0* inside the candidate gives 0.95 / 0.93; learned layers 1 or 2 give 0.76 / 0.78 and 0.81 / 0.84.
+  The candidate's deeper layers already match the learned ones; the gap was layer 0, where M_0 is exact — hence the norm, not the
+  box shape. Step 2 closes it (layer-0 splice alone 0.94 / 0.93).
+- **small_6:** learned QK + candidate AV = 1.01 / 1.00; candidate QK + learned AV = 0.88 / 0.91. The whole gap is the QK side,
+  spread over the layers (no single-layer swap moves more than 0.05).
+- **Yelp small_3:** diffuse — learned QK + candidate AV 0.88 (held-out screen), learned layer 0 / 1 / 2 in the candidate 0.76 / 0.80 /
+  0.75, candidate layer 0 / 1 / 2 in the learned gauge 0.89 / 0.85 / 0.90. Step 2 gets 0.88 on the screen; the layer-0 splice 0.75.
+
+## What did not help (all three models unless noted)
+
+- More probes (Yelp, 24 → 96): random-box share 0.58 → 0.65, learner-box share unchanged.
+- Probe seed: a second random-token seed gives an unrelated layer-1/2 gauge on Yelp (identical layer 0); it scores 0.25 on the
+  learner's boxes but 0.51 on the held-out screen with 0 smaller radii — the learner-box column exaggerated it. small_6 / big_3
+  are seed-insensitive.
+- Unlabeled dev-text probes (Yelp): 0.52 on the screen with 19 larger / 18 smaller (two-sided); random + text 0.68. Random
+  tokens are the better probe distribution on this model.
+- Sensitivity-weighted token blocks (query / key blocks scaled by the rank-1 factors of |∂margin/∂score|, value blocks by first-
+  order softmax widths): held-in ±0.01 on all three models, cond 45–83. Dropped.
+- CROWN-inflation rescaling of M (measured width / Jacobian width per token: 1.3× / 2.2× at layers 1 / 2 on big_3, up to 1.9×
+  at layer 5 on small_6; fixed point in one round): held-in ±0.00 on all three models. Dropped — a near-uniform column scaling
+  does not change the SVD balancing, and the layer-0 block is exact anyway.
+- Longer ℓ1N optimisation (1500 steps, cosine): surrogate −1.5 %, held-out screen 0.84 → 0.86 on big_3. The surrogate's optimum is
+  reached; the remaining gap is in the model, not the optimiser.
+- Verifier-assisted variants (`svd_infl*`, `l1N_infl`) are labelled as such; the procedure of record uses none.
 Other facts from the same tables: the SST-, Yelp-, random-token-, two-word- and verifier-trained small_6 gauges all sit at the
 same surrogate value and the same held-in margin (one flat optimum); the candidate is an unrelated matrix to the learned gauge
 (diag-ness of learned⁻¹·candidate ≈ 0.03, random-like) — the formula lands in the optimum, it does not reconstruct the learned
@@ -86,22 +139,23 @@ matrix; the cond-28 overfit gauge is ranked worst by every Jacobian-shaped surro
 
 ## Pending
 
-- Yelp small_3 paired eval (277 instances, job 39778637) is in: radius +6.5 % for `svd_jacN_all` (234 larger / 25 smaller),
-  +4.9 % for `svd_jac`, +10.1 % for the learned gauge (263 / 1) — 64 % of the learned gain; eps-0.024 verified 116 → 145 vs 152;
-  0 reverse flips at every eps for both; fp64 gate 3e-15.
-- Paired evals on the standard protocols (radius gain = ratio of means, eps verified counts, reverse flips, fp64 gate):
-  small_6 294 positions — 2-box `svd_jac` (job 39773109), 24-box `svd_jacN_all` + `svd_jac` (39787014); Yelp small_3 277 instances
-  (39778637); big_3 288 instances (39782433). Bar: ≥ 80 % of the learned radius gain with reverse flips at or near zero, on two models.
-- Verifier-free and probe-seed checks of the N construction: done for big_3 (`svd_jacN_all_u` +0.384 / +0.947, second seed
-  +0.382 / +0.941, vs +0.384 / +0.946 — no CROWN input, no probe dependence) and for Yelp small_3 (verifier-free +0.190 / +1.517
-  matches; but the second probe seed gives +0.261 / +0.625: better on random boxes, far worse on the learner's Yelp boxes — the
-  gauge fits the box shapes of its own probe set on this model). More probes do not average it out (96 boxes per seed, job
-  39789896: seed 0 +0.327 / +1.521, seed 1 +0.354 / +0.625; the random-box share rises 58 → 65 %). The layer-0 gauges of the
-  two seeds are identical (M_0 is sentence-independent), the layer-1/2 gauges are unrelated matrices; small_6 and big_3 show no
-  such dependence. Open: probes drawn from unlabeled dev text instead of random tokens (`--dev_probes`).
+- Paired evals of step 2: big_3 (job 39816017: `l1N`, its layer-0 splice, learned), Yelp small_3 (queued behind the round-3
+  save), small_6 (after job 39802259). Pre-registered bar for "beats the learned gauge": paired radius ratio-of-means above the
+  learned gauge's with a smaller-radius count at or below it, on at least two models. Current standing: 0.84–0.88 of the learned
+  gain on the held-out screens, so the bar is not met.
+- small_6 paired evals of step 1 (24-box `svd_jacN_all` + `svd_jac`, job 39787014; 2-box `svd_jac`, 39773109).
+- Ceiling test (hybrid, not the manual procedure): the CROWN learner warm-started from the closed form on Yelp — 40 steps at lr
+  0.005 gives +9.0 % paired radius vs +10.1 % learned-from-identity (job 39796638); 100 steps running (39802260). If the warm start
+  ends below the learned gauge, the learned gauge is near the ceiling of this objective and "beat learned" needs a different
+  objective, not a better formula.
+- Verifier-free and probe-seed checks of step 1 (done): big_3 `svd_jacN_all_u` +0.384 / +0.947, second seed +0.382 / +0.941 vs
+  +0.384 / +0.946; Yelp verifier-free +0.190 / +1.517 matches, seed dependence as described above.
 
 ## Files
 
-`gauge_formula.py` (validate: surrogates, ablations, candidates, held-in screen; saves `gauges/formula_<model>_<candidate>.pt`),
-`gauge_formula_chain.sh smoke|full|big3|yelp3`, `deept_formula_eval.sh <tag> <gauges> <model> <eps>` (paired eval),
-`results/formula_<model>_validate*.json`.
+`gauge_formula.py` (validate: surrogates, ablations, candidates, hybrids `--hybrids`, probe-seed swaps `--cross`, text probes
+`--dev_probes`, ℓ1 refinement `--l1_steps --l1N --l1_lr`, sensitivity weights `--sens`, inflation `--infl`, held-out radius
+screen `--radius_names auto --n_dev --dev_split`; saves `gauges/formula_<model>_<candidate><tag>.pt`), `gauge_formula_chain.sh
+smoke|full|big3|yelp3|yelp3_big|hyb_*|r2_*|r3_*|r4_*`, `deept_formula_eval.sh <tag> <gauges> <model> <eps>` (paired eval),
+`deept_init_chain.sh` (warm-start learner + paired eval), `validate_summary.py`, `paired_summary.py`,
+`results/formula_<model>_{validate,hyb,r2,r3,r4}.json`, `results/deept_formula_<tag>_eval_short_seed0.json`.

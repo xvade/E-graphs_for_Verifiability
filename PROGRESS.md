@@ -2709,7 +2709,7 @@ originals).
 cheap steps recover 89 % of the gap between the closed form and the learned gauge held-in; the paired eval against the learned
 gauge runs now (`results/deept_formula_yelp3_init_eval_short_seed0.json`). This is the hybrid reference, not the manual procedure.
 
-**20:20 — localisation on big_3 (job 39796640, held-in): the closed form falls short at LAYER 0, and the reason is the norm.**
+**20:05 — localisation on big_3 (job 39796640, held-in): the closed form falls short at LAYER 0, and the reason is the norm.**
 Side/layer swaps between the learned gauge and `svd_jacN_all` (share of the learned gain, random / learner boxes; candidate
 alone 0.75 / 0.77): learned QK + candidate AV 0.92 / 0.94, candidate QK + learned AV 0.86 / 0.86; candidate with the learned
 layer 0 **0.95 / 0.93**, with the learned layer 1 0.76 / 0.78 (no change), layer 2 0.81 / 0.84; learned with the candidate's
@@ -2725,7 +2725,7 @@ screen on SST *test* sentences for the SST models (SST dev has no short sentence
 weights, inflation; jobs 39799465–67) still running; big_3's inflation: CROWN widths 1.33× / 2.22× the Jacobian shape at layers
 1 / 2, fixed point in one round.
 
-**20:35 — round 2 on big_3 (job 39799466): sensitivity-weighted token blocks and CROWN-inflation rescaling of M do nothing.**
+**20:18 — round 2 on big_3 (job 39799466): sensitivity-weighted token blocks and CROWN-inflation rescaling of M do nothing.**
 Held-in (random / learner boxes): `svd_jacN_all` +0.384 / +0.946; sensitivity-weighted (query/key blocks scaled by the rank-1
 factors of |∂margin/∂score|, value blocks by the first-order softmax widths) +0.385 / +0.951 with cond 46 (was 10.6); QK-only /
 AV-only / sqrt weights the same; inflation rescaling (CROWN width / Jacobian width per token, 1.34× at layer 1, 2.23× at layer 2,
@@ -2733,7 +2733,7 @@ fixed point in one round) +0.384 / +0.945 for 1, 2 or 3 rounds; both together +0
 the deeper layers were already matching the learned gauge, and neither idea touches layer 0 (a single token block, ρ ≡ 1). Both
 directions dropped for big_3; round 3 (ℓ1 with N at layer 0) is the live hypothesis.
 
-**21:00 — round 3 on big_3 (job 39802258, held-in): the ℓ1 surrogate WITH N closes most of the gap, and it is still a manual
+**20:38 — round 3 on big_3 (job 39802258, held-in): the ℓ1 surrogate WITH N closes most of the gap, and it is still a manual
 procedure.** Random / learner boxes, share of the learned gain: closed form `svd_jacN_all` 0.75 / 0.77 → **`l1N` 0.96 / 0.95**
 (+0.458 / +1.130 vs learned +0.473 / +1.186; cond 9.8): the ℓ1 (box-width) version of the same cost model, with the downstream
 functionals N on the value side, minimised by Adam for 400 steps from the closed form — weights and random-token probes only, no
@@ -2742,7 +2742,7 @@ only the QK side 0.84 / 0.86; only layer-0 QK 0.83 / 0.84 — the layer-0 AV·N 
 without N + closed-form AV) 0.84 / 0.86; inflated-M ℓ1N 0.95 / 0.95 (inflation irrelevant again). Held-out radius screen on 48
 SST-test boxes running for these rows; the paired eval of `l1N` follows as soon as the gauge file is saved.
 
-**21:10 — two jobs from the earlier queue landed.** (1) Two-word perturbation eval on small_6 (job 39773950, 269 two-word boxes,
+**20:42 — two jobs from the earlier queue landed.** (1) Two-word perturbation eval on small_6 (job 39773950, 269 two-word boxes,
 7 position pairs per sentence, eps 0.0047 / 0.0094 / 0.0141): the two-word-tuned gauge +13.7 % radius (243 larger / 0 smaller /
 26 equal) and the ordinary one-word-tuned gauge +13.8 % (same 243 / 0 / 26); eps-0.0141 verified 75 → 107 vs 110; 0 reverse
 flips at every eps; fp64 gates 1e-15. The one-word gauge transfers unchanged to the two-word specification, and two-word tuning
@@ -2753,12 +2753,12 @@ on 99, equal on 54 (the 44 twelve-token instances could not be optimised on 80 G
 0.02 verified 125 / 125 / 125. So per-instance re-optimisation buys ≈ 4 % on the instances it can touch, at ~90 s per instance —
 the fixed gauge carries almost all of the value.
 
-**21:25 — round 2 on Yelp small_3 (job 39799465, held-in): also null.** Sensitivity weights +0.318 / +1.512 (cond 83) vs the
+**20:48 — round 2 on Yelp small_3 (job 39799465, held-in): also null.** Sensitivity weights +0.318 / +1.512 (cond 83) vs the
 closed form +0.327 / +1.521; inflation rescaling (1.14× / 1.67× at layers 1 / 2) +0.326 / +1.519 for 1–3 rounds. Token weighting
 and CROWN-consistent M are dropped on all models where they were tried (big_3, Yelp); the held-out radius screens of these rows
 are still running but cannot rescue a held-in tie with a 10× worse condition number.
 
-**21:50 — round 3 on Yelp small_3 (job 39801670, held-in): the ℓ1-with-N refinement replicates.** Random / learner boxes, share
+**20:57 — round 3 on Yelp small_3 (job 39801670, held-in): the ℓ1-with-N refinement replicates.** Random / learner boxes, share
 of the learned gain: closed form 0.64 / 0.83 → **`l1N` 0.85 / 0.94** (+0.407 / +1.687 vs learned +0.465 / +1.785, cond 9.6);
 layer-0 splice only 0.73 / 0.88 (on Yelp the gap is spread over the layers, as the swaps said); QK side only 0.70 / 0.87;
 inflated-M variant 0.87 / 0.92. Held-out radius screen on 46 Yelp-dev boxes running for these rows. Held-out screen facts so
@@ -2767,5 +2767,20 @@ paired protocol); the seed-1 candidate that "collapsed" on the learner's boxes t
 column exaggerated the seed dependence; unlabeled Yelp-text probes give 0.52 with 19 larger / 18 smaller (two-sided — worse than
 random tokens), random + text probes 0.68.
 
-**22:05 — round 2 on small_6 (job 39799467, held-in): null, three for three.** All sensitivity / inflation variants +0.428–0.431 /
+**21:05 — round 2 on small_6 (job 39799467, held-in): null, three for three.** All sensitivity / inflation variants +0.428–0.431 /
 +1.090–1.098 vs the closed form +0.430 / +1.097 (learned +0.468 / +1.184). Round 2 closed on every model.
+
+**21:07 — localisation on small_6 (job 39796639, held-in): the whole gap is the QK side, spread over the layers.** Candidate
+`svd_jacN_all` 0.90 / 0.92 of the learned gain; learned QK + candidate AV **1.01 / 1.00** (the candidate's value gauges are as
+good as the learned ones on this model), candidate QK + learned AV 0.88 / 0.91 (no gain). Per-layer swaps move the candidate by
+0.00–0.05 each (largest at layer 5: 0.95 / 0.96; layers 3–4: 0.92 / 0.94), and the learned gauge loses ≤ 0.02 from any single
+candidate layer except layer 5 (0.95 / 0.96) — no single layer carries it. Fits the ℓ1-vs-ℓ2 reading on the QK side (the
+`l1N` result for small_6, job 39802259, is next). No held-out screen in this run (SST dev has no held-out short sentences).
+
+**21:08 — paired eval of the closed-form gauges on big_3 (job 39782433, 288 instances, 3 h 10).** Certified radius (ratio of
+means): stock 0.01662 → `svd_jacN_all` 0.01782 (**+7.2 %**; larger on 273, smaller on 0, equal 15), `svd_jac` 0.01757 (+5.7 %;
+268 / 0 / 20), learned 0.01859 (+11.9 %; 274 / 0 / 14) — the closed form takes 61 % of the learned radius gain (svd_jac 48 %),
+one-sided here (on Yelp it had 25 smaller). Fixed-eps verified 256 / 116 / 4 (stock) → 257 / 124 / 32 (closed form) vs
+258 / 129 / 48 (learned); flips unverified → verified 1 / 8 / 28 vs 2 / 13 / 44; verified → unverified 0 for both; fp64 gates
+1–2e-15. The held-out SST-test screen predicted 0.56 for this gauge (paired: 0.61) and gives 0.84 for `l1N`, so its paired eval
+is the next number to get.
