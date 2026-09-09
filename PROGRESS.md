@@ -3103,3 +3103,18 @@ class-conditioned box shapes and margin sensitivities carry only a small part of
 between the manual rule and the label-1 learner is the plane-sign trade that a norm-based surrogate cannot express. A per-class
 manual rule needs a sign-aware surrogate (linear-bound structure: invariant part ± the gauge-dependent width term, with the
 downstream coefficients' signs). small_6 label screens pending (jobs 39888867 / 39888868).
+
+**14:58 — learners warm-started from the manual unified rule, big_3 (jobs 39888764–6; screen 39888767; 22 + 26 held-out
+boxes).** Radius gain vs stock (head to head vs the identity-initialised learned gauge):
+| start → learner | all | label 0 | label 1 |
+|---|---|---|---|
+| identity → single (gauge of record) | +12.7 % | +9.5 % | +15.1 % |
+| **unified rule → single** | **+13.7 %** (15 / 0) | +10.0 % (4 / 0) | +16.4 % (11 / 0) |
+| identity → label-0 / label-1 learners, chosen by label | +14.9 % | +9.9 % | +18.5 % |
+| **unified rule → label-0 / label-1 learners, chosen by label** | **+16.1 %** | +10.7 % (7 / 0) | **+20.0 %** (21 / 0) |
+| unified rule (manual, no learner) | +10.6 % | +10.0 % | +11.1 % |
+The warm start from the manual rule ends ABOVE the identity-initialised learner on this screen, one-sidedly (single: larger on
+15 boxes, smaller on 0; per-label: 7 / 0 and 21 / 0), and every warm-started learner's best step is at or near the 120-step cap
+(119 / 119 / 110) — still improving when stopped. This differs from the Yelp ceiling test (warm start from the CLOSED form, lr
+0.005: tie); here the start is the refined rule and lr 0.01. Caveat: 48-box screen; the paired protocol on 288 instances is
+the confirmation. small_6 counterpart pending (job 39888763, waiting on the all-label learner 39888760).
