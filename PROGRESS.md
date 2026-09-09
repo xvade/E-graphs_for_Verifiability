@@ -2983,7 +2983,7 @@ originPlus with `--init_v 0` on stock then gauged checkpoints (same 15 samples /
 published-default runs, 35 instances). Jobs 39885882 (small_3, L40S, ≈ 1.7 h) and 39885883 (small_6, ≈ 6 h). Results →
 `results/pbv_s{3,6}_originPlus_v0_{stock,gauged}.json`; compare with `pbv_compare.py` against the origin / originPlus files.
 
-**13:15 — small_6 per-class learned gauges (learners 39882898 / 39882899: label 0 = 53 boxes, label 1 = 15 boxes; screen
+**13:10 — small_6 per-class learned gauges (learners 39882898 / 39882899: label 0 = 53 boxes, label 1 = 15 boxes; screen
 39882900, 24 test sentences / 48 boxes, 24 per label).** Radius gain vs stock (share of the single learned gauge; head to head vs it):
 - label 0: single learned +15.8 %; label-0 learner +17.2 % (1.09; 7 / 0); manual unified rule +13.5 % (0.85; 0 / 11); closed form +10.7 %.
 - label 1: single learned +12.8 %; **label-1 learner +23.1 % (1.81; 21 / 0)** from 15 tuning boxes; manual unified rule +16.5 %
@@ -2994,7 +2994,7 @@ published-default runs, 35 instances). Jobs 39885882 (small_3, L40S, ≈ 1.7 h) 
   largest single improvement over the learned gauge found in this project (+6.5 points on small_6, +2.2 on big_3), and they are
   exact rewrites chosen by the label of the query.
 
-**13:15 — PBverifierI started at the Baseline plane, small_3 (job 39885882, `--init_v 0`, 35 instances, same protocol).**
+**13:10 — PBverifierI started at the Baseline plane, small_3 (job 39885882, `--init_v 0`, 35 instances, same protocol).**
 Stock: v = 0 gives 0.03544 vs their Baseline 0.03667 (**−3.3 %**, 9 larger / 19 smaller) — slightly WORSE than the published
 default v = −4 (0.03569, −2.7 %). So the deficit of their optimised variant on DeepT weights is NOT the initial plane: even
 starting exactly at the Baseline plane, the per-layer width objective and the per-layer freezing walk the bound below the
