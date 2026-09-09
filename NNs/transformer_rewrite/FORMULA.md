@@ -144,6 +144,14 @@ does not (it said 0.82–0.83 for Yelp, and 0.86 for the both-sided l1N on small
 4. Box shape vs probe count (small_6 paired): `svd_jac` from 2 boxes 0.90, from 24 boxes 0.92; the isotropic closed form from
    the same 2 boxes 0.30 with 59 smaller radii. The Jacobian shaping carries the closed form; the probe count barely matters.
 
+5. **Per-class ceiling (big_3, 2026-09-09).** Learners trained on label-0-only / label-1-only boxes, held-out screen split by label:
+   label 0 — single learned +9.5 %, label-0 learner +9.9 %, **manual unified rule +10.0 %** (at the ceiling); label 1 — single
+   learned +15.1 %, **label-1 learner +18.5 %** (from 17 boxes), manual +11.1 %. Choosing the gauge by the label being verified
+   gives +14.9 % vs +12.7 % for the single learned gauge (1.17×). The class trade is real; the sign-blind manual rule lands on
+   the class the weights favour and is at 0.59 of the other class's ceiling — the target for a sign-aware surrogate.
+   Rotation-only ℓ1 refinement (round 6): big_3 0.87 vs unified 0.83, Yelp 0.83 vs 0.82 (full ℓ1 0.88) — same numbers with
+   the closed form's conditioning; a cleaner rule, not a better one.
+
 Round 6 (last GPU window before the maintenance): rotation-only ℓ1 refinement `l1N_rot` (closed-form metric kept, Cayley-
 parametrised rotation optimised on the ℓ1 surrogate; unified variant), screened on all three models and Yelp seed 1; per-class
 learners on big_3 (label-0-only / label-1-only boxes) to bound what a sign-aware manual rule could gain.

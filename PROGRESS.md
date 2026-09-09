@@ -2919,3 +2919,56 @@ form (0.90 with it, 0.30 without), while the probe count (2 vs 24 boxes) is near
   (absolute gauge paths word-split on the spaces in the repo path) — resubmitted with relative paths (job 39881644).
 - Resubmitted: round-6 rotation-only screens r6_big3 / r6_yelp3 / r6_yelp3_s1 / r6_small6 (jobs 39881639–39881642; smoke passed
   on 09-08, rc=0), interval-weight run with a 30 h limit (job 39881645, resumes the finished stock / gauged sets).
+
+**09:08 — interval-weight rerun (job 39881645) cancelled at the user's request after 26 min** (the fp32-interval tier turns the
+24 attention projections into bilinear nodes, so each CROWN call is ≥ 5× slower and the full 294-instance protocol needs > 11 h
+per set). The stock / gauged sets in `results/deept_small6_wint_eval_short_seed0.json` stay valid; if the rigorous-transfer check
+is wanted later, run it on the 24-instance fp64-gate subset or at the certified radius only (one call per instance).
+
+**09:25 — exactness measurement (CPU, small_6, 6 test sentences × all positions × 32 random points per box at eps 0.02, fp64
+arithmetic, |logit| ≤ 2.3):** max |original − gauged| = 8.9e-16 with the folded attention weights kept in fp64, **3.9e-9** with
+them rounded to fp32 (the network the verifier bounds). The fp32-interval tier's bound loss (2e-4 in the smoke run) is therefore
+~5 orders looser than the real difference — McCormick slack on 128×128 weight intervals; fp64-ulp intervals would bring the
+certified loss to ~1e-12. User's standing requirement: every certified instance must carry an exact-equivalence guarantee, not a
+sampled check. Proposed design (not yet built): bisect with the rounded network, then certify the found radius and each fixed eps
+with ONE fp64 interval-weight CROWN call (step down a bisection level if it fails) — ≈ 1.5× today's runtime instead of 5×.
+
+**09:25 — round 6, big_3 held-out screen (job 39881639, 42 min):** rotation-only ℓ1 refinement of the closed form (Cayley, no
+cond penalty) `l1N_rot` share **0.87** (46 / 0; vs learned 5 / 19), its unified variant `l1N_rot_qk+av0` 0.83 (3 / 21); unified
+rule 0.83 (4 / 21), closed form 0.56, learned 1.00. So restricting the ℓ1 step to the closed form's flat rotation valley gives the
+same screen number as the full stretch (+0.04 on both sides, within the 24-sentence screen's noise), with the closed form's
+conditioning instead of cond 11–30 — a cleaner rule, not a better one. Yelp (both draws), small_6 and the per-class screen pending.
+
+**09:35 — round 6, Yelp small_3 held-out screen, probe seed 0 (job 39881640, 51 min):** `l1N_rot` 0.83 (42 / 2; vs learned 4 / 27),
+`l1N_rot_qk+av0` 0.76, unified rule 0.82, closed form 0.66, full `l1N` was 0.88 in round 5. Rotation-only matches the unified
+rule here and stays below the full ℓ1 step; as predicted from the cross-draw table, the rotation valley is where the surrogate
+is flat, so it cannot pick a better point than the stretch does. Seed 1, small_6 and the per-class screen pending.
+
+**09:45 — per-class learned gauges on big_3 (learners: jobs 39832933 / 39832938, label-0-only 53 boxes and label-1-only 17 boxes
+of the 70 tuning boxes, same settings as the single learner; held-out screen job 39881644, 24 test sentences / 48 boxes, split by
+label with `screen_label_split.py`).** Radius gain vs stock (share of the single learned gauge; head to head vs it):
+- label 0 (22 boxes): single learned +9.5 %; label-0 learner +9.9 % (1.04; 3 / 0); **manual unified rule +10.0 % (1.05; 4 / 0)**;
+  closed form +8.0 %; label-1 learner +3.7 %.
+- label 1 (26 boxes): single learned +15.1 %; **label-1 learner +18.5 % (1.23; 19 / 0)** from only 17 tuning boxes; manual
+  unified rule +11.1 % (0.73; 0 / 21); closed form +6.5 %; label-0 learner +7.6 %.
+- combined "label-0 gauge on label-0 queries, label-1 gauge on label-1 queries": mean radius 0.01731 = **+14.9 %** vs +12.7 % for
+  the single learned gauge (1.17×) and +10.6 % for the manual rule.
+Reading: the class trade is real and worth ≈ 2 points on this model — a gauge chosen by the label being verified (legitimate: the
+query knows its label, both are exact rewrites) beats the single learned gauge. The single learner sacrifices label 0 for label 1;
+the sign-blind manual rule sits exactly at the label-0 ceiling (it cannot see the sign, so it lands on whichever class the
+weights favour) and at 0.59 of the label-1 ceiling. This is where a sign-aware manual surrogate would earn its keep: up to
++7 points on label 1 here. Caveat: per-class is an axis available to the learner too, so the manual target becomes the
+per-class learned gauge, not the single one. Queued: the same per-class test on small_6 (there the manual rule loses label 0).
+
+**09:51 — round 6, Yelp small_3, probe seed 1 (job 39881641):** closed form 0.28, unified rule 0.56, `l1N_rot` 0.49,
+`l1N_rot_qk+av0` 0.45 (learned 1.00 on this draw's own 24-sentence screen). Rotation-only does not rescue the bad probe draw —
+as the cross-draw table predicted, the surrogate is flat along the direction the draw moves the gauge, so optimising inside
+the rotation valley cannot find the seed-0 point. Round 6 verdict so far (3 of 4 screens): rotation-only ℓ1 = unified rule
+within noise (big_3 +0.04, Yelp seed 0 +0.01, seed 1 −0.07), with better conditioning; not adopted as the procedure of record.
+
+**11:06 — round 6, small_6 held-out screen (job 39881642, 2 h 04; done, sacct lagging):** `l1N_rot_qk+av0` 1.09 (42 / 0; vs
+learned 19 / 11), unified rule 1.08 (18 / 11), closed form 1.06, both-sided `l1N_rot` 1.00 (12 / 13). Round 6 complete: the
+rotation-only refinement equals the unified rule on every screen (big_3 0.87 vs 0.83, Yelp 0.83 vs 0.82, Yelp seed 1 0.49 vs
+0.56, small_6 1.09 vs 1.08) while keeping the closed form's conditioning; the both-sided rotation variant is harmless on small_6
+(1.00) where the both-sided stretch was harmful (0.52). Not adopted: same numbers, one more knob. Committed as a documented
+option (`--l1rot 1`, `cand:l1N_rot*`).
