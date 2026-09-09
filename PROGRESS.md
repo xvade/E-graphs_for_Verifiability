@@ -3104,7 +3104,7 @@ between the manual rule and the label-1 learner is the plane-sign trade that a n
 manual rule needs a sign-aware surrogate (linear-bound structure: invariant part ± the gauge-dependent width term, with the
 downstream coefficients' signs). small_6 label screens pending (jobs 39888867 / 39888868).
 
-**14:58 — learners warm-started from the manual unified rule, big_3 (jobs 39888764–6; screen 39888767; 22 + 26 held-out
+**15:42 — learners warm-started from the manual unified rule, big_3 (jobs 39888764–6; screen 39888767; 22 + 26 held-out
 boxes).** Radius gain vs stock (head to head vs the identity-initialised learned gauge):
 | start → learner | all | label 0 | label 1 |
 |---|---|---|---|
@@ -3114,7 +3114,8 @@ boxes).** Radius gain vs stock (head to head vs the identity-initialised learned
 | **unified rule → label-0 / label-1 learners, chosen by label** | **+16.1 %** | +10.7 % (7 / 0) | **+20.0 %** (21 / 0) |
 | unified rule (manual, no learner) | +10.6 % | +10.0 % | +11.1 % |
 The warm start from the manual rule ends ABOVE the identity-initialised learner on this screen, one-sidedly (single: larger on
-15 boxes, smaller on 0; per-label: 7 / 0 and 21 / 0), and every warm-started learner's best step is at or near the 120-step cap
-(119 / 119 / 110) — still improving when stopped. This differs from the Yelp ceiling test (warm start from the CLOSED form, lr
-0.005: tie); here the start is the refined rule and lr 0.01. Caveat: 48-box screen; the paired protocol on 288 instances is
+15 boxes, smaller on 0; per-label: 7 / 0 and 21 / 0). Best steps 110 / 119 / 119 for the warm starts and the same 110 / 119 / 119
+for the identity starts, so both families were still moving at the 120-step cap; conditioning 10.6 (warm single) vs 11.6, and
+3–4 for all per-label gauges. This differs from the Yelp ceiling test (warm start from the CLOSED form, lr 0.005: tie); here the
+start is the refined rule and lr 0.01. Caveat: 48-box screen; the paired protocol on 288 instances is
 the confirmation. small_6 counterpart pending (job 39888763, waiting on the all-label learner 39888760).
