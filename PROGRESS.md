@@ -3068,3 +3068,20 @@ rule from those probes → `results/formula_<model>_plab<y>.json`, split by labe
 label-y manual rule move from the all-probe rule (big_3 label 1: +11.1 %, small_6 label 0: +13.5 %) toward the per-class
 learner (+18.5 % / +17.2 %)? It cannot express the plane-sign trade itself (the surrogate is still sign-blind); it tests whether
 class-conditioned box shapes and sensitivities carry part of the per-class gain.
+
+**13:39 — alternating alpha-CROWN / gauge learner built and launched on small_6 (user request).** `deept_gauge.py learn
+--alpha_iters K`: per tuning box, (1) inner loop with the weights frozen — CROWN-Optimized, K Adam iterations on the relaxation
+parameters α at the current gauge (best α left in the module's nodes); (2) outer step with α frozen (`opt_reuse` on the
+optimisable nodes) — one plain backward pass whose graph reaches the effective weights → gradient to G. Danskin: d/dG max_α
+lb(G, α) = ∂lb/∂G at the optimal α, so this is the exact envelope gradient without differentiating through the α loop. A fresh
+BoundedModule per call (each retains 4.5–8 GiB of α state); the held-in selection score is the α-optimised bound on 16 boxes
+every 20 steps, and the best gauge is checkpointed at every eval (ckpt is preemptible). **Correction to my earlier estimate:**
+the measured α-CROWN peaks on small_6 are 36 GiB at 5 tokens and 62 GiB at 6 (cmd_eval_alpha's probes), not ≈ 25 GiB at
+8 tokens, so the tuning boxes are restricted to ≤ 6-token dev sentences on the 80 GB A100, and a call costs ≈ 70 s at 20
+iterations. Run: warm start from the plain-learned gauge `deept_small6_seed0.pt`, lr 0.005, 60 steps × 4 boxes, K = 10,
+≈ 3.5 h, then `eval_alpha --skip_stock 1` on the same 15 test sentences ≤ 6 tokens / 49 instances / eps 0.02, 0.03 as the
+existing alpha-tier eval (`results/deept_small6_eval_alpha_seed0.json`: stock 24 / 0 verified, plain-learned gauge 27 / 4,
+tighter on 47 / 49), ≈ 2.7 h. Smoke 39889885 (40 min), full 39889886 (afterok, 9 h limit) →
+`gauges/deept_small6_alt_seed0.pt`, `results/deept_small6_alt_eval_alpha_seed0.json`. Read-out: does the α-trained gauge beat the
+plain-trained one on the α tier (per instance, same 49 boxes), and by how much relative to the +0.33 mean-lb gap between the
+plain-trained gauge and stock?

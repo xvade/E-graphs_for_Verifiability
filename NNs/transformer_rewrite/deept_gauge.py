@@ -298,10 +298,10 @@ def cmd_radii(a):
     if a.save_json: json.dump({"rows": rows}, open(a.save_json, "w"))
 
 
-def make_lirpas(net, lengths, dev, softmax="lse", alpha=False):
+def make_lirpas(net, lengths, dev, softmax="lse", alpha=False, alpha_iters=20, alpha_lr=0.1, alpha_shared=False):
     """one BoundedModule per sentence length; all share the net's parameter tensors (load_eff updates every one)"""
     opts = {"softmax": softmax, "sparse_intermediate_bounds": False}
-    if alpha: opts["optimize_bound_args"] = {"iteration": 20, "lr_alpha": 0.1}
+    if alpha: opts["optimize_bound_args"] = {"iteration": alpha_iters, "lr_alpha": alpha_lr, "use_shared_alpha": bool(alpha_shared)}
     return {n: BoundedModule(net, torch.empty(1, n, net.hid, device=dev), bound_opts=opts, device=dev) for n in sorted(set(lengths))}
 
 def fp64_gate(name, Gq, Ga, boxes, n_pts=32, seed=0):
@@ -328,17 +328,36 @@ def cmd_learn(a):
     # per-box eps = stock certified radius (bisection, no grad) scaled by eps_scale -> the stock bound sits at ~0 on every tuning box
     t0 = time.time()
     for b in boxes: b[4] = a.eps_scale * certified_radius(lirpas[b[3]], b[0], b[1], b[2], dev, hi=a.hi, iters=a.radius_iters)
+    # --alpha_iters K > 0: ALTERNATING joint optimisation of the gauge and alpha-CROWN's relaxation parameters.  Per box: (1) inner loop, weights
+    # frozen: CROWN-Optimized (K Adam iterations on alpha at the current gauge; best alpha is left in the module's nodes); (2) outer step, alpha
+    # frozen (nodes set to 'reuse'): one plain backward pass whose graph reaches the effective weights -> gradient to G.  By Danskin's theorem
+    # d/dG max_alpha lb(G, alpha) = d lb/dG at the optimal alpha, so this is the exact envelope gradient without differentiating through the
+    # alpha loop.  A fresh BoundedModule per call (each retains 4.5-8 GiB of alpha state after a call, see cmd_eval_alpha); measured peaks on
+    # small_6: 36 GiB at 5 tokens, 62 GiB at 6 -> tuning boxes must be <= 6 tokens on an 80 GB card.
+    alt = a.alpha_iters > 0
+    if alt: print(f"# alternating alpha/gauge optimisation: {a.alpha_iters} alpha iterations (lr {a.alpha_lr}, shared {a.alpha_shared}) per box, fresh module per call", flush=True)
+    def alpha_module(n): return make_lirpas(net, [n], dev, a.softmax, alpha=True, alpha_iters=a.alpha_iters, alpha_lr=a.alpha_lr, alpha_shared=a.alpha_shared)[n]
+    def alpha_lb(b, grad_weights):
+        """alpha-optimised lower bound on box b; if grad_weights, also returns the 'reuse' pass tensor whose graph reaches the weights"""
+        lp = alpha_module(b[3]); lv_ = leaves(net)
+        for p in lv_: p.requires_grad_(False)
+        v = crown_lb(lp, b[0], b[1], b[4], b[2], dev, method="CROWN-Optimized", grad=True)   # inner loop (alpha only)
+        for p in lv_: p.requires_grad_(True)
+        if not grad_weights: del lp; torch.cuda.empty_cache(); return v, None
+        for node in lp.get_enabled_opt_act(): node.opt_reuse()
+        lb = crown_lb_t(lp, b[0], b[1], b[4], b[2], dev); return v, (lb, lp)
     R = np.array([b[4] for b in boxes]); print(f"# {a.name}: {len(S)} {a.split} sentences <= {a.max_len} tokens -> {len(boxes)} tuning boxes; per-box eps = {a.eps_scale} x stock radius: mean {R.mean():.4f} median {np.median(R):.4f} min {R.min():.4f} max {R.max():.4f}  [{time.time()-t0:.0f}s]", flush=True)
     for p in leaves(net): p.requires_grad_(True)
     I, _ = eye_gauge(L, H, dh); q0, a0 = (I.clone(), I.clone()) if a.gauge is None else [t.float() for t in load_gauge(a.gauge, L, H, dh)]   # learn --gauge: warm start (e.g. the closed-form gauge) instead of identity
     Gq = nn.Parameter(q0.to(dev), requires_grad=a.which in ("both", "qk")); Ga = nn.Parameter(a0.to(dev), requires_grad=a.which in ("both", "av"))
     params = [p for p in (Gq, Ga) if p.requires_grad]; opt = torch.optim.Adam(params, lr=a.lr)
     def evaluate(bs):
-        load_eff(net, effective(st, Gq.detach(), Ga.detach(), H, dh)); v = np.array([crown_lb(lirpas[b[3]], b[0], b[1], b[4], b[2], dev) for b in bs])
+        load_eff(net, effective(st, Gq.detach(), Ga.detach(), H, dh))
+        v = np.array([alpha_lb(b, False)[0] if alt else crown_lb(lirpas[b[3]], b[0], b[1], b[4], b[2], dev) for b in bs])
         return np.nanmean(v), float(np.mean(v > 0)), int(np.isnan(v).sum())
     ev_boxes = boxes[:a.n_eval]; ev = evaluate(ev_boxes); print(f"# init={'id' if a.gauge is None else a.gauge}: eval on {len(ev_boxes)} tuning boxes at their eps: mean lb {ev[0]:+.4f} frac_ver {ev[1]:.3f} nan {ev[2]}", flush=True)
     # sharing check: two BoundedModules must both see a weight change
-    if len(lirpas) > 1:
+    if len(lirpas) > 1 and not alt:
         b1, b2 = boxes[0], next(b for b in boxes if b[3] != boxes[0][3]); v1 = [crown_lb(lirpas[b[3]], b[0], b[1], b[4], b[2], dev) for b in (b1, b2)]
         with torch.no_grad(): leaves(net)[0].mul_(1.01)
         v2 = [crown_lb(lirpas[b[3]], b[0], b[1], b[4], b[2], dev) for b in (b1, b2)]; load_eff(net, effective(st, Gq.detach(), Ga.detach(), H, dh))
@@ -350,9 +369,14 @@ def cmd_learn(a):
         objs = []
         for b in rng.sample(boxes, a.accum):
             with torch.autograd.set_detect_anomaly(bool(a.debug)):
-                lb = crown_lb_t(lirpas[b[3]], b[0], b[1], b[4], b[2], dev); objs.append(lb.item())
+                if alt:
+                    v_alpha, (lb, lp_) = alpha_lb(b, True)
+                    if step == 0: print(f"    alt check: alpha-optimised lb {v_alpha:+.4f} | reuse-pass lb {lb.item():+.4f} (graph to the weights)", flush=True)
+                else: lb = crown_lb_t(lirpas[b[3]], b[0], b[1], b[4], b[2], dev)
+                objs.append(lb.item())
                 o = lb - a.hinge_w * torch.relu(-lb) if a.obj == "hinge" else lb   # hinge: extra penalty on boxes that fall below 0 (protects the worst boxes)
                 (-o / a.accum).backward()
+                if alt: del lp_, lb, o; torch.cuda.empty_cache()
         grads = [p.grad for p in lv]
         if any(g_ is None for g_ in grads): raise RuntimeError("no gradient reached the effective weights")
         if a.debug:
@@ -367,6 +391,7 @@ def cmd_learn(a):
             with torch.no_grad(): cond = max(torch.linalg.cond(p.reshape(-1, dh, dh)).max().item() for p in params)
             ev = evaluate(ev_boxes); print(f"  step {step:4d} batch_obj={obj:+.4f} grad_norm={gn.item():.3e} | eval mean lb {ev[0]:+.4f} frac_ver {ev[1]:.3f} nan {ev[2]} | max cond(G)={cond:.2f} | {time.time()-t0:.0f}s", flush=True)
             if ev[0] > best[0]: best = (ev[0], (Gq.detach().double().cpu().clone(), Ga.detach().double().cpu().clone()), step)
+            if alt and a.out: torch.save({"qk": best[1][0], "av": best[1][1], "args": vars(a), "best_step": best[2], "skipped": skipped, "partial": True}, a.out)   # checkpoint (preemptible partitions)
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     torch.save({"qk": best[1][0], "av": best[1][1], "args": vars(a), "best_step": best[2], "skipped": skipped}, a.out)
     print(f"# saved best gauges (step {best[2]}, eval mean lb {best[0]:+.4f}, skipped steps {skipped}) -> {a.out}; wall {time.time()-t0:.0f}s")
@@ -442,11 +467,12 @@ def cmd_eval_alpha(a):
         v = crown_lb(lp, e, i, eps, y, dev, method="CROWN-Optimized", grad=True); c = crown_lb(lp, e, i, eps, y, dev); del lp; torch.cuda.empty_cache(); return v, c
     Gq, Ga = load_gauge(a.gauge, L, H, dh); res = {}
     for tag, (gq, ga) in [("stock", eye_gauge(L, H, dh, torch.float64)), ("gauged", (Gq, Ga))]:
+        if tag == "stock" and a.skip_stock: continue
         load_eff(net, effective(st, gq.float().to(dev), ga.float().to(dev), H, dh)); t0 = time.time(); res[tag] = {}
         for eps in eps_list:
             vc = [alpha_and_crown(e, i, eps, y) for j, i, e, y, _ in inst]; v = np.array([x[0] for x in vc]); c = np.array([x[1] for x in vc])
             res[tag][eps] = (v, c); print(f"# {tag} eps {eps}: alpha-CROWN verified {(v > 0).sum()}/{len(v)} (nan {np.isnan(v).sum()}) mean lb {np.nanmean(v):+.4f} | CROWN verified {(c > 0).sum()} mean lb {np.nanmean(c):+.4f}  [{time.time()-t0:.0f}s]", flush=True)
-    for eps in eps_list:
+    for eps in (eps_list if "stock" in res else []):
         s_, g_ = res["stock"][eps][0], res["gauged"][eps][0]; d = g_ - s_
         print(f"# PAIRED alpha-CROWN eps {eps}: tighter on {(d > 0).sum()}/{len(d)}, looser {(d < 0).sum()}, mean delta {np.nanmean(d):+.4f}; verified {(s_ > 0).sum()} -> {(g_ > 0).sum()}; flips up {((s_ <= 0) & (g_ > 0)).sum()}, down {((s_ > 0) & (g_ <= 0)).sum()}")
     if a.save_json: json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], "res": {t: {str(e): {"alpha": r[0].tolist(), "crown": r[1].tolist()} for e, r in d.items()} for t, d in res.items()}}, open(a.save_json, "w"))
@@ -622,7 +648,7 @@ if __name__ == "__main__":
     ap.add_argument("--split", default="dev"); ap.add_argument("--pos_per_sent", type=int, default=3); ap.add_argument("--eps_scale", type=float, default=1.0); ap.add_argument("--radius_iters", type=int, default=8)
     ap.add_argument("--steps", type=int, default=150); ap.add_argument("--accum", type=int, default=4); ap.add_argument("--lr", type=float, default=0.01); ap.add_argument("--cond_pen", type=float, default=1e-4); ap.add_argument("--clip", type=float, default=1.0)
     ap.add_argument("--which", default="both"); ap.add_argument("--seed", type=int, default=0); ap.add_argument("--log_every", type=int, default=10); ap.add_argument("--debug", type=int, default=0); ap.add_argument("--n_eval", type=int, default=48); ap.add_argument("--label", type=int, default=-1, help="learn: keep only tuning boxes with this label (-1 = all)")
-    ap.add_argument("--out", default=None); ap.add_argument("--gauge", default=None); ap.add_argument("--eps_list", default="0.01,0.02,0.03")
+    ap.add_argument("--out", default=None); ap.add_argument("--gauge", default=None); ap.add_argument("--alpha_iters", type=int, default=0, help="learn: >0 = alternating alpha-CROWN / gauge optimisation with this many alpha iterations per box"); ap.add_argument("--alpha_lr", type=float, default=0.1); ap.add_argument("--alpha_shared", type=int, default=0); ap.add_argument("--skip_stock", type=int, default=0, help="eval_alpha: only the gauged weight set (join stock from an earlier file)"); ap.add_argument("--eps_list", default="0.01,0.02,0.03")
     ap.add_argument("--obj", default="mean", help="mean | hinge"); ap.add_argument("--hinge_w", type=float, default=4.0)
     ap.add_argument("--max_len", type=int, default=12); ap.add_argument("--n_sent", type=int, default=20); ap.add_argument("--alpha", type=int, default=1); ap.add_argument("--hi", type=float, default=0.1); ap.add_argument("--iters", type=int, default=10); ap.add_argument("--save_json", default=None); ap.add_argument("--name", default="sst_bert_small_3"); ap.add_argument("--data", default="auto", help="sst | yelp | auto (from --name prefix)"); ap.add_argument("--eps", type=float, default=0.03); ap.add_argument("--softmax", default="lse"); ap.add_argument("--crown_batch", type=int, default=512)
     ap.add_argument("--split_attrib", type=int, default=0, help="attrib: also linearise ONE nonlinearity at a time (qk / softmax / av) and all three"); ap.add_argument("--factors", default="1,1.5", help="attrib: eps as multiples of the stock radius")
