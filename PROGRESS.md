@@ -3002,3 +3002,46 @@ Baseline, and nothing tracks the margin against the Baseline value. **Correction
 attributed the deficit to the initialisation.** Gauge under PBverifierI(v = 0): 0.03544 → 0.03599, **+1.6 %, larger on 32 /
 smaller on 0 / equal 3** (default init: −1.0 %, 21 / 12) — small, as everything is on small_3, but one-sided. small_6 pending
 (job 39885883, ≈ 17:40).
+
+**13:40 — write-up: per-class attention gauges (consolidating the 09-08 00:12 diagnostic and the 09-09 09:45 / 13:10 results).**
+
+*Finding.* A single learned gauge trades one class against the other. Bucketing the paired test results by label: big_3
+unified manual rule vs learned gauge is 100 / 0 on label-0 instances (share 1.09) and 0 / 97 on label 1 (0.69); small_6 the
+reverse (0 / 122 on label 0, 0.79; 142 / 0 on label 1, 1.30); Yelp l1N 0.64 / 0.97. Length, position, radius and eps buckets are
+flat. The manual construction is sign-blind (M and N enter through norms); the learner maximises the *signed* margin bound
+logit[y] − logit[1−y], whose relaxation picks lower/upper planes by the sign of every backward coefficient, so it can favour a
+class. The favoured class is model-structural (label 1 on big_3, label 0 on small_6; same 60 dev sentences for both learners).
+
+*Method.* `deept_gauge.py learn --label {0,1}` keeps only the tuning boxes of one label; everything else as the gauges of
+record (dev split ≤ 8 tokens, 3 positions/sentence, eps = stock radius, CROWN margin objective, Adam 0.01 × 120, cond penalty,
+best step by held-in mean lb). Boxes: big_3 53 / 17, small_6 53 / 15; 14–55 min per learner on an A100. Evaluation: the
+formula work's held-out screen (24 test sentences, 2 positions, 48 boxes, certified radius by bisection), split by label with
+`screen_label_split.py` (reconstructs the screen's draws; validated on the r5 big_3 screen).
+
+*Results (radius gain vs stock; head to head vs the single learned gauge).*
+| gauge | small_6 label 0 | small_6 label 1 | small_6 combined | big_3 label 0 | big_3 label 1 | big_3 combined |
+|---|---|---|---|---|---|---|
+| single learned | +15.8 % | +12.8 % | +14.1 % | +9.5 % | +15.1 % | +12.7 % |
+| label-0 learner | +17.2 % (7 / 0) | +5.8 % (0 / 22) | — | +9.9 % (3 / 0) | +7.6 % (0 / 23) | — |
+| label-1 learner | +5.4 % (0 / 20) | +23.1 % (21 / 0) | — | +3.7 % (0 / 19) | +18.5 % (19 / 0) | — |
+| **per-class (chosen by label)** | +17.2 % | +23.1 % | **+20.6 %** | +9.9 % | +18.5 % | **+14.9 %** |
+| manual unified rule | +13.5 % (0 / 11) | +16.5 % (18 / 0) | +15.2 % | +10.0 % (4 / 0) | +11.1 % (0 / 21) | +10.6 % |
+| closed form | +10.7 % | +17.9 % | +14.9 % | +8.0 % | +6.5 % | +7.1 % |
+
+*Why it is legitimate.* Both per-class gauges are exact G G⁻¹ rewrites (fp64 gate ≤ 6e-15); the query certifies label y and
+already uses y in the margin, so choosing the rewrite by y adds no information; verification-time cost is zero (two weight
+files); training cost doubles once per model. On its own class the per-class gauge is larger than the single learned gauge on
+21 / 0, 7 / 0, 19 / 0, 3 / 0 boxes and smaller on none. The label-1 learners used 15–17 boxes with normal conditioning (the
+cond-28 overfit regime of the 5–13-box verifier-trained gauges did not appear), but the paired-protocol confirmation on the
+full 288–294 test instances is still to be run.
+
+*Implication for the manual formula.* The sign-blind rule lands on the class the weights favour (big_3 label 0: 1.05 of the
+label-0 learner; small_6 label 1: 0.71 of the label-1 learner's +23.1 %) and well below the ceiling on the other. A sign-aware
+surrogate — the downstream margin functional with its sign, per class — is the one open piece; its target is now the per-class
+learner, not the single one. Round 6 (rotation-only ℓ1) is closed: equal to the unified rule on all four screens, better
+conditioning, not adopted.
+
+*Next.* (1) Paired eval of the per-class gauges on both models (per-label join with the existing stock sets). (2) Per-class on
+Yelp small_3 and the ViT. (3) Sign-aware manual surrogate. (4) The fp64 + error-budget verification mode for unconditional
+certificates (fold error 1e-15, forward error ≈ 1e-13, budget 1e-9; ≈ 2× runtime) — replaces the interval-weight tier.
+The artifact page published at 13:25 duplicates this entry; PROGRESS.md and RELATED_WORK.md are the record.

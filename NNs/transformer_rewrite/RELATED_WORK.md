@@ -155,6 +155,50 @@ intermediate-bound choices), and a gauge tuned to one need not help the other. I
 gauge against *their* bound (their bound computation is torch autograd-differentiable — they already differentiate it w.r.t.
 their relaxation parameters), which is a larger change than this session's runs; decided after the small_6 pair.
 
+### Why their optimised variants fall below their Baseline on DeepT weights — the initialisation test (2026-09-09)
+
+**Mechanism in their code.** Each product x·y in attention is relaxed with one scalar X0 per coordinate
+(`Verifiers/utils.py:1036`, `get_bounds_xy_adj`): lower plane `alpha_l = X0·k_eps + k_m`, `beta_l = X0·q_eps + q_m`,
+`gamma_l = −q_m k_m − q_eps k_eps − X0 (q_m k_eps + k_m q_eps)`, with m the box midpoint and eps the half-width. X0 = 0 is
+exactly Shi et al.'s plane (their Baseline); X0 = ±1 are the two McCormick corner planes; the family interpolates. The
+optimisable variable is pre-sigmoid, X0 = −1 + 2σ(v) (`Edge.py:1083`), and `rebuild_ori` initialises v = −4
+(`Edge.py:1073–1076`), so PBverifierI starts at X0 ≈ −0.96: almost a corner plane, whose worst-case slack over the box is
+4·q_eps·k_eps against 2·q_eps·k_eps for the Baseline plane. PBverifierT (`bilinear`, `Edge.py:1045–1048`) starts its tangent
+point at the box midpoint, i.e. at the Baseline. Optimisation (`Layer.py`): every attention layer runs its own Adam loop
+(`optimize`, line 100: 20 steps, lr 0.2, objective = the sum of that layer's own output widths, not the margin), keeps its best
+iterate on that objective and is then frozen (`comprehensive_l/u`); only the last layer optimises the margin
+(`last_layer_optimize`, line 239, 30 steps). Nothing tracks the margin against the Baseline value, so the result can end below
+the Baseline — unlike auto_LiRPA's CROWN-Optimized, which starts at the Baseline plane, optimises the final margin through all
+layers jointly and keeps the best margin iterate.
+
+**Test.** We added `--init_v` to their `Parser.py` (default −4, so all published-default runs are unchanged) and used it in
+`rebuild_ori`; `run_pbv_chain_v0.sh <3|6> 15 8 16` runs `originPlus --init_v 0` (start = Baseline plane) on the stock and
+gauged checkpoints with the same protocol as every other row here (ℓ∞, 15 sentences → 35 instances, 8 bisection steps, max
+length 16, seed 0). Results (`results/pbv_s3_originPlus_v0_{stock,gauged}.json`; `pbv_compare.py`):
+
+| small_3, 35 instances | mean radius | vs their Baseline (stock 0.03667) | larger / smaller / equal |
+|---|---|---|---|
+| PBverifierI, published start v = −4, stock | 0.03569 | −2.7 % | 12 / 11 / 12 |
+| **PBverifierI, start at the Baseline plane v = 0, stock** | **0.03544** | **−3.3 %** | 9 / 19 / 7 |
+| PBverifierI v = 0 vs v = −4 (stock) | — | −0.7 % | 9 / 20 / 6 |
+| gauge under PBverifierI v = 0 (stock → gauged) | 0.03544 → 0.03599 | **+1.6 %** | **32 / 0 / 3** |
+| gauge under PBverifierI v = −4 (for reference) | 0.03569 → 0.03534 | −1.0 % | 21 / 12 / 2 |
+
+**Reading.** Starting at the Baseline plane does not repair the deficit — it is marginally worse — so the earlier attribution
+to the initial plane (the 12:45 note above) was wrong; the cause is the per-layer width objective with per-layer freezing and
+the absence of margin tracking against the Baseline. It remains an optimiser artefact and not a weakness of the relaxation
+family (auto_LiRPA's version of the same family never falls below the Baseline). Two useful side facts: (i) under the Baseline
+start the gauge's effect inside PBverifierI on small_3 becomes one-sided (+1.6 %, 32 / 0 / 3) where it was mixed under the
+published start, consistent with the gauge helping the relaxation and the published optimiser adding noise on top; (ii) the
+small_6 run (job 39885883) is pending — there the published-default deficit was −15.6 %, and a −3 %-level result at v = 0
+would confirm that the deficit scales with depth through the frozen layers rather than with the start.
+
+**Relation to per-class gauges (same day, FORMULA.md and PROGRESS.md 2026-09-09 13:10).** Their method adapts the relaxation
+per query at ≈ 5× verification cost; a gauge is fixed per model at zero query cost; a per-class gauge (one exact rewrite per
+label, chosen by the label the query certifies) sits between the two and, on the held-out screen, gains +20.6 % vs +14.1 %
+(small_6) and +14.9 % vs +12.7 % (big_3) over the single learned gauge — larger than any per-query relaxation gain measured
+on these checkpoints, still at zero query cost.
+
 ### How the two verifiers were compared (protocol)
 
 Same instances: sentences matched by their token strings, positions 1–3 as in their code (`pbv_crosscheck.py`). Both
