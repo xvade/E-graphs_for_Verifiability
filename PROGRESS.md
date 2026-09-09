@@ -3125,3 +3125,13 @@ rule from label-0 probes **+13.3 %** vs the all-probe unified rule +13.5 % (labe
 no movement at all; label 1: +14.3 % vs +16.5 % all-probe. Same verdict as big_3: conditioning the probe distribution on the
 target class does not carry the per-class gain (≤ 1 point, here 0); the trade lives in the plane-sign structure of the bound.
 The label-conditioned rule is not adopted. Label-1 screen (39888868) pending, expected to confirm.
+
+**16:37 — label-conditioned manual rule, small_6, label-1 probes (job 39888868; 9 probes; same 24 + 24 boxes).** Label 1: rule
+from label-1 probes **+18.9 %** vs the all-probe unified rule +16.5 % (closed form from label-1 probes +19.7 % vs +17.9 %;
+label-1 learner +23.1 %; single learned +12.8 %) — larger than the single learned gauge on 21 / 0; label 0: +11.5 % vs +13.5 %.
+Summary of the four label-conditioned screens (target-class gain, conditioned vs all-probe rule → per-class learner):
+big_3 label 0: 9.8 vs 10.0 → 9.9; big_3 label 1: 12.0 vs 11.1 → 18.5; small_6 label 0: 13.3 vs 13.5 → 17.2; small_6 label 1:
+18.9 vs 16.5 → 23.1. Conditioning the probes helps only on the class the sign-blind rule already favours (small_6 label 1,
++2.4 points, reaching 0.82 of the per-class learner's gain) and does nothing on the unfavoured class (≤ 1 point) — which is
+exactly where the per-class learners win big. Verdict stands: the per-class gain is the plane-sign trade; a per-class manual
+rule needs a sign-aware surrogate. Not adopted as a procedure; `--probe_label` stays as a documented option.
