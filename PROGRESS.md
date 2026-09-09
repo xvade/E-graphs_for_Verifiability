@@ -3119,3 +3119,9 @@ for the identity starts, so both families were still moving at the 120-step cap;
 3–4 for all per-label gauges. This differs from the Yelp ceiling test (warm start from the CLOSED form, lr 0.005: tie); here the
 start is the refined rule and lr 0.01. Caveat: 48-box screen; the paired protocol on 288 instances is
 the confirmation. small_6 counterpart pending (job 39888763, waiting on the all-label learner 39888760).
+
+**16:17 — label-conditioned manual rule, small_6, label-0 probes (job 39888867; 15 probes; 24 + 24 held-out boxes).** Label 0:
+rule from label-0 probes **+13.3 %** vs the all-probe unified rule +13.5 % (label-0 learner +17.2 %, single learned +15.8 %) —
+no movement at all; label 1: +14.3 % vs +16.5 % all-probe. Same verdict as big_3: conditioning the probe distribution on the
+target class does not carry the per-class gain (≤ 1 point, here 0); the trade lives in the plane-sign structure of the bound.
+The label-conditioned rule is not adopted. Label-1 screen (39888868) pending, expected to confirm.
