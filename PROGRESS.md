@@ -2894,15 +2894,18 @@ share 0.90), learned +13.1 %, and the isotropic closed form `svd_iso` (same 2 bo
 59 smaller radii (212 / 59 / 23; eps-0.03 verified 78 vs 92–95). So on small_6 the Jacobian box shape is what carries the closed
 form (0.90 with it, 0.30 without), while the probe count (2 vs 24 boxes) is nearly irrelevant.
 
-**2026-09-09 08:45 — results that landed after the sub-agents died (all three hit the model's usage limit at ≈00:25 on
+**2026-09-09 08:42 — results that landed after the sub-agents died (all three hit the model's usage limit at ≈00:25 on
 09-08; the round-6 screens and the per-class screen were never submitted — resubmitted this morning after the maintenance).**
 - **small_6, refined rule on the paired protocol (job 39828671, 294 test instances; learned set joined from the earlier paired
   eval):** stock 0.02199 → unified rule `l1N_qk+av0` 0.02487 (**+13.1 %**; larger on 277, smaller on 0, equal 17), QK-only `l1N_qk`
   0.02481 (+12.9 %; 277 / 0 / 17), learned 0.02486 (+13.1 %; 273 / 0 / 21). Share of the learned gain **1.00** (QK-only 0.98);
   head to head the unified rule is larger on 142 instances, smaller on 122. Fixed-eps verified 275 / 181 / 41 (stock) →
   275 / 183 / **98** (unified) vs 275 / 183 / 95 (learned); mean lb at eps 0.03 +2.08 vs +1.62; reverse flips 0; fp64 gates
-  1–2e-15. The manual rule ties the learned gauge on the mean radius and is ahead on the largest eps — the first model where the
-  pre-registered bar (mean at or above the learned gauge's, smaller-count at or below it) is met, by a hair on the mean.
+  1–2e-15. The radius search bisects 10 times from 0.1, so radii are quantised at ≈1e-4 and the 1e-5 difference of the means is a
+  **tie**; the resolvable edges are head to head (142 vs 122) and eps-0.03 verified (98 vs 95), neither of which is the
+  pre-registered metric (mean above the learned gauge's on two models) — so the bar is not met, but small_6 is at parity.
+  By label the tie is the same class trade as the closed form, evened out: label 0 share 0.79 (0 / 122 head to head; closed
+  form 0.57), label 1 share 1.30 (142 / 0; closed form 1.42).
 - **big_3, full `l1N` paired (job 39816017):** 0.01841 (+10.8 %; 276 / 0; vs learned 101 / 97) = share 0.91, same as the unified
   rule; layer-0 splice `l1N@L0` 0.01835 (+10.4 %; share 0.87; vs learned 87 / 98). Verified 258 / 125 / 34 vs learned 258 / 129 / 48.
 - **Proxy-cost diagnostic, final report:** (a) the learned gauge is above the manual optimum on the ℓ1-with-N surrogate in *every*

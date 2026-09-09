@@ -174,8 +174,9 @@ matrix; the cond-28 overfit gauge is ranked worst by every Jacobian-shaped surro
 
 - Pre-registered bar for "beats the learned gauge": paired radius ratio-of-means above the learned gauge's with a smaller-radius
   count at or below it, on at least two models. Standing: paired shares 0.91 (big_3, unified rule), 0.84 (Yelp, `l1N`),
-  1.00 (small_6, unified rule; mean 0.02487 vs 0.02486, 0 smaller radii) — one-sided everywhere; the bar is met on small_6 by a
-  hair on the mean (and clearly on eps-0.03 verified counts), not on big_3 or Yelp.
+  1.00 (small_6, unified rule; mean 0.02487 vs 0.02486 — a tie at the bisection's 1e-4 resolution; ahead head to head 142 / 122
+  and on eps-0.03 verified 98 vs 95; by label 0.79 / 1.30, the closed form's class trade evened out) — one-sided everywhere; the
+  bar (mean above the learned gauge's on two models) is not met.
 - Ceiling test done: the CROWN learner warm-started from the closed form (Yelp, 100 steps) ties the learned-from-identity gauge
   (+10.0 % vs +10.1 %, 94 / 94 / 89 head to head) — the learned gauge is the optimum of its objective.
 - Round 6 screens and the per-class learners (above); the small_6 refined paired eval; the fp32-interval-weight run (cut at 8 h,
