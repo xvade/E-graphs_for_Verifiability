@@ -3003,7 +3003,7 @@ attributed the deficit to the initialisation.** Gauge under PBverifierI(v = 0): 
 smaller on 0 / equal 3** (default init: −1.0 %, 21 / 12) — small, as everything is on small_3, but one-sided. small_6 pending
 (job 39885883, ≈ 17:40).
 
-**13:40 — write-up: per-class attention gauges (consolidating the 09-08 00:12 diagnostic and the 09-09 09:45 / 13:10 results).**
+**13:14 — write-up: per-class attention gauges (consolidating the 09-08 00:12 diagnostic and the 09-09 09:45 / 13:10 results).**
 
 *Finding.* A single learned gauge trades one class against the other. Bucketing the paired test results by label: big_3
 unified manual rule vs learned gauge is 100 / 0 on label-0 instances (share 1.09) and 0 / 97 on label 1 (0.69); small_6 the
@@ -3044,4 +3044,4 @@ conditioning, not adopted.
 *Next.* (1) Paired eval of the per-class gauges on both models (per-label join with the existing stock sets). (2) Per-class on
 Yelp small_3 and the ViT. (3) Sign-aware manual surrogate. (4) The fp64 + error-budget verification mode for unconditional
 certificates (fold error 1e-15, forward error ≈ 1e-13, budget 1e-9; ≈ 2× runtime) — replaces the interval-weight tier.
-The artifact page published at 13:25 duplicates this entry; PROGRESS.md and RELATED_WORK.md are the record.
+The artifact page published earlier this afternoon duplicates this entry; PROGRESS.md and RELATED_WORK.md are the record.
