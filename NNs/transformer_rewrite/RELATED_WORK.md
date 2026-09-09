@@ -346,6 +346,21 @@ Results (verifier-trained gauges):
 
 ## Other verifier-side work on transformers
 
+**Liu, Zhang, Zhao — "Precise Verification of Transformers through ReLU-Catalyzed Abstraction Refinement", CAV 2026
+(arXiv 2605.14294, 14 May 2026; checked 2026-09-09 from the arXiv HTML).** Verifier-side, per query. The two McCormick-type
+planes for each dot product q·k are fused into one non-linear bound min(plane₁, plane₂) = plane₁ − ReLU(plane₁ − plane₂),
+and the ReLU is then relaxed with the standard slope-α lower bound, so ReLU-relaxation machinery (rule-based α ∈ {0,1} =
+r-BuFFeT; α ∈ [0,1] optimised per query on a softplus of the margin with Adam = o-BuFFeT, 85–100 iterations) applies to the
+bilinear terms. Same family of ideas as α-CROWN on bilinear nodes and Huang et al.'s PBverifierI (choosing the plane per
+product from the intermediate boxes), with a different parametrisation of the choice. Models: their own 1/2/3/6-layer
+transformers (8 heads, hidden 512, ReLU) and TinyBERT (4 layers, hidden 312 / 1200) on SST and Yelp; baseline = Shi et al.
+2020 only (no DeepT, α-CROWN, Huang et al.). Headline: certified radius 1.8× (r-BuFFeT) / 3.6× (o-BuFFeT) over Shi on the
+6-layer models, 2.7× on TinyBERT; runtime 1.1–1.7× (rule) and 33–97× (optimised). **No reparametrisation of the weights, no
+gauge / symmetry / basis change, no citation of Wang & Wang or of any rewriting work** — orthogonal to the gauge: their
+relaxation still boxes q and k in whatever basis the weights are stored in, so a gauge composes on top of it exactly as it does
+on Shi's Baseline and on PBverifierI (composition measured there: gauge +8.4 % under the Baseline, +6.1 % under PBverifierI,
+their per-query optimisation absorbs ≈ 1.5 points). Not a scoop; a natural next composition test if their code is released.
+
 | work | what it tightens | models / gains | relation to ours |
 |---|---|---|---|
 | Shi, Zhang, Chang, Huang, Hsieh, *Robustness Verification for Transformers*, ICLR 2020 (https://openreview.net/pdf?id=BJxwPJHFwS) | first backward (CROWN-style) bounds for transformers; mean-gap-optimal affine bounds for products, tangent bounds for exp/reciprocal | SST/Yelp BERTs ≤ 3 layers | the Baseline everywhere; our vanilla tier is this relaxation (auto_LiRPA) |
