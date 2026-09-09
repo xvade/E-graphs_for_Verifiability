@@ -3085,3 +3085,9 @@ tighter on 47 / 49), ≈ 2.7 h. Smoke 39889885 (40 min), full 39889886 (afterok,
 `gauges/deept_small6_alt_seed0.pt`, `results/deept_small6_alt_eval_alpha_seed0.json`. Read-out: does the α-trained gauge beat the
 plain-trained one on the α tier (per instance, same 49 boxes), and by how much relative to the +0.33 mean-lb gap between the
 plain-trained gauge and stock?
+
+**14:16 — alternating learner smoke passed (job 39889885, 27 min; full run 39889886 released).** Sanity line at step 0: α-optimised
+lb +0.93 / +3.57 vs the 'reuse' pass that carries the weight gradient +0.79 / +3.41 — the reuse pass recomputes the intermediate
+bounds with the reused α instead of the fixed ones the α loop optimised against, so the outer objective is a slightly looser
+α-tier bound (≈ 0.15 below the optimised one). Acceptable for the gradient; if the full run's gauge underperforms, pass the α
+loop's intermediate bounds into the reuse pass. fp64 gate 7e-16; α-tier smoke eval 7 / 7 tighter than stock.
