@@ -225,6 +225,74 @@ def candidate_l1(st64, Ms, H, dh, init, steps=400, lr=0.02, cond_pen=1e-4, log=N
         if log and step % 100 == 0: print(f"    l1 step {step}: surrogate {val:.4g}", flush=True)
     return best[1], best[0]
 
+def candidate_l1_rot(st64, Ms, H, dh, base, steps=400, lr=0.02, log=None, Ns=None):
+    """rotation-only refinement of a closed-form gauge: G = G_base . Q(S) with Q = (I - A)(I + A)^-1 (Cayley), A = S - S^T skew, S = 0 at start
+    (exactly the closed form); Adam on the l1-with-N surrogate, cosine-annealed, best step kept; NO cond penalty (Q is orthogonal, so the
+    conditioning and singular values are the closed form's).  The p = 2 problem is flat along Q (G^T A = G^-1 B = sqrt(S) U^T for every G Q
+    with Q in O(dh)), so this moves only inside that valley and lets the l1 surrogate choose the point in it"""
+    Gq0, Ga0 = base[0].detach().clone(), base[1].detach().clone(); I = torch.eye(dh, dtype=Gq0.dtype, device=Gq0.device)
+    Sq = nn.Parameter(torch.zeros_like(Gq0)); Sa = nn.Parameter(torch.zeros_like(Ga0)); opt = torch.optim.Adam([Sq, Sa], lr=lr); best = (float("inf"), None)
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=max(steps, 1), eta_min=lr * 0.05)
+    cayley = lambda S: torch.linalg.solve(I + (S - S.transpose(-1, -2)), I - (S - S.transpose(-1, -2)))   # (I + A)^-1 (I - A) = (I - A)(I + A)^-1: orthogonal
+    for step in range(steps + 1):
+        Gq = Gq0 @ cayley(Sq); Ga = Ga0 @ cayley(Sa); tot = 0.0
+        for l, (Wq, bq, Wk, bk, Wv, bv, Wo) in enumerate(st64):
+            s1, s2 = surrogate(Wq, Wk, Wv, Wo, Gq[l], Ga[l], Ms[l] if Ms is not None else None, 1, H, dh, Ns[l] if Ns is not None else None); tot = tot + s1 + s2
+        val = tot.item()
+        if val < best[0]: best = (val, (Gq.detach().clone(), Ga.detach().clone()))
+        if step == steps: break
+        opt.zero_grad(); tot.backward(); torch.nn.utils.clip_grad_norm_([Sq, Sa], 10.0); opt.step(); sched.step()
+        if log and step % 100 == 0: print(f"    l1rot step {step}: surrogate {val:.4g}", flush=True)
+    return best[1], best[0]
+
+def gauge_drift(G0, G1, dh):
+    """per layer: mean over heads of ||G0^-1 G1 - I||_F / sqrt(dh) (0 = same gauge up to nothing; a diagonal difference would still count)"""
+    D = torch.linalg.solve(G0.double(), G1.double()); I = torch.eye(dh, dtype=torch.float64, device=D.device)
+    return ((D - I).flatten(-2).norm(dim=-1) / math.sqrt(dh)).mean(-1)
+
+def cost_report(a, net, st64, I64, boxes_r, gpaths, L, H, dh, dev):
+    """--cost_only: NO CROWN anywhere.  Probe boxes get eps = --probe_eps (uniform; the r-runs used each box's stock CROWN radius, so the token
+    blocks of M are weighted equally here instead of by radius -- the surrogate's gauge ORDERING is what is compared).  Builds M_l, N_l, the closed
+    form and its l1N refinement under this M, scores every gauge in --gauges per layer and side under the l1 and l2 surrogates with N, and (with
+    --l1_init) runs the l1N optimiser warm-started from a given gauge and reports its drift from the start"""
+    t0 = time.time()
+    for b in boxes_r: b[4] = a.probe_eps
+    bx = [(b[0], b[1], b[2], b[3], b[4]) for b in boxes_r]; Ms = box_shapes(net, bx, dev); No = out_shapes(net, bx, dev); Nf, Nn = weight_shapes(net, st64, dev)
+    Na = [combine_N([Nf[l], Nn[l], No[l]]) for l in range(L)]; print(f"# cost-only: {len(boxes_r)} probe boxes at eps {a.probe_eps}; M_l {tuple(Ms[0].shape)}, N_all {tuple(Na[0].shape)}  [{time.time()-t0:.0f}s]", flush=True)
+    zoo = {"identity": I64, "cand:svd_jac": candidate_svd(st64, Ms, H, dh), "cand:svd_jacN_all": candidate_svd(st64, Ms, H, dh, Na)}
+    for pth in gpaths: zoo[os.path.basename(pth).replace("_seed0.pt", "").replace(".pt", "").replace("deept_", "").replace(f"formula_{a.name}_", "")] = load_gauge(pth, L, H, dh)
+    if a.l1_steps > 0:
+        t1 = time.time(); (gq, ga), v = candidate_l1(st64, Ms, H, dh, zoo["cand:svd_jacN_all"], steps=a.l1_steps, lr=a.l1_lr, log=True, Ns=Na); zoo["cand:l1N"] = (gq, ga); print(f"# l1N from the closed form [{time.time()-t1:.0f}s]", flush=True)
+    if a.l1_init:
+        t1 = time.time(); init = tuple(t.double().to(dev) for t in load_gauge(a.l1_init, L, H, dh)); nm = os.path.basename(a.l1_init).replace("_seed0.pt", "").replace(".pt", "").replace("deept_", "")
+        (gq, ga), v = candidate_l1(st64, Ms, H, dh, init, steps=a.l1_steps, lr=a.l1_lr, log=True, Ns=Na); zoo[f"cand:l1N_from_{nm}"] = (gq, ga); print(f"# l1N from {nm} [{time.time()-t1:.0f}s]", flush=True)
+    rows = {}; base = None
+    print(f"\n# {'gauge':26s} | l1N total (QK, AV.N) | l2N total (QK, AV.N) | max cond | per-layer l1N QK | per-layer l1N AV.N     (all / identity)", flush=True)
+    for name, (Gq, Ga) in zoo.items():
+        Gq, Ga = Gq.double().to(dev), Ga.double().to(dev); per = {1: [], 2: []}
+        for p in (1, 2):
+            for l, (Wq, bq, Wk, bk, Wv, bv, Wo) in enumerate(st64):
+                s1, s2 = surrogate(Wq, Wk, Wv, Wo, Gq[l], Ga[l], Ms[l], p, H, dh, Na[l]); per[p].append((s1.item(), s2.item()))
+        cond = max(torch.linalg.cond(Gq.reshape(-1, dh, dh)).max().item(), torch.linalg.cond(Ga.reshape(-1, dh, dh)).max().item())
+        if base is None: base = per
+        tot = lambda p: (sum(x + y for x, y in per[p]) / sum(x + y for x, y in base[p]), sum(x for x, y in per[p]) / sum(x for x, y in base[p]), sum(y for x, y in per[p]) / sum(y for x, y in base[p]))
+        t1, t2 = tot(1), tot(2); rows[name] = {"l1N": per[1], "l2N": per[2], "l1N_tot": t1, "l2N_tot": t2, "cond": cond}
+        print(f"  {name:26s} | {t1[0]:.4f} ({t1[1]:.4f}, {t1[2]:.4f}) | {t2[0]:.4f} ({t2[1]:.4f}, {t2[2]:.4f}) | {cond:6.2f} | " + " ".join(f"{x/bx_[0]:.3f}" for (x, y), bx_ in zip(per[1], base[1])) + " | " + " ".join(f"{y/bx_[1]:.3f}" for (x, y), bx_ in zip(per[1], base[1])), flush=True)
+    names = list(zoo); print(f"\n# gauge drift per layer, mean over heads of ||G_a^-1 G_b - I||_F/sqrt(dh)  (QK ; AV):")
+    drift = {}
+    for i_, na_ in enumerate(names):
+        for nb_ in names[i_ + 1:]:
+            if na_ == "identity" or nb_ == "identity": continue
+            dq = gauge_drift(zoo[na_][0].to(dev), zoo[nb_][0].to(dev), dh); da = gauge_drift(zoo[na_][1].to(dev), zoo[nb_][1].to(dev), dh); drift[f"{na_} -> {nb_}"] = (dq.tolist(), da.tolist())
+            print(f"  {na_:26s} -> {nb_:26s}  QK {[f'{x:.2f}' for x in dq.tolist()]}  AV {[f'{x:.2f}' for x in da.tolist()]}")
+    if a.out:
+        os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True); fo = open(a.out, "w"); json.dump({"rows": rows, "drift": drift, "boxes_random": len(boxes_r), "args": vars(a)}, fo, indent=1); fo.close()
+        gd = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gauges")
+        for k in [k for k in zoo if k.startswith("cand:l1N")]:
+            torch.save({"qk": zoo[k][0].double().cpu(), "av": zoo[k][1].double().cpu(), "formula": k + " (cost-only run, uniform probe eps)", "args": vars(a)}, os.path.join(gd, f"formula_{a.name}_{k.split(':', 1)[1].replace('+', '-').replace('@', '_')}{a.tag}.pt"))
+        print(f"# saved {a.out} and gauges/formula_{a.name}_l1N*{a.tag}.pt")
+
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("mode", choices=["validate"]); ap.add_argument("--name", default="sst_bert_small_6"); ap.add_argument("--gauges", default="")
     ap.add_argument("--n_sent", type=int, default=12); ap.add_argument("--pos", type=int, default=2); ap.add_argument("--max_len", type=int, default=8); ap.add_argument("--seed", type=int, default=0)
@@ -234,6 +302,7 @@ def main():
     ap.add_argument("--radius_names", default="", help="held-out certified-radius screen on dev sentences the learner never saw: comma list of zoo names, or auto"); ap.add_argument("--n_dev", type=int, default=24); ap.add_argument("--dev_pos", type=int, default=2)
     ap.add_argument("--dev_probes", type=int, default=0, help="also build M / N_out from this many unlabeled dev sentences (disjoint from the learner's and the screen's) -> cand:svd_jacN_all_dev"); ap.add_argument("--tag", default="", help="suffix for the saved candidate gauge files")
     ap.add_argument("--sens", type=int, default=0, help="sensitivity-weighted token blocks (cand:svd_sens*)"); ap.add_argument("--infl", type=int, default=0, help="rounds of CROWN-inflation rescaling of M (cand:svd_infl<k>)")
+    ap.add_argument("--l1rot", type=int, default=0, help="rotation-only l1N refinement of the closed form (cand:l1N_rot, cand:l1N_rot_qk+av0)"); ap.add_argument("--cost_only", type=int, default=0, help="no CROWN: surrogate tables per layer/side for --gauges, closed form, l1N (cost_report)"); ap.add_argument("--probe_eps", type=float, default=1.0); ap.add_argument("--l1_init", default="", help="gauge file to warm-start the l1N optimiser from (cand:l1N_init / cand:l1N_from_*)")
     ap.add_argument("--l1_lr", type=float, default=0.02); ap.add_argument("--l1N", type=int, default=0, help="l1 (box-width) surrogate with the downstream functionals N, minimised by Adam from svd_jacN_all: cand:l1N, cand:l1N@L0, cand:l1N_qk, cand:l1N_infl"); ap.add_argument("--dev_split", default="", help="split for the held-out radius screen / text probes (default: the learner's split, minus its sentences; SST models: train)")
     a = ap.parse_args(); torch.manual_seed(a.seed); random.seed(a.seed)
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh, hid = len(net.layers), net.H, net.dh, net.hid
@@ -254,6 +323,7 @@ def main():
     boxes_d = [(e, i, ex["label"], e.shape[1]) for j, ex, e, toks in Sd for i in pos_sets(toks, 1, rngd, a.dev_pos)]
     boxes_p = [(e, i, ex["label"], e.shape[1], 1.0) for j, ex, e, toks in Sp for i in pos_sets(toks, 1, rngd, a.pos)]
     print(f"# held-out {la.data} {dsplit} sentences (not the learner's): {len(rest)} available; radius screen {len(Sd)} sentences -> {len(boxes_d)} boxes; text probes {len(Sp)} sentences -> {len(boxes_p)} boxes", flush=True)
+    if a.cost_only: return cost_report(a, net, st64, I64, boxes_r, gpaths, L, H, dh, dev)
     lirpas = make_lirpas(net, [b[3] for b in boxes_r + boxes_s] + [b[3] for b in boxes_d], dev, a.softmax); set_gauge(*I64); t0 = time.time()
     for b in boxes_r + boxes_s: b[4] = certified_radius(lirpas[b[3]], b[0], b[1], b[2], dev, hi=a.hi, iters=8)
     print(f"# {a.name}: {len(boxes_r)} random-token boxes (eps = stock radius, mean {np.mean([b[4] for b in boxes_r]):.4f}) + {len(boxes_s)} SST-dev boxes (mean {np.mean([b[4] for b in boxes_s]):.4f})  [{time.time()-t0:.0f}s]", flush=True)
@@ -312,6 +382,10 @@ def main():
         g0, a0 = C[0].clone(), C[1].clone(); g0[0], a0[0] = gq[0], ga[0]; zoo["cand:l1N@L0"] = (g0, a0); zoo["cand:l1N_qk"] = (gq, C[1])
         g1 = C[0].clone(); g1[0] = gq[0]; zoo["cand:l1N_qk@L0"] = (g1, C[1])
         a1 = C[1].clone(); a1[0] = ga[0]; zoo["cand:l1N_qk+av0"] = (gq, a1)   # unified rule: l1 QK at every layer, l1 AV at layer 0 (exact M) only
+        if a.l1_init: (gq, ga), v = candidate_l1(st64, Ms, H, dh, tuple(t.double().to(dev) for t in load_gauge(a.l1_init, L, H, dh)), steps=a.l1_steps, lr=a.l1_lr, log=True, Ns=Na); zoo["cand:l1N_init"] = (gq, ga)   # warm start from a given gauge (e.g. the learned one)
+        if a.l1rot:   # round 6: rotation-only refinement (closed form . Q, Q orthogonal): whole, and the unified splice (QK every layer, AV layer 0)
+            (gq, ga), v = candidate_l1_rot(st64, Ms, H, dh, C, steps=a.l1_steps, lr=a.l1_lr, log=True, Ns=Na); zoo["cand:l1N_rot"] = (gq, ga)
+            a1 = C[1].clone(); a1[0] = ga[0]; zoo["cand:l1N_rot_qk+av0"] = (gq, a1)
         if a.infl:
             (gq, ga), v = candidate_l1(st64, [Ms[l] * rho[l] for l in range(L)], H, dh, zoo[f"cand:svd_infl{a.infl}"], steps=a.l1_steps, lr=a.l1_lr, log=True, Ns=Na); zoo["cand:l1N_infl"] = (gq, ga)
         print(f"# l1N candidates built [{time.time()-t1:.0f}s]", flush=True)

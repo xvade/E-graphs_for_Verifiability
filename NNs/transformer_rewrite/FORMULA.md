@@ -1,11 +1,11 @@
 # The formula for the attention gauge
 
-Status 2026-09-07 21:20. Goal (second phase): a *manual* procedure — weights plus a handful of random probe sequences, no
+Status 2026-09-09 08:45. Goal (second phase): a *manual* procedure — weights plus a handful of random probe sequences, no
 verifier in the loop — whose gauge beats the learned one (`deept_gauge.py learn`, Adam on CROWN's lower bound over tuning boxes).
 What is settled: the closed form below reaches 61–64 % of the learned radius gain on the paired protocol (big_3, Yelp small_3);
 refining it on the ℓ1 version of the same cost model (step 2) lifts the paired share to 0.91 on big_3 (one-sided, per-instance
 tie with the learned gauge) and 0.84 on Yelp; on small_6 the closed form and the refined rule score 1.06–1.08 on held-out text
-(paired: closed form 0.92, per-instance tie 142 / 133; refined rule running). The CROWN learner warm-started from the closed form ties the learned gauge exactly, so the learned gauge
+(paired: closed form 0.92; **unified rule 1.00** — mean radius 0.02487 vs 0.02486, larger on 142 / smaller on 122 head to head, 98 vs 95 verified at eps 0.03). The CROWN learner warm-started from the closed form ties the learned gauge exactly, so the learned gauge
 is the optimum of its own objective: parity is the realistic target for a manual procedure, and beating it needs a different
 objective. The procedure of record is the **unified rule**: closed form, then ℓ1 refinement of the QK gauge at every layer and of
 the value gauge at layer 0 only (the both-sided refinement is harmful on small_6).
@@ -93,8 +93,8 @@ tokens, 277–294 instances, ratio of means, fixed-eps verified counts, fp64 gat
 |---|---|---|---|---|
 | SST big_3 | learned | 1.00 / 1.00 | +12.7 % (46 / 0) | +11.9 % (274 / 0) |
 | | svd_jacN_all (step 1) | 0.75 / 0.77 | 0.56 (45 / 0) | **0.61** (+7.2 %, 273 / 0) |
-| | **l1N (step 2)** | 0.96 / 0.95 | **0.84** (46 / 0; > learned on 4) | **0.91** (+10.8 %; per-instance lines pending) |
-| | l1N, layer 0 only | 0.94 / 0.93 | 0.82 (46 / 0) | job 39816017 |
+| | **l1N (step 2)** | 0.96 / 0.95 | **0.84** (46 / 0; > learned on 4) | **0.91** (+10.8 %, 276 / 0; vs learned 101 / 97) |
+| | l1N, layer 0 only | 0.94 / 0.93 | 0.82 (46 / 0) | 0.87 (+10.4 %, 276 / 0; vs learned 87 / 98) |
 | | **unified rule** (l1 QK all layers, l1 AV layer 0) | — | 0.83 (46 / 0) | **0.91** (+10.8 %, 276 / 0; vs learned 100 / 97) |
 | | l1N, QK side only | 0.85 / 0.86 | 0.71 (45 / 0) | 0.79 (+9.4 %, 275 / 0) |
 | | l1N, 1500 steps | 0.96 / 0.95 | 0.86 (46 / 0) | — |
@@ -107,9 +107,9 @@ tokens, 277–294 instances, ratio of means, fixed-eps verified counts, fp64 gat
 | SST small_6 | learned | 1.00 / 1.00 | — | +13.1 % (273 / 0) |
 | | svd_jacN_all (step 1) | 0.90 / 0.92 | **1.06** (41 / 0; 18 / 16; second probe seed 1.06) | **0.92** (+12.1 %, 276 / 0; vs learned 142 / 133); 2-box svd_jac 0.90 (254 / 2) |
 | | l1N (step 2, both sides) | 0.83 / 0.84 | 0.52–0.54 (36 / 0) — harmful beyond layer 0 | — |
-| | l1N, QK side only | 0.96 / 0.96 | 1.06 (42 / 0; head to head 17 / 12) | job 39828671 (second set) |
+| | l1N, QK side only | 0.96 / 0.96 | 1.06 (42 / 0; head to head 17 / 12) | 0.98 (+12.9 %, 277 / 0; vs learned 142 / 124) |
 | | l1N, layer 0 only | 0.91 / 0.93 | **1.08** (41 / 0; 18 / 15) | — |
-| | **unified rule** (l1 QK all layers, l1 AV layer 0) | — | **1.08** (42 / 0; 18 / 11) | job 39828671 |
+| | **unified rule** (l1 QK all layers, l1 AV layer 0) | — | **1.08** (42 / 0; 18 / 11) | **1.00** (+13.1 % vs +13.1 %, 277 / 0; vs learned 142 / 122; eps-0.03 verified 98 vs 95) |
 
 The held-out screen predicts the paired number (Yelp 0.66 → 0.64 and 0.88 → 0.84, big_3 0.56 → 0.61); the learner-box column
 does not (it said 0.82–0.83 for Yelp, and 0.86 for the both-sided l1N on small_6 that scores 0.54 held-out). Fixed-eps verified counts and flips move with the radius; reverse flips are 0 everywhere; fp64 gates 1e-15.
@@ -123,6 +123,30 @@ does not (it said 0.82–0.83 for Yelp, and 0.86 for the both-sided l1N on small
   spread over the layers (no single-layer swap moves more than 0.05).
 - **Yelp small_3:** diffuse — learned QK + candidate AV 0.88 (held-out screen), learned layer 0 / 1 / 2 in the candidate 0.76 / 0.80 /
   0.75, candidate layer 0 / 1 / 2 in the learned gauge 0.89 / 0.85 / 0.90. Step 2 gets 0.88 on the screen; the layer-0 splice 0.75.
+
+## What the residual gap is (diagnostics, 2026-09-08 00:00–00:15, sub-agent reports in the job tmp dir)
+
+1. **A label split, not a length / position / eps effect.** Bucketing the paired results: big_3 unified rule vs learned gauge
+   is 100 / 0 on the label-0 instances it does not tie (share 1.09) and 0 / 97 on label 1 (share 0.69); the eps-0.0287 verified
+   deficit (34 vs 48) is entirely label 1 (4 vs 18). small_6 closed form: label 0 share 0.57 (0 / 133), label 1 share 1.42
+   (142 / 0). Yelp `l1N`: 0.64 / 0.97. Token-count, position, stock-radius and eps buckets are flat (0.87–1.02 on big_3). The
+   manual construction is sign-blind (M and N enter through norms only); the CROWN learner maximises the *signed* margin bound
+   and trades one class against the other — in opposite directions on the two SST models, so it is model-structural.
+2. **Learned ≈ closed form ∘ rotation.** D = closed⁻¹ · learned is nearly orthogonal (distance to the polar factor 0.13–0.35;
+   singular values 0.79–1.34 at big_3 layer 0), while the ℓ1 refinement moves the closed form by a large stretch (singular
+   values up to 2.9; cond 30 on small_6 vs 4.9 learned). The ℓ2 closed form has a flat O(d_h) valley per head (Gᵀ A = G⁻¹ B =
+   √S Uᵀ for every G · Q), so its rotation is a numerical accident — and the rotation is exactly what the probe seed changes:
+   the Yelp seed-0 and seed-1 closed forms have identical metrics G Gᵀ (distance 0.00–0.05) with held-out shares 0.66 vs 0.28.
+3. **Objective mismatch, not optimiser failure.** The ℓ1-with-N surrogate at the learned gauge is *higher* than at the manual
+   optimum on every model, layer and side (relative to identity: big_3 0.679 vs 0.576, Yelp 0.971 vs 0.947, small_6 0.744 vs
+   0.731; big_3 layer-0 QK: closed form 0.970 → `l1N` 0.795, learned 0.865). The surrogate orders gauged < identity correctly but
+   ranks manual below learned; more optimisation of it cannot close the gap (consistent with the 1500-step null).
+4. Box shape vs probe count (small_6 paired): `svd_jac` from 2 boxes 0.90, from 24 boxes 0.92; the isotropic closed form from
+   the same 2 boxes 0.30 with 59 smaller radii. The Jacobian shaping carries the closed form; the probe count barely matters.
+
+Round 6 (last GPU window before the maintenance): rotation-only ℓ1 refinement `l1N_rot` (closed-form metric kept, Cayley-
+parametrised rotation optimised on the ℓ1 surrogate; unified variant), screened on all three models and Yelp seed 1; per-class
+learners on big_3 (label-0-only / label-1-only boxes) to bound what a sign-aware manual rule could gain.
 
 ## What did not help (all three models unless noted)
 
@@ -148,15 +172,14 @@ matrix; the cond-28 overfit gauge is ranked worst by every Jacobian-shaped surro
 
 ## Pending
 
-- Paired evals of step 2: big_3 (job 39816017: `l1N`, its layer-0 splice, learned), Yelp small_3 (queued behind the round-3
-  save), small_6 (after job 39802259). Pre-registered bar for "beats the learned gauge": paired radius ratio-of-means above the
-  learned gauge's with a smaller-radius count at or below it, on at least two models. Current standing: 0.84–0.88 of the learned
-  gain on the held-out screens, so the bar is not met.
-- small_6 paired evals of step 1 (24-box `svd_jacN_all` + `svd_jac`, job 39787014; 2-box `svd_jac`, 39773109).
-- Ceiling test (hybrid, not the manual procedure): the CROWN learner warm-started from the closed form on Yelp — 40 steps at lr
-  0.005 gives +9.0 % paired radius vs +10.1 % learned-from-identity (job 39796638); 100 steps running (39802260). If the warm start
-  ends below the learned gauge, the learned gauge is near the ceiling of this objective and "beat learned" needs a different
-  objective, not a better formula.
+- Pre-registered bar for "beats the learned gauge": paired radius ratio-of-means above the learned gauge's with a smaller-radius
+  count at or below it, on at least two models. Standing: paired shares 0.91 (big_3, unified rule), 0.84 (Yelp, `l1N`),
+  1.00 (small_6, unified rule; mean 0.02487 vs 0.02486, 0 smaller radii) — one-sided everywhere; the bar is met on small_6 by a
+  hair on the mean (and clearly on eps-0.03 verified counts), not on big_3 or Yelp.
+- Ceiling test done: the CROWN learner warm-started from the closed form (Yelp, 100 steps) ties the learned-from-identity gauge
+  (+10.0 % vs +10.1 %, 94 / 94 / 89 head to head) — the learned gauge is the optimum of its objective.
+- Round 6 screens and the per-class learners (above); the small_6 refined paired eval; the fp32-interval-weight run (cut at 8 h,
+  resubmit after the maintenance).
 - Verifier-free and probe-seed checks of step 1 (done): big_3 `svd_jacN_all_u` +0.384 / +0.947, second seed +0.382 / +0.941 vs
   +0.384 / +0.946; Yelp verifier-free +0.190 / +1.517 matches, seed dependence as described above.
 

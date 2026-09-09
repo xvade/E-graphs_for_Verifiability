@@ -2866,3 +2866,53 @@ hard-codes the test split, so every paired number is on sentences the learners n
 User asked to finish the search for a better formula with sub-agents; three launched: paired-gap bucketing + gauge-matrix
 comparison, surrogate-cost-at-the-learned-gauge diagnostic (`--cost_only`), and a theory note on CROWN's bilinear slack vs the ℓ1
 surrogate. Maintenance at 04:00 caps any GPU round at ≈ 2.5 h.
+
+**00:12 (2026-09-08) — two diagnostics on the residual gap (sub-agent reports in the job tmp dir).**
+(1) *Where the learned gauge's edge is:* not sentence length, position, radius quartile or eps — it is a **label split**.
+On big_3 the unified rule is larger than the learned gauge on every label-0 instance it does not tie (100 / 0; share 1.09) and
+smaller on every label-1 instance (0 / 97; share 0.69); the whole eps-0.0287 verified deficit (34 vs 48) is label 1 (4 vs 18).
+small_6 closed form: label 0 share 0.57 (0 / 133), label 1 share 1.42 (142 / 0). Yelp `l1N`: label 0 0.64, label 1 0.97.
+The manual construction is sign-blind (M and N enter only through norms); the learner maximises the *signed* margin bound and
+trades one class against the other, in opposite directions on the two SST models (structural, not class imbalance).
+(2) *Gauge matrices:* learned ≈ closed form ∘ near-orthogonal rotation (to-orthogonal 0.13–0.35) ∘ mild stretch (singular values
+0.79–1.34 at big_3 layer 0); the ℓ1 refinement instead moves the closed form by a large stretch (up to 2.9; cond 30 on small_6).
+The ℓ2 closed form has a flat O(d_h) valley per head (Gᵀ A = G⁻¹ B = √S Uᵀ for every G·Q), so its rotation is a numerical
+accident — and it is exactly what the Yelp probe seed changes: seeds 0 and 1 give identical metrics G Gᵀ (distance 0.00–0.05)
+with held-out shares 0.66 vs 0.28.
+(3) *Objective vs optimiser:* the ℓ1-with-N surrogate at the learned gauge is HIGHER than at the manual optimum on every model,
+layer and side (big_3 total 0.679 vs 0.576 relative to identity; Yelp 0.971 vs 0.947; small_6 0.744 vs 0.731; at big_3 layer 0
+QK: closed form 0.970 → `l1N` 0.795, learned 0.865). The surrogate orders gauged < identity correctly but ranks manual below
+learned — the remaining gap is an objective mismatch, not an optimisation failure; more optimisation cannot close it.
+Follow-ups launched for the last GPU window before the 04:00 maintenance: rotation-only ℓ1 refinement `l1N_rot` (closed-form
+metric kept, Cayley-parametrised rotation optimised on the ℓ1 surrogate; unified variant too) screened on all three models +
+Yelp seed 1 (round 6), and per-class learners on big_3 (label-0-only and label-1-only boxes) to bound what a sign-aware rule
+could gain. Interval-weight run (job 39771549, small_6) hit its 8 h limit after the stock and gauged sets (identical to the
+paired eval, +13.1 %); the fp32-interval-weight sets did not finish — resubmit after the maintenance with a longer limit.
+
+**00:20 — small_6 2-box paired eval complete (job 39773109, all four sets).** `svd_jac` from 2 probe boxes +11.8 % (254 / 2;
+share 0.90), learned +13.1 %, and the isotropic closed form `svd_iso` (same 2 boxes, no Jacobian shaping) only **+3.9 %** with
+59 smaller radii (212 / 59 / 23; eps-0.03 verified 78 vs 92–95). So on small_6 the Jacobian box shape is what carries the closed
+form (0.90 with it, 0.30 without), while the probe count (2 vs 24 boxes) is nearly irrelevant.
+
+**2026-09-09 08:45 — results that landed after the sub-agents died (all three hit the model's usage limit at ≈00:25 on
+09-08; the round-6 screens and the per-class screen were never submitted — resubmitted this morning after the maintenance).**
+- **small_6, refined rule on the paired protocol (job 39828671, 294 test instances; learned set joined from the earlier paired
+  eval):** stock 0.02199 → unified rule `l1N_qk+av0` 0.02487 (**+13.1 %**; larger on 277, smaller on 0, equal 17), QK-only `l1N_qk`
+  0.02481 (+12.9 %; 277 / 0 / 17), learned 0.02486 (+13.1 %; 273 / 0 / 21). Share of the learned gain **1.00** (QK-only 0.98);
+  head to head the unified rule is larger on 142 instances, smaller on 122. Fixed-eps verified 275 / 181 / 41 (stock) →
+  275 / 183 / **98** (unified) vs 275 / 183 / 95 (learned); mean lb at eps 0.03 +2.08 vs +1.62; reverse flips 0; fp64 gates
+  1–2e-15. The manual rule ties the learned gauge on the mean radius and is ahead on the largest eps — the first model where the
+  pre-registered bar (mean at or above the learned gauge's, smaller-count at or below it) is met, by a hair on the mean.
+- **big_3, full `l1N` paired (job 39816017):** 0.01841 (+10.8 %; 276 / 0; vs learned 101 / 97) = share 0.91, same as the unified
+  rule; layer-0 splice `l1N@L0` 0.01835 (+10.4 %; share 0.87; vs learned 87 / 98). Verified 258 / 125 / 34 vs learned 258 / 129 / 48.
+- **Proxy-cost diagnostic, final report:** (a) the learned gauge is above the manual optimum on the ℓ1-with-N surrogate in *every*
+  (layer, side) cell of every model (two ties within 0.01); (b) Adam started AT the learned gauge walks it down to the manual
+  optimum's surrogate value and away from the learned gauge (drift ‖G_l⁻¹G′ − I‖_F/√d_h 0.85–1.23 per layer; unrelated rotations
+  ≈ 1.41) — the learned gauge is not a stationary point of the surrogate; (c) Yelp cross-draw: the seed-0 and seed-1 gauges have
+  identical surrogate values to 3–4 decimals under either probe draw while their CROWN shares differ 2× — the surrogate is flat
+  along the direction the probe draw moves the gauge (layers 1–2 drift 1.3 between draws; layer 0 identical because the no_var
+  LayerNorm Jacobian is data-free). No verifier-free selection rule exists in this surrogate.
+- Per-class learners on big_3 finished (label 0: 53 boxes, label 1: 17 of the 70; 20 / 14 min); their screen failed in 23 s
+  (absolute gauge paths word-split on the spaces in the repo path) — resubmitted with relative paths (job 39881644).
+- Resubmitted: round-6 rotation-only screens r6_big3 / r6_yelp3 / r6_yelp3_s1 / r6_small6 (jobs 39881639–39881642; smoke passed
+  on 09-08, rc=0), interval-weight run with a 30 h limit (job 39881645, resumes the finished stock / gauged sets).

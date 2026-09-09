@@ -323,6 +323,7 @@ def cmd_learn(a):
     for j, ex, e, toks in S:
         for i in pos_sets(toks, a.k_words, rng, a.pos_per_sent): boxes.append([e, i, ex["label"], e.shape[1], None])
     if a.k_words > 1: print(f"# k-word perturbation: every tuning box widens {a.k_words} embedding rows at once", flush=True)
+    if getattr(a, "label", -1) >= 0: boxes = [b for b in boxes if b[2] == a.label]; print(f"# per-class learner: keeping the {len(boxes)} boxes with label {a.label}", flush=True)   # label-restricted tuning set (per-class gauge)
     lirpas = make_lirpas(net, [b[3] for b in boxes], dev, a.softmax)
     # per-box eps = stock certified radius (bisection, no grad) scaled by eps_scale -> the stock bound sits at ~0 on every tuning box
     t0 = time.time()
@@ -620,7 +621,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("cmd", choices=["probe", "radii", "learn", "eval", "eval_alpha", "attrib", "eval_pq"])
     ap.add_argument("--split", default="dev"); ap.add_argument("--pos_per_sent", type=int, default=3); ap.add_argument("--eps_scale", type=float, default=1.0); ap.add_argument("--radius_iters", type=int, default=8)
     ap.add_argument("--steps", type=int, default=150); ap.add_argument("--accum", type=int, default=4); ap.add_argument("--lr", type=float, default=0.01); ap.add_argument("--cond_pen", type=float, default=1e-4); ap.add_argument("--clip", type=float, default=1.0)
-    ap.add_argument("--which", default="both"); ap.add_argument("--seed", type=int, default=0); ap.add_argument("--log_every", type=int, default=10); ap.add_argument("--debug", type=int, default=0); ap.add_argument("--n_eval", type=int, default=48)
+    ap.add_argument("--which", default="both"); ap.add_argument("--seed", type=int, default=0); ap.add_argument("--log_every", type=int, default=10); ap.add_argument("--debug", type=int, default=0); ap.add_argument("--n_eval", type=int, default=48); ap.add_argument("--label", type=int, default=-1, help="learn: keep only tuning boxes with this label (-1 = all)")
     ap.add_argument("--out", default=None); ap.add_argument("--gauge", default=None); ap.add_argument("--eps_list", default="0.01,0.02,0.03")
     ap.add_argument("--obj", default="mean", help="mean | hinge"); ap.add_argument("--hinge_w", type=float, default=4.0)
     ap.add_argument("--max_len", type=int, default=12); ap.add_argument("--n_sent", type=int, default=20); ap.add_argument("--alpha", type=int, default=1); ap.add_argument("--hi", type=float, default=0.1); ap.add_argument("--iters", type=int, default=10); ap.add_argument("--save_json", default=None); ap.add_argument("--name", default="sst_bert_small_3"); ap.add_argument("--data", default="auto", help="sst | yelp | auto (from --name prefix)"); ap.add_argument("--eps", type=float, default=0.03); ap.add_argument("--softmax", default="lse"); ap.add_argument("--crown_batch", type=int, default=512)
