@@ -3045,3 +3045,26 @@ conditioning, not adopted.
 Yelp small_3 and the ViT. (3) Sign-aware manual surrogate. (4) The fp64 + error-budget verification mode for unconditional
 certificates (fold error 1e-15, forward error ≈ 1e-13, budget 1e-9; ≈ 2× runtime) — replaces the interval-weight tier.
 The artifact page published earlier this afternoon duplicates this entry; PROGRESS.md and RELATED_WORK.md are the record.
+
+**13:19 — round of learners warm-started from the manual unified rule (user request): single and per-label, small_6 and
+big_3.** `deept_gauge.py learn --gauge <unified rule .pt> --label {-1,0,1}`, all other settings as the gauges of record
+(120 steps, lr 0.01, cond penalty, best step by held-in mean lb; the init itself is the step-−1 candidate). Starts:
+`formula_sst_bert_small_6_l1N_qk_av0_r4.pt`, `formula_sst_bert_big_3_l1N_qk_av0_r3.pt`. Jobs 39888760–2 (small_6: all /
+label 0 / label 1), 39888764–6 (big_3), each ≤ 1.5 h on ckpt A100s; dependent held-out screens 39888763 (small_6, ≤ 4 h) and
+39888767 (big_3) with nine names: identity, learned, lab0, lab1, init, initlab0, initlab1, closed form, unified rule →
+`results/formula_{small6,big3}_init.json`, split by label with `screen_label_split.py`. Questions: does the warm start reach or
+pass the identity-initialised learner (single: the Yelp ceiling test said tie), and does it reach the per-class learners on each
+label (the unified rule is already at the label-0 ceiling on big_3 and above the single gauge on label 1 of small_6)?
+
+**13:21 — label-conditioned manual unified rule (user request: a manual rule that produces a gauge for a specific label).**
+Cheapest honest version of the sign-aware idea: the same construction (closed form `svd_jacN_all` + ℓ1 QK at every layer + ℓ1
+AV at layer 0) with its random-token probes restricted to sequences the model predicts as the target label
+(`gauge_formula.py --probe_label {0,1}`; random tokens carry the model's prediction as their label, so the filter is
+verifier-free and label-free), so the box shapes M, the downstream margin functionals N_out and every cand:* row are built
+for that class. n_sent 24 → ≈ 12 probes per class (the 2-vs-24-box test says the count is not the limiting factor). Screens
+`plab{0,1}_{big3,small6}` (chain modes; smoke 39888861, then jobs 39888862 / 39888866 / 39888867 / 39888868) on the usual 24
+test sentences with identity, the single learned gauge, the per-class learner of that label, the closed form and the unified
+rule from those probes → `results/formula_<model>_plab<y>.json`, split by label afterwards. Read-out: on label y, does the
+label-y manual rule move from the all-probe rule (big_3 label 1: +11.1 %, small_6 label 0: +13.5 %) toward the per-class
+learner (+18.5 % / +17.2 %)? It cannot express the plane-sign trade itself (the surrogate is still sign-blind); it tests whether
+class-conditioned box shapes and sensitivities carry part of the per-class gain.
