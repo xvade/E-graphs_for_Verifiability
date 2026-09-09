@@ -130,7 +130,7 @@ paper-method mapping is inferred from `Edge.py`. Fairness note: this is an optim
 relaxation family — auto_LiRPA initialises the product parameters at r = 1 (exactly Shi's plane) and keeps the best iterate,
 so CROWN-Optimized can never be below plain CROWN; their code initialises at α ≈ −0.96 (not the Baseline plane), optimises
 each attention layer's own width before the margin (`Layer.optimize`), and tracks the best iterate only at the last layer
-(`last_layer_optimize`). Same family, more fragile optimiser; on their own hidden-256 model it does reproduce (+2.4 %). The stock-vs-gauged pairs below still measure whether the gauge helps *under*
+(`last_layer_optimize`). Same family, more fragile optimiser; on their own hidden-256 model it does reproduce (+2.4 %). **Tested 2026-09-09:** starting PBverifierI at the Baseline plane (`--init_v 0`, our flag in their `Parser.py`; X0 = 0) does not repair it on small_3 — stock 0.03544 vs Baseline 0.03667 (−3.3 %, 9 / 19), marginally worse than the published start (−2.7 %) — so the cause is the per-layer width objective with per-layer freezing and no margin-tracking against the Baseline, not the initial plane. Gauge under PBverifierI(v = 0) on small_3: +1.6 % (32 / 0 / 3). small_6 rerun pending. The stock-vs-gauged pairs below still measure whether the gauge helps *under*
 each relaxation, which is the composition question.
 
 **All DeepT pairs in (18:41).** Summary of the gauge's effect inside their verifier: small_6 Baseline +13.4 % (29/6/0),

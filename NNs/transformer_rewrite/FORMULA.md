@@ -149,6 +149,9 @@ does not (it said 0.82–0.83 for Yelp, and 0.86 for the both-sided l1N on small
    learned +15.1 %, **label-1 learner +18.5 %** (from 17 boxes), manual +11.1 %. Choosing the gauge by the label being verified
    gives +14.9 % vs +12.7 % for the single learned gauge (1.17×). The class trade is real; the sign-blind manual rule lands on
    the class the weights favour and is at 0.59 of the other class's ceiling — the target for a sign-aware surrogate.
+   small_6 (24 + 24 boxes): label 0 — single +15.8 %, label-0 learner +17.2 %, manual +13.5 %; label 1 — single +12.8 %,
+   label-1 learner +23.1 % (15 boxes), manual +16.5 %; per-class combined +20.6 % vs +14.1 % single (1.46×). Classes swapped
+   relative to big_3; the sign-blind rule lands on label 1 here.
    Rotation-only ℓ1 refinement (round 6): big_3 0.87 vs unified 0.83, Yelp 0.83 vs 0.82 (full ℓ1 0.88) — same numbers with
    the closed form's conditioning; a cleaner rule, not a better one.
 

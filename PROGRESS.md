@@ -2972,3 +2972,33 @@ rotation-only refinement equals the unified rule on every screen (big_3 0.87 vs 
 0.56, small_6 1.09 vs 1.08) while keeping the closed form's conditioning; the both-sided rotation variant is harmless on small_6
 (1.00) where the both-sided stretch was harmful (0.52). Not adopted: same numbers, one more knob. Committed as a documented
 option (`--l1rot 1`, `cand:l1N_rot*`).
+
+**11:37 — PBverifierI rerun on DeepT with the plane parameter started at the Baseline plane (user request).** Their
+`originPlus` initialises the pre-sigmoid variable at v = −4 (`Verifiers/Edge.py` rebuild_ori), i.e. X0 = −1 + 2σ(−4) ≈ −0.96:
+almost the lower McCormick corner plane (worst-case slack 4·q_eps·k_eps) instead of Shi's centre plane X0 = 0 (slack
+2·q_eps·k_eps); 20 Adam steps at lr 0.2 per layer on the layer's own width can at best walk back to the Baseline, and the
+per-layer bounds are frozen before the last-layer margin step. Patch (their clone, our fork): `--init_v` flag in `Parser.py`
+(default −4, so the published runs are unchanged), used in `rebuild_ori`; chain `run_pbv_chain_v0.sh <3|6> 15 8 16` runs
+originPlus with `--init_v 0` on stock then gauged checkpoints (same 15 samples / 8 iters / max length 16 / ℓ∞ / seed 0 as the
+published-default runs, 35 instances). Jobs 39885882 (small_3, L40S, ≈ 1.7 h) and 39885883 (small_6, ≈ 6 h). Results →
+`results/pbv_s{3,6}_originPlus_v0_{stock,gauged}.json`; compare with `pbv_compare.py` against the origin / originPlus files.
+
+**13:15 — small_6 per-class learned gauges (learners 39882898 / 39882899: label 0 = 53 boxes, label 1 = 15 boxes; screen
+39882900, 24 test sentences / 48 boxes, 24 per label).** Radius gain vs stock (share of the single learned gauge; head to head vs it):
+- label 0: single learned +15.8 %; label-0 learner +17.2 % (1.09; 7 / 0); manual unified rule +13.5 % (0.85; 0 / 11); closed form +10.7 %.
+- label 1: single learned +12.8 %; **label-1 learner +23.1 % (1.81; 21 / 0)** from 15 tuning boxes; manual unified rule +16.5 %
+  (1.29; 18 / 0); closed form +17.9 % (1.40).
+- combined per-class ("lab0 on label-0 queries, lab1 on label-1"): mean radius 0.02022 = **+20.6 %** vs +14.1 % single learned
+  (1.46×) and +15.2 % manual. Same picture as big_3 with the classes swapped: the single learner sacrifices label 1 here; the
+  sign-blind manual rule lands on label 1 (above the single learned gauge there) and at 0.85 on label 0. Per-class gauges are the
+  largest single improvement over the learned gauge found in this project (+6.5 points on small_6, +2.2 on big_3), and they are
+  exact rewrites chosen by the label of the query.
+
+**13:15 — PBverifierI started at the Baseline plane, small_3 (job 39885882, `--init_v 0`, 35 instances, same protocol).**
+Stock: v = 0 gives 0.03544 vs their Baseline 0.03667 (**−3.3 %**, 9 larger / 19 smaller) — slightly WORSE than the published
+default v = −4 (0.03569, −2.7 %). So the deficit of their optimised variant on DeepT weights is NOT the initial plane: even
+starting exactly at the Baseline plane, the per-layer width objective and the per-layer freezing walk the bound below the
+Baseline, and nothing tracks the margin against the Baseline value. **Correction to the 09-06 note in RELATED_WORK.md, which
+attributed the deficit to the initialisation.** Gauge under PBverifierI(v = 0): 0.03544 → 0.03599, **+1.6 %, larger on 32 /
+smaller on 0 / equal 3** (default init: −1.0 %, 21 / 12) — small, as everything is on small_3, but one-sided. small_6 pending
+(job 39885883, ≈ 17:40).

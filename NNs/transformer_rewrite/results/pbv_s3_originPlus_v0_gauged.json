@@ -1,0 +1,506 @@
+{
+    "examples": [
+        {
+            "tokens": [
+                "[CLS]",
+                "almost",
+                "everything",
+                "else",
+                "is",
+                "wan",
+                ".",
+                "[SEP]"
+            ],
+            "label": 0.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.021015625447034836,
+                    "eps_normalized": 0.24074795842170715
+                },
+                {
+                    "position": 2,
+                    "eps": 0.02109375037252903,
+                    "eps_normalized": 0.3065228760242462
+                },
+                {
+                    "position": 3,
+                    "eps": 0.021250000223517418,
+                    "eps_normalized": 0.27023202180862427
+                }
+            ],
+            "time": 146.67315125465393
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "daring",
+                ",",
+                "mesmerizing",
+                "and",
+                "exceeding",
+                "##ly",
+                "hard",
+                "to",
+                "forget",
+                ".",
+                "[SEP]"
+            ],
+            "label": 1.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.039921876043081284,
+                    "eps_normalized": 0.4481258988380432
+                },
+                {
+                    "position": 2,
+                    "eps": 0.03921874985098839,
+                    "eps_normalized": 0.465987890958786
+                },
+                {
+                    "position": 3,
+                    "eps": 0.04125000163912773,
+                    "eps_normalized": 0.3147203028202057
+                }
+            ],
+            "time": 203.076251745224
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "i",
+                "watched",
+                "the",
+                "brain",
+                "##less",
+                "insanity",
+                "of",
+                "no",
+                "such",
+                "thing",
+                "with",
+                "mounting",
+                "disbelief",
+                ".",
+                "[SEP]"
+            ],
+            "label": 0.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.046406250447034836,
+                    "eps_normalized": 0.5088027715682983
+                },
+                {
+                    "position": 2,
+                    "eps": 0.04609375074505806,
+                    "eps_normalized": 0.4347400963306427
+                },
+                {
+                    "position": 3,
+                    "eps": 0.04625000059604645,
+                    "eps_normalized": 0.6036999821662903
+                }
+            ],
+            "time": 253.3730640411377
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "za",
+                "##ny",
+                ",",
+                "ex",
+                "##uber",
+                "##antly",
+                "ir",
+                "##re",
+                "##vere",
+                "##nt",
+                "animated",
+                "space",
+                "adventure",
+                ".",
+                "[SEP]"
+            ],
+            "label": 1.0,
+            "bounds": [
+                {
+                    "position": 3,
+                    "eps": 0.052031248807907104,
+                    "eps_normalized": 0.553001880645752
+                }
+            ],
+            "time": 92.77222490310669
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "after",
+                "that",
+                ",",
+                "it",
+                "just",
+                "gets",
+                "stupid",
+                "and",
+                "maud",
+                "##lin",
+                ".",
+                "[SEP]"
+            ],
+            "label": 0.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.04437499865889549,
+                    "eps_normalized": 0.56200110912323
+                },
+                {
+                    "position": 2,
+                    "eps": 0.04453124850988388,
+                    "eps_normalized": 0.511691153049469
+                },
+                {
+                    "position": 3,
+                    "eps": 0.04437499865889549,
+                    "eps_normalized": 0.47162926197052
+                }
+            ],
+            "time": 209.7088634967804
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "remarkably",
+                "accessible",
+                "and",
+                "affecting",
+                ".",
+                "[SEP]"
+            ],
+            "label": 1.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.030390625819563866,
+                    "eps_normalized": 0.2679932117462158
+                },
+                {
+                    "position": 2,
+                    "eps": 0.029765624552965164,
+                    "eps_normalized": 0.40364086627960205
+                },
+                {
+                    "position": 3,
+                    "eps": 0.029843749478459358,
+                    "eps_normalized": 0.3821534216403961
+                }
+            ],
+            "time": 153.83509349822998
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "but",
+                "this",
+                "time",
+                "there",
+                "'",
+                "s",
+                "some",
+                "mold",
+                "on",
+                "the",
+                "gold",
+                ".",
+                "[SEP]"
+            ],
+            "label": 0.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.006425781175494194,
+                    "eps_normalized": 0.07858870178461075
+                },
+                {
+                    "position": 2,
+                    "eps": 0.006308593787252903,
+                    "eps_normalized": 0.07285574823617935
+                },
+                {
+                    "position": 3,
+                    "eps": 0.0063671874813735485,
+                    "eps_normalized": 0.058882057666778564
+                }
+            ],
+            "time": 197.97811031341553
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "compelling",
+                "revenge",
+                "thriller",
+                ",",
+                "though",
+                "somewhat",
+                "weakened",
+                "by",
+                "a",
+                "mis",
+                "##cast",
+                "leading",
+                "lady",
+                ".",
+                "[SEP]"
+            ],
+            "label": 1.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.03421875089406967,
+                    "eps_normalized": 0.27582135796546936
+                },
+                {
+                    "position": 2,
+                    "eps": 0.03257812559604645,
+                    "eps_normalized": 0.4274444580078125
+                },
+                {
+                    "position": 3,
+                    "eps": 0.03281249850988388,
+                    "eps_normalized": 0.32558882236480713
+                }
+            ],
+            "time": 280.44639444351196
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "a",
+                "pleas",
+                "##ura",
+                "##bly",
+                "jack",
+                "##ed",
+                "-",
+                "up",
+                "piece",
+                "of",
+                "action",
+                "movie",
+                "##making",
+                ".",
+                "[SEP]"
+            ],
+            "label": 1.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.02835937589406967,
+                    "eps_normalized": 0.356625497341156
+                }
+            ],
+            "time": 83.25447463989258
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "a",
+                "pleas",
+                "##ura",
+                "##bly",
+                "jack",
+                "##ed",
+                "-",
+                "up",
+                "piece",
+                "of",
+                "action",
+                "movie",
+                "##making",
+                ".",
+                "[SEP]"
+            ],
+            "label": 1.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.02835937589406967,
+                    "eps_normalized": 0.356625497341156
+                }
+            ],
+            "time": 83.22002840042114
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "a",
+                "modest",
+                "pleasure",
+                "that",
+                "accomplish",
+                "##es",
+                "its",
+                "goals",
+                "with",
+                "ease",
+                "and",
+                "confidence",
+                ".",
+                "[SEP]"
+            ],
+            "label": 1.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.05781250074505806,
+                    "eps_normalized": 0.727005124092102
+                },
+                {
+                    "position": 2,
+                    "eps": 0.059687498956918716,
+                    "eps_normalized": 0.6068111062049866
+                },
+                {
+                    "position": 3,
+                    "eps": 0.05953124910593033,
+                    "eps_normalized": 0.6822289228439331
+                }
+            ],
+            "time": 261.9777841567993
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "za",
+                "##ny",
+                ",",
+                "ex",
+                "##uber",
+                "##antly",
+                "ir",
+                "##re",
+                "##vere",
+                "##nt",
+                "animated",
+                "space",
+                "adventure",
+                ".",
+                "[SEP]"
+            ],
+            "label": 1.0,
+            "bounds": [
+                {
+                    "position": 3,
+                    "eps": 0.052031248807907104,
+                    "eps_normalized": 0.553001880645752
+                }
+            ],
+            "time": 93.58579730987549
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "a",
+                "pleas",
+                "##ura",
+                "##bly",
+                "jack",
+                "##ed",
+                "-",
+                "up",
+                "piece",
+                "of",
+                "action",
+                "movie",
+                "##making",
+                ".",
+                "[SEP]"
+            ],
+            "label": 1.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.02835937589406967,
+                    "eps_normalized": 0.356625497341156
+                }
+            ],
+            "time": 83.05357217788696
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "the",
+                "movie",
+                "has",
+                "lots",
+                "of",
+                "dancing",
+                "and",
+                "fabulous",
+                "music",
+                ".",
+                "[SEP]"
+            ],
+            "label": 1.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.04374999925494194,
+                    "eps_normalized": 0.49297580122947693
+                },
+                {
+                    "position": 2,
+                    "eps": 0.04359374940395355,
+                    "eps_normalized": 0.5182479619979858
+                },
+                {
+                    "position": 3,
+                    "eps": 0.04390624910593033,
+                    "eps_normalized": 0.6062213778495789
+                }
+            ],
+            "time": 223.99640345573425
+        },
+        {
+            "tokens": [
+                "[CLS]",
+                "a",
+                "blessed",
+                "gift",
+                "to",
+                "film",
+                "geek",
+                "##s",
+                "and",
+                "historians",
+                ".",
+                "[SEP]"
+            ],
+            "label": 1.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.03226562589406967,
+                    "eps_normalized": 0.4057474732398987
+                },
+                {
+                    "position": 2,
+                    "eps": 0.032734375447034836,
+                    "eps_normalized": 0.3192671537399292
+                },
+                {
+                    "position": 3,
+                    "eps": 0.032890625298023224,
+                    "eps_normalized": 0.33247262239456177
+                }
+            ],
+            "time": 221.1724443435669
+        }
+    ],
+    "minimum": 0.036144534746805825,
+    "average": 0.036401911576588945
+}
