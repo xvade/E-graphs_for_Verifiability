@@ -3091,3 +3091,15 @@ lb +0.93 / +3.57 vs the 'reuse' pass that carries the weight gradient +0.79 / +3
 bounds with the reused α instead of the fixed ones the α loop optimised against, so the outer objective is a slightly looser
 α-tier bound (≈ 0.15 below the optimised one). Acceptable for the gradient; if the full run's gauge underperforms, pass the α
 loop's intermediate bounds into the reuse pass. fp64 gate 7e-16; α-tier smoke eval 7 / 7 tighter than stock.
+
+**14:41 — label-conditioned manual rule, big_3 (jobs 39888862 / 39888866; 12 probes of the target class each; same 22 + 26
+held-out boxes).** Radius gain vs stock on the target class / on the other class:
+- rule from label-1 probes: label 1 **+12.0 %** (all-probe unified rule +11.1 %; label-1 learner +18.5 %; single learned +15.1 %);
+  label 0 +8.7 % (all-probe +10.0 %).
+- rule from label-0 probes: label 0 +9.8 % (all-probe +10.0 %; label-0 learner +9.9 % — already at that ceiling); label 1 +9.8 %
+  (all-probe +11.1 %).
+Reading: restricting the probes to the target class moves the manual rule by about ± 1 point in the expected directions, i.e.
+class-conditioned box shapes and margin sensitivities carry only a small part of the per-class gain; the bulk of the +7 points
+between the manual rule and the label-1 learner is the plane-sign trade that a norm-based surrogate cannot express. A per-class
+manual rule needs a sign-aware surrogate (linear-bound structure: invariant part ± the gauge-dependent width term, with the
+downstream coefficients' signs). small_6 label screens pending (jobs 39888867 / 39888868).
