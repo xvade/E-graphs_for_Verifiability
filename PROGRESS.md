@@ -3069,7 +3069,7 @@ label-y manual rule move from the all-probe rule (big_3 label 1: +11.1 %, small_
 learner (+18.5 % / +17.2 %)? It cannot express the plane-sign trade itself (the surrogate is still sign-blind); it tests whether
 class-conditioned box shapes and sensitivities carry part of the per-class gain.
 
-**13:39 — alternating alpha-CROWN / gauge learner built and launched on small_6 (user request).** `deept_gauge.py learn
+**13:38 — alternating alpha-CROWN / gauge learner built and launched on small_6 (user request).** `deept_gauge.py learn
 --alpha_iters K`: per tuning box, (1) inner loop with the weights frozen — CROWN-Optimized, K Adam iterations on the relaxation
 parameters α at the current gauge (best α left in the module's nodes); (2) outer step with α frozen (`opt_reuse` on the
 optimisable nodes) — one plain backward pass whose graph reaches the effective weights → gradient to G. Danskin: d/dG max_α
