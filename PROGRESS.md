@@ -3056,7 +3056,7 @@ label 0 / label 1), 39888764–6 (big_3), each ≤ 1.5 h on ckpt A100s; dependen
 pass the identity-initialised learner (single: the Yelp ceiling test said tie), and does it reach the per-class learners on each
 label (the unified rule is already at the label-0 ceiling on big_3 and above the single gauge on label 1 of small_6)?
 
-**13:21 — label-conditioned manual unified rule (user request: a manual rule that produces a gauge for a specific label).**
+**13:20 — label-conditioned manual unified rule (user request: a manual rule that produces a gauge for a specific label).**
 Cheapest honest version of the sign-aware idea: the same construction (closed form `svd_jacN_all` + ℓ1 QK at every layer + ℓ1
 AV at layer 0) with its random-token probes restricted to sequences the model predicts as the target label
 (`gauge_formula.py --probe_label {0,1}`; random tokens carry the model's prediction as their label, so the filter is
