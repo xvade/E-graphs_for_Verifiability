@@ -315,13 +315,17 @@ def candidate_signed(st64, D, H, dh, init, steps=400, lr=0.02, cond_pen=1e-4, lo
     Gq0, Ga0 = init[0].detach().clone(), init[1].detach().clone()
     Gq = nn.Parameter(torch.zeros_like(Gq0) if rot else Gq0.clone()); Ga = nn.Parameter(torch.zeros_like(Ga0) if rot else Ga0.clone()); ps = ([Gq] if "qk" in sides else []) + ([Ga] if "av" in sides else [])
     opt = torch.optim.Adam(ps, lr=lr); sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=max(steps, 1), eta_min=lr * 0.05); best = (float("inf"), None)
+    s0 = t0 = None
     for step in range(steps + 1):
         if rot: Gq_, Ga_ = Gq0 @ cayley(Gq), Ga0 @ cayley(Ga)
         else: Gq_, Ga_ = Gq, Ga
         s1, s2 = signed_cost(st64, Gq_, Ga_, D, H, dh); tot = s1 + s2
-        if l1_mix > 0:
+        if l1_mix > 0:   # normalised mix: signed / signed_at_init + l1_mix * l1N / l1N_at_init (the two costs have unrelated scales)
+            tl = 0.0
             for l, (Wq, bq, Wk, bk, Wv, bv, Wo) in enumerate(st64):
-                t1, t2 = surrogate(Wq, Wk, Wv, Wo, Gq_[l], Ga_[l], Ms[l] if Ms is not None else None, 1, H, dh, Ns[l] if Ns is not None else None); tot = tot + l1_mix * (t1 + t2)
+                t1, t2 = surrogate(Wq, Wk, Wv, Wo, Gq_[l], Ga_[l], Ms[l] if Ms is not None else None, 1, H, dh, Ns[l] if Ns is not None else None); tl = tl + t1 + t2
+            if s0 is None: s0, t0 = tot.item(), tl.item()
+            tot = tot / s0 + l1_mix * tl / t0
         val = tot.item()
         if val < best[0]: best = (val, (Gq_.detach().clone(), Ga_.detach().clone()))
         if step == steps: break
@@ -363,9 +367,9 @@ def cost_report(a, net, st64, I64, boxes_r, gpaths, L, H, dh, dev):
         if a.signed_steps > 0:
             if a.signed_init: zoo["init:" + os.path.basename(a.signed_init).replace(".pt", "")] = tuple(t.double().to(dev) for t in load_gauge(a.signed_init, L, H, dh))
             for nm0 in [k for k in list(k_ for k_ in zoo if k_.startswith("init:")) + ["cand:l1N", "cand:svd_jacN_all"] if k in zoo][:1]:
-                variants = {"sgn": (("qk", "av"), False, a.signed_cond), "sgn_qk": (("qk",), False, a.signed_cond), "sgn_rot": (("qk", "av"), True, 0.0), "sgn_rot_qk": (("qk",), True, 0.0)}
+                variants = {"sgn": (("qk", "av"), False, a.signed_cond, 0.0), "sgn_qk": (("qk",), False, a.signed_cond, 0.0), "sgn_rot": (("qk", "av"), True, 0.0, 0.0), "sgn_rot_qk": (("qk",), True, 0.0, 0.0), "sgn_mix": (("qk", "av"), False, a.signed_cond, a.signed_mix), "sgn_mix_qk": (("qk",), False, a.signed_cond, a.signed_mix)}
                 for tag in [t for t in a.signed_variants.split(",") if t]:
-                    sides, rot, cp = variants[tag]; t1 = time.time(); (gq, ga), v = candidate_signed(st64, D, H, dh, zoo[nm0], steps=a.signed_steps, lr=a.l1_lr, cond_pen=cp, log=True, sides=sides, rot=rot); zoo[f"cand:{tag}"] = (gq, ga); print(f"# {tag} from {nm0} (cond_pen {cp}, rot {rot}) [{time.time()-t1:.0f}s]", flush=True)
+                    sides, rot, cp, mix = variants[tag]; t1 = time.time(); (gq, ga), v = candidate_signed(st64, D, H, dh, zoo[nm0], steps=a.signed_steps, lr=a.l1_lr, cond_pen=cp, log=True, sides=sides, rot=rot, l1_mix=mix, Ms=Ms, Ns=Na); zoo[f"cand:{tag}"] = (gq, ga); print(f"# {tag} from {nm0} (cond_pen {cp}, rot {rot}, l1 mix {mix}) [{time.time()-t1:.0f}s]", flush=True)
         print(f"\n# {'gauge':26s} | signed total (QK, AV) / identity | per-layer QK | per-layer AV", flush=True); sb = None
         for name, (Gq, Ga) in zoo.items():
             s1, s2, agg = signed_cost(st64, Gq.double().to(dev), Ga.double().to(dev), D, H, dh, per_layer=True)
@@ -397,7 +401,7 @@ def main():
     ap.add_argument("--dev_probes", type=int, default=0, help="also build M / N_out from this many unlabeled dev sentences (disjoint from the learner's and the screen's) -> cand:svd_jacN_all_dev"); ap.add_argument("--tag", default="", help="suffix for the saved candidate gauge files")
     ap.add_argument("--sens", type=int, default=0, help="sensitivity-weighted token blocks (cand:svd_sens*)"); ap.add_argument("--infl", type=int, default=0, help="rounds of CROWN-inflation rescaling of M (cand:svd_infl<k>)")
     ap.add_argument("--l1rot", type=int, default=0, help="rotation-only l1N refinement of the closed form (cand:l1N_rot, cand:l1N_rot_qk+av0)"); ap.add_argument("--cost_only", type=int, default=0, help="no CROWN: surrogate tables per layer/side for --gauges, closed form, l1N (cost_report)"); ap.add_argument("--probe_eps", type=float, default=1.0); ap.add_argument("--l1_init", default="", help="gauge file to warm-start the l1N optimiser from (cand:l1N_init / cand:l1N_from_*)")
-    ap.add_argument("--l1_lr", type=float, default=0.02); ap.add_argument("--signed", type=int, default=0, help="sign-aware (plane-corner) cost: table in --cost_only, candidates cand:sgn / cand:sgn_qk in validate"); ap.add_argument("--signed_steps", type=int, default=0, help="Adam steps of candidate_signed from the unified rule (0 = table only)"); ap.add_argument("--signed_variants", default="sgn,sgn_qk", help="cost_only: which signed candidates to build: sgn, sgn_qk, sgn_rot, sgn_rot_qk"); ap.add_argument("--signed_cond", type=float, default=1e-4, help="cond penalty for the non-rotation signed candidates"); ap.add_argument("--signed_init", default="", help="cost_only: gauge file to start candidate_signed from (default: cand:l1N if built, else the closed form)"); ap.add_argument("--probe_label", type=int, default=-1, help="-1 = all probes; 0/1 = only probes the model predicts as that label (label-conditioned manual rule)"); ap.add_argument("--l1N", type=int, default=0, help="l1 (box-width) surrogate with the downstream functionals N, minimised by Adam from svd_jacN_all: cand:l1N, cand:l1N@L0, cand:l1N_qk, cand:l1N_infl"); ap.add_argument("--dev_split", default="", help="split for the held-out radius screen / text probes (default: the learner's split, minus its sentences; SST models: train)")
+    ap.add_argument("--l1_lr", type=float, default=0.02); ap.add_argument("--signed", type=int, default=0, help="sign-aware (plane-corner) cost: table in --cost_only, candidates cand:sgn / cand:sgn_qk in validate"); ap.add_argument("--signed_steps", type=int, default=0, help="Adam steps of candidate_signed from the unified rule (0 = table only)"); ap.add_argument("--signed_variants", default="sgn,sgn_qk", help="cost_only: which signed candidates to build: sgn, sgn_qk, sgn_rot, sgn_rot_qk"); ap.add_argument("--signed_mix", type=float, default=1.0, help="sgn_mix variants: weight of the normalised l1N surrogate added to the normalised signed cost"); ap.add_argument("--signed_cond", type=float, default=1e-4, help="cond penalty for the non-rotation signed candidates"); ap.add_argument("--signed_init", default="", help="cost_only: gauge file to start candidate_signed from (default: cand:l1N if built, else the closed form)"); ap.add_argument("--probe_label", type=int, default=-1, help="-1 = all probes; 0/1 = only probes the model predicts as that label (label-conditioned manual rule)"); ap.add_argument("--l1N", type=int, default=0, help="l1 (box-width) surrogate with the downstream functionals N, minimised by Adam from svd_jacN_all: cand:l1N, cand:l1N@L0, cand:l1N_qk, cand:l1N_infl"); ap.add_argument("--dev_split", default="", help="split for the held-out radius screen / text probes (default: the learner's split, minus its sentences; SST models: train)")
     a = ap.parse_args(); torch.manual_seed(a.seed); random.seed(a.seed)
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh, hid = len(net.layers), net.H, net.dh, net.hid
     st = [[t.to(dev) for t in w] for w in stock_tensors(net)]; st64 = [[t.double() for t in w] for w in st]; I64 = eye_gauge(L, H, dh, torch.float64)
