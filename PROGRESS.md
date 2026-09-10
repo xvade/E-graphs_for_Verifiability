@@ -3188,7 +3188,7 @@ research target, not a competition run. Downloaded copy: session scratchpad `sma
 learner at 18:08 on 09-09 (3 h 23) and was then preempted and requeued 46 times (38 restarts since midnight, one every
 ≈ 15 min); the chain re-ran the learner from scratch on every restart, and its step-−1 checkpoint overwrote the completed
 gauge at 00:21 (`best_step −1, partial True` — i.e. the warm-start init). The completed gauge and its log are gone; nothing
-was evaluated. The small_6 warm-start screen (39888763) was in the same state (67 restarts). Both cancelled at 09:40.
+was evaluated. The small_6 warm-start screen (39888763) was in the same state (67 restarts). Both cancelled at 09:20.
 Fixes: the learner now checkpoints the CURRENT gauge, optimiser state and best-so-far to `<out>.ckpt` every 5 steps (atomic
 rename) and resumes from it (`--resume 1`, default); the final gauge is written atomically with `partial False`;
 `eval_alpha` saves per-instance results to `<json>.part_<tag>_<eps>` and resumes; the chain skips each stage once its output
