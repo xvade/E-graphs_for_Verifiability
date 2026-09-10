@@ -3331,3 +3331,22 @@ four model/label cases): rotation-only Cayley refinement of the unified rule (`s
 conditioning penalty (`_c2`), and a normalised ℓ1N mix (signed/signed₀ + ℓ1N/ℓ1N₀, `sgn_mix`); the remaining screens now depend
 on them (`scontrol update Dependency`) and glob every `formula_<name>_sgn*_lab<y>.pt`; a second big_3 label-0 screen with the
 variants is queued (job 39976535).
+
+**13:32 — do the per-class gauges keep their lead under CROWN-Optimized? (job 39974929, ckpt A100, 77 min; small_6, 5 test
+sentences ≤ 5 tokens = 15 instances, 9 label-0 / 6 label-1, ε 0.02; `results/sign_flip_small6_perclass.json`).** Mean margin
+lower bound per label, plain CROWN | CROWN-Optimized (20 it):
+
+| small_6 gauge | label 0 (9): plain | α | label 1 (6): plain | α | all 15: Δ vs identity plain / α |
+|---|---|---|---|---|---|
+| identity | −6.17 | −1.96 | −0.84 | +2.23 | — |
+| single learned | −4.56 | −1.29 | +1.21 | +2.38 | +1.79 / +0.46 (15 / 0 both) |
+| label-0 learner | −4.77 | −1.31 | +0.41 | +2.37 | +1.34 / +0.44 |
+| label-1 learner | −5.57 | −1.51 | **+1.70** | +2.40 | +1.38 / +0.33 |
+
+At plain CROWN the label-1 learner leads the single gauge on its own label by +0.49 (the class trade the screens measured);
+under CROWN-Optimized that lead is +0.02 (2.40 vs 2.38) and the label-0 learner ties the single gauge on label 0 (−1.31 vs
+−1.29). The α tier absorbs the per-class refinement: the class trade is a plane-choice effect (a continuous stretch that puts
+the products on the better McCormick corner for one class), which α's corner interpolation reaches on its own — consistent
+with the sign-aware surrogate's mechanism and with the sign-flip test. What survives at the α tier is the single gauge's gain
+(+0.46 mean, 15 / 0 here; +0.33 on the 49-instance eval). Sample is small (15 instances; 19 min per gauge), so this is the
+direction, not a number to quote; the per-class recipe remains the best plain-CROWN gauge.
