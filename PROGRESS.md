@@ -3154,3 +3154,12 @@ rounding to fp32) now used by cmd_eval, cmd_eval_alpha, cmd_eval_pq and gauge_fo
 fold stays fp32 (search, not certificate). Past paired numbers were produced with the fp32 fold: the effect (6e-8 on logits) is
 four orders below the 1e-4 radius resolution, so they stand, but any certificate-grade run from now on uses fold64, and the
 interval tier's 2-ulp intervals are only valid on top of it.
+
+**08:51 — warm-start observation (learning curves, held-in mean lb on the tuning boxes).** big_3 single: identity start
++0.15 → +0.97 (step 10) → +1.14 (50) → +1.19 (110, best); derived-rule start **+1.13** → +1.14 (10) → +1.19 (50) → +1.21 (110,
+best). The derived unified rule alone sits where the identity-initialised learner arrives after ≈ 50 of its 120 steps, so a
+warm start saves ≈ 40 % of the learner's steps (≈ 15 min of a 30-min big_3 run) to reach the same value, and at the full budget
+ends higher (+13.7 % vs +12.7 % held-out, 15 / 0). Same on the per-label learners (big_3 label 1: warm step 20 = identity
+step 60). **Caveat:** at lr 0.01 the first step overshoots the warm start — small_6 +1.15 → +0.98 at step 0, big_3 label 1
++1.44 → +1.24 — and the learner spends ≈ 20 steps recovering; the Yelp ceiling test's warm start at lr 0.005 showed no dip.
+Rule to adopt for warm starts: lr 0.005 (or a 10-step warm-up), which should turn more of the head start into steps saved.
