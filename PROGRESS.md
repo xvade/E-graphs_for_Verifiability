@@ -3350,3 +3350,20 @@ the products on the better McCormick corner for one class), which α's corner in
 with the sign-aware surrogate's mechanism and with the sign-flip test. What survives at the α tier is the single gauge's gain
 (+0.46 mean, 15 / 0 here; +0.33 on the 49-instance eval). Sample is small (15 instances; 19 min per gauge), so this is the
 direction, not a number to quote; the per-class recipe remains the best plain-CROWN gauge.
+
+**13:46 — single α-CROWN comparison, small_6: the ε curve (job 39969259, ckpt A100, 3 h 8; `results/deept_small6_eval_alpha_eps2_seed0.json`
+joined with the 09-06 file).** Same 49 instances (every test sentence ≤ 6 tokens), CROWN-Optimized on stock vs on the once-trained gauge:
+
+| small_6, 49 inst | ε 0.015 | ε 0.02 (09-06) | ε 0.025 | ε 0.03 (09-06) |
+|---|---|---|---|---|
+| α-CROWN verified, stock → gauged | 40 → 40 | 24 → 27 | **5 → 13** | 0 → 4 |
+| α-CROWN NaN, stock → gauged | 0 → 0 | 2 → 0 | **34 → 2** | 47 → 35 |
+| mean Δ on finite pairs (tighter / looser) | +0.02 (49 / 0) | +0.33 (47 / 0) | +0.98 (15 / 0) | +2.5 (2 / 0) |
+| plain CROWN verified (side column) | 27 → 27 | 11 → 15 | 0 → 7 | 0 → 0 |
+
+The gauge's α-tier effect grows with the radius: negligible where α already verifies (ε 0.015, Δ +0.02), +3 verified at
+0.02, and at 0.025 it mostly acts through the NaN cliff — stock α-CROWN blows up on 34 of 49 instances, the gauged model on 2,
+and the verified count goes 5 → 13. One-sided at every ε (0 looser). Together with big_3 (12 → 14, 3 → 3, 1 → 3; 29 / 0 at
+every ε) and small_3 (104 → 104, Δ +0.015) this is the whole "train once, compare α-CROWN" result: the once-trained gauge never
+hurts CROWN-Optimized, helps most near the radius where α-CROWN starts to fail, and its per-class refinements add nothing at
+this tier (previous entry).
