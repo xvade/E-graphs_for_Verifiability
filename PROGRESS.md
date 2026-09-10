@@ -3195,3 +3195,25 @@ rename) and resumes from it (`--resume 1`, default); the final gauge is written 
 exists. Resubmitted with --requeue: smoke 39968845, full 39968846 (afterok). The warm-start screen moved to the free L40S slot
 (job 39968836, non-preemptible, ≈ 3.3 h). Lesson for the memory file: on ckpt, every stage must be resumable and no stage
 may re-run on restart.
+
+**09:43 — direction change: the single α-CROWN comparison, gauge trained once (user's decision).** Asked whether "cut off the
+speech transformer and just do a single comparison, CROWN-Optimized vs CROWN-Optimized with the gauge, train the gauges once"
+meant the smart_turn audio encoder (A) or the DeepT models without the alternating scheme (B); the user chose B. The alternating
+smoke/full jobs (39968845, 39968846) were cancelled at 09:39 before the full learner started (the smoke learner had finished; its
+eval was 1 instance in). The alternating idea is closed: the gauge is trained once by the standard plain-CROWN learner
+(`gauges/deept_<m>_seed0.pt`, the same file as every earlier table) and the comparison is CROWN-Optimized (20 iterations,
+lr 0.1) on the stock weights vs on the fp64-folded gauged weights, plain CROWN as a side column. The small_6 warm-start screen
+(39968836, L40S) is unaffected and still running.
+
+The small_6 half already exists in full (`results/deept_small6_eval_alpha_seed0.json`, 09-06): the 49 instances are EVERY
+correctly classified test sentence with ≤ 6 tokens (15 sentences; 27 five-token and 20 six-token instances; 32 label-0, 17
+label-1), and 6 tokens is the α-CROWN memory ceiling on this model (62 GiB per call). At ε = 0.02: α-CROWN verified 24 → 27
+of 49, tighter on all 47 finite pairs (stock NaN on 2, gauged on 0), mean margin +0.143 → +0.470 (Δ +0.326, median +0.257,
+range +0.05 … +1.21); plain CROWN on the same instances 11 → 15, Δ +1.97. By label: label 0 Δ +0.45 (10 → 11), label 1
+Δ +0.11 (14 → 16). ε = 0.03 is unusable at the α tier (stock NaN on 47/49, the NaN cliff). What is added now: (i) two more ε
+rows for small_6 (0.015, 0.025; job 39969259, ckpt A100, per-instance resumable) so the comparison is a small curve instead of
+one point, and (ii) the same comparison on big_3 (hidden 256, 3 layers), which has no α-tier result yet — memory probe at
+6/7/8 tokens first (job 39969258; `diagnostics/_alpha_mem_probe_big3.py`), then the run at the largest length that fits
+(all ≤ 6-token test instances = 49, ≤ 7 = 109, ≤ 8 = 200). Job script: `alpha_single.sbatch <model> <max_len> <eps_list> <tag>`
+(`$CLAUDE_JOB_DIR/tmp`). small_3 already has the same comparison at ≤ 8 tokens (205 instances, 09-06): 104 → 104 verified at
+ε 0.03, Δ +0.015 — the small-attention-share model where the gauge has little leverage.
