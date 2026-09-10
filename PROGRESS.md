@@ -3254,3 +3254,21 @@ sign flip. Now running: `candidate_signed` from the unified rule on label-y prob
 `sgn_qk`) → `gauges/formula_<name>_sgn{,_qk}_lab<y>.pt`, then the plab held-out screens (same 24 sentences / 48 boxes; chain
 modes `sgn{0,1}_{big3,small6}`; smoke 39969941 on the L40S). Also on the L40S: `diagnostics/_sign_flip_test.py` (job 39969671) —
 random diag(±1) gauges under plain CROWN and CROWN-Optimized, and whether the per-class learners keep their lead under α.
+
+**11:32 — single α-CROWN comparison, big_3 (job 39969630, ckpt A100, 78 min; `results/deept_big3_eval_alpha_l5_seed0.json`).**
+CROWN-Optimized (20 it) on the stock weights vs on the once-trained gauge (`deept_big3_seed0.pt`), every correctly classified test
+sentence with ≤ 5 tokens (10 sentences, 29 instances: 20 label-0 / 9 label-1). Six tokens does not fit: the probe measured
+77.6 GiB per call and the run itself hit OOM on its second instance (job 39969405; moved to ≤ 5 tokens).
+
+| big_3, ≤ 5 tokens, 29 inst | ε 0.015 | ε 0.02 | ε 0.025 |
+|---|---|---|---|
+| α-CROWN verified, stock → gauged | 12 → 14 | 3 → 3 | 1 → 3 |
+| α-CROWN mean margin | −0.25 → +0.04 (Δ +0.29) | −4.08 → −2.79 (Δ +1.29) | −6.72 → −5.59 (Δ +1.13) |
+| tighter / looser (29 pairs) | 29 / 0 | 29 / 0 | 29 / 0 |
+| plain CROWN verified (side column) | 3 → 9 | 1 → 3 | 0 → 1 |
+
+ε 0.03 is NaN-dominated at both tiers (stock 26/29). One-sided at every radius; the gauge's lead shrinks at the α tier as on
+small_6 (plain CROWN Δ +1.36 vs α Δ +0.29 at ε 0.015) but stays positive on every instance. By label at ε 0.015: label 0
+Δ +0.31 (7 → 8), label 1 Δ +0.24 (5 → 6). Three-model α-tier picture now: small_3 (≤ 8 tokens, 205 inst) Δ +0.015, 104 → 104;
+small_6 (≤ 6, 49 inst) Δ +0.33, 24 → 27; big_3 (≤ 5, 29 inst) Δ +0.29, 12 → 14 — the α tier keeps the attention-share
+ordering of the plain-CROWN results.
