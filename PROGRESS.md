@@ -3317,3 +3317,17 @@ a sign gauge cannot reach the +8–10-point per-class gains. The sign-aware surr
 The long sign-flip run (39969671; identity / learned / lab0 / lab1 on 29 instances, 39 min per gauge) will hit its 3-hour wall
 before its per-label print; a 4-gauge per-class rerun on 5 sentences is queued on the ckpt A100 (job 39974929) to answer whether the
 per-class lead survives the α tier.
+
+**12:38 — sign-aware rule, first screen (big_3, label-0 probes; job 39973109, L40S, 27 min; `results/formula_big3_sgn0.json`).**
+The pure signed cost is exploitable: Adam drives it to 0.03–0.15 of identity (400 steps from the unified rule; QK part ≈ 0.000 at
+layers 1–2) by stretching (cond up to 35 QK / 56 AV vs ≤ 4 for the learners), and CROWN disagrees completely — held-out radius
+over the 48 boxes: **both-sided `sgn` −31.1 % vs stock (0 larger / 46 smaller), QK-only `sgn_qk` −7.5 % (0 / 40)**; same screen:
+single learned +12.7 %, unified rule +10.6 %, label-0 learner +8.6 %. The 5-step smoke had already hinted at it (−0.8 % on 4
+boxes from a +15 % start). So the surrogate ORDERS existing gauges (it is the right cost model near them) but its minimiser is a
+first-order artefact: with q' coordinates arranged so that every product sits exactly on its plane's zero-error edge at the
+margin's worst corner z*, the model says "no slack" while CROWN's actual bound minimiser moves elsewhere and the widened
+intervals cost more than the corner saved — the weak spot the advisor named. Constrained versions are queued (12 CPU jobs, all
+four model/label cases): rotation-only Cayley refinement of the unified rule (`sgn_rot`, keeps its singular values), a 100×
+conditioning penalty (`_c2`), and a normalised ℓ1N mix (signed/signed₀ + ℓ1N/ℓ1N₀, `sgn_mix`); the remaining screens now depend
+on them (`scontrol update Dependency`) and glob every `formula_<name>_sgn*_lab<y>.pt`; a second big_3 label-0 screen with the
+variants is queued (job 39976535).
