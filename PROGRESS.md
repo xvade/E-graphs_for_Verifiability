@@ -3163,3 +3163,23 @@ ends higher (+13.7 % vs +12.7 % held-out, 15 / 0). Same on the per-label learner
 step 60). **Caveat:** at lr 0.01 the first step overshoots the warm start — small_6 +1.15 → +0.98 at step 0, big_3 label 1
 +1.44 → +1.24 — and the learner spends ≈ 20 steps recovering; the Yelp ceiling test's warm start at lr 0.005 showed no dip.
 Rule to adopt for warm starts: lr 0.005 (or a 10-step warm-up), which should turn more of the head start into steps saved.
+
+**09:04 — VNN-COMP 2025 / 2026 benchmark repositories (user request; the 09-05 note "no 2025 repo" is stale).** Both exist
+(github.com/VNN-COMP/vnncomp2025_benchmarks, pushed 2025-07-16; vnncomp2026_benchmarks, pushed 2026-07-07; full git trees read via
+the API). 2025 = the 2023/2024 set + cersyve, malbeware, relusplitter, sat_relu, soundnessbench, collins_aerospace (YOLOv5n);
+`vit_2023` is still the only transformer. 2026 adds adaptive_cruise_control_non_linear, cgan2026 (conv generators only — the
+"small_transformer" string survives only in vnnlib names), challenging_certified_training (cnn7 on CIFAR / TinyImageNet),
+isomorphic_acasxu, monotonic_acasxu, relusplitter_2026, soundnessbench_2026 and **smart_turn_multimodal_2026** — the first
+competition benchmark with real transformer layers: `smart-turn-multimodal-cpu.onnx` (35 MB, 41.6 M parameters, int8 QDQ
+export: 106 int8 weight tensors, 119 QuantizeLinear/DequantizeLinear pairs on activations) = a Whisper-style audio encoder
+(conv1 384 × 800 → conv2 stride 2 → 400 frames; 4 layers `/encoder/layers.{0-3}/self_attn` with 384 × 384 q/k/v/out
+projections, FFN 1536, GELU via Erf, LayerNorm) + a 3-D ResNet video backbone (stem 64 × 32 × 56 × 56, layer1–4, avgpool, fc)
++ attention pooling over the 400 frames (Softmax over [400, 1]) → concat → sigmoid → 1 logit (end-of-turn detection; source
+github.com/lukasmrohwer/smart-turn-multimodal-benchmark). Inputs `input_features` [80, 800] and `pixel_values`
+[3, 32, 112, 112]; VNN-LIB 2.0 specs perturb EVERY input coordinate (audio ± 0.05, video ± 0.03; 1.27 M-line spec, 1.26 M
+box dimensions), property Y[0,0] > 0.5 as the unsafe region; 50 instances, 100 s each. Assessment: it is a genuine attention
+target for the gauge (four self-attention layers + one attention pooling, 400 tokens), but far outside CROWN's reach as posed —
+1.26 M perturbed inputs through a 3-D ResNet and a 400-token encoder in 100 s, plus fake-quantised activations that auto_LiRPA
+has no operator for (the Q/DQ round-trips are part of the function, not just weight storage). A gauge experiment would need
+the audio branch alone at a small radius with the QDQ nodes removed (then it is no longer the benchmark's function) — a
+research target, not a competition run. Downloaded copy: session scratchpad `smart_turn.onnx`.
