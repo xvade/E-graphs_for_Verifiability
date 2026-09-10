@@ -3388,3 +3388,19 @@ and optimising through α's inner loop with 10 iterations per box (vs 20 at eval
 generality for the tuning boxes' held-in value (+3.02 held-in vs the once-trained gauge's held-in at the same boxes not
 measured here — the test result is the verdict). Closed: the alternating scheme is not the way to a better α-tier gauge;
 "train once" stands.
+
+**15:14 — sign-aware variants, big_3 label-0 probes (job 39976535; `results/formula_big3_sgn0.json`, split by label).** Held-out
+gain on the target class (label 0, 22 boxes) | the other class (label 1, 26 boxes); start point = unified rule +9.9 % | +11.2 %,
+single learned +9.5 % | +15.1 %, label-0 learner +9.9 % | +7.6 %:
+
+| signed variant (from the unified rule, label-0 probes) | label 0 | label 1 |
+|---|---|---|
+| pure, both sides / QK only | −28.1 % / −5.3 % | −33.2 % / −9.0 % |
+| cond penalty 1e-2, both / QK | −18.8 % / +3.1 % | −24.8 % / −0.7 % |
+| rotation-only (Cayley), both / QK | +8.2 % / +9.1 % | +8.7 % / +10.2 % |
+| ℓ1N mix (normalised, weight 1), both / QK | +3.9 % / **+10.3 %** (5 / 0 vs single) | −0.2 % / +11.2 % |
+
+Every variant that moves away from the unified rule loses; the only row at or above it is the QK-only ℓ1N mix (+10.3 vs +9.9
+on label 0, +11.2 = +11.2 on label 1), i.e. a gauge that barely left its start. big_3 label 0 was already at the per-class
+ceiling, so this screen tests harm, not gain; the decisive ones are big_3 label 1 (unified 11.2 → label-1 learner 18.5) and
+small_6 label 0 (13.6 → 17.2), queued on the L40S with all eight variants.
