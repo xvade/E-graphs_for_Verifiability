@@ -3217,3 +3217,8 @@ one point, and (ii) the same comparison on big_3 (hidden 256, 3 layers), which h
 (all ≤ 6-token test instances = 49, ≤ 7 = 109, ≤ 8 = 200). Job script: `alpha_single.sbatch <model> <max_len> <eps_list> <tag>`
 (`$CLAUDE_JOB_DIR/tmp`). small_3 already has the same comparison at ≤ 8 tokens (205 instances, 09-06): 104 → 104 verified at
 ε 0.03, Δ +0.015 — the small-attention-share model where the gauge has little leverage.
+
+**09:46 — alternating α/gauge chain resubmitted.** The user clarified that "train the gauges once" applied only to the single
+comparison, not to the alternating experiment: smoke 39969387 → full 39969388 (afterok, --requeue). The smoke learner's final
+gauge (`partial False`) survived the cancellation, so the chain skips it and resumes the smoke eval from its 1-instance part
+file; the full learner starts from scratch (no checkpoint existed).
