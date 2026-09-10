@@ -3143,3 +3143,14 @@ small_3 it accounted for none. Gauge under PBverifierI(v = 0): 0.01468 → 0.015
 (published start: +2.9 %, 18 / 17 mixed). Same pattern as small_3: with the optimiser started sanely the gauge's effect inside
 their verifier is one-sided, and its size (≈ 3 %) is what their optimised relaxation leaves of the +13.4 % it gives under their
 Baseline. Recorded in RELATED_WORK.md.
+
+**08:38 — the gauge inverse and the fold precision (user question).** `effective()` inverts each head's gauge with
+`torch.linalg.inv` (LU, getrf/getri) in the dtype of the gauge tensor; the learner runs it in fp32 with autograd through the
+inverse. The paired evals, the alpha eval, the per-query eval and the formula screens folded in **fp32** (fp32 inverse and
+products); only the interval-weight tier folded in fp64. Measured (small_6 learned gauge, max cond 4.9, fp64 arithmetic
+reference): folded-weight relative error of the fp32 fold 3.7e-7 (≈ 6 ulps; κ·u = 2.9e-7), max |original − gauged| logits
+**6.0e-8 with the fp32 fold vs 3.9e-9 with the fp64 fold rounded once**. Fix: new `fold64()` (fp64 inverse and products, one
+rounding to fp32) now used by cmd_eval, cmd_eval_alpha, cmd_eval_pq and gauge_formula's set_gauge; the learner's training-time
+fold stays fp32 (search, not certificate). Past paired numbers were produced with the fp32 fold: the effect (6e-8 on logits) is
+four orders below the 1e-4 radius resolution, so they stand, but any certificate-grade run from now on uses fold64, and the
+interval tier's 2-ulp intervals are only valid on top of it.

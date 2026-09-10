@@ -159,6 +159,11 @@ def effective(stock, Gq, Ga, H, dh):
         out.append([torch.cat(q, 0), torch.cat(bq2), torch.cat(k, 0), torch.cat(bk2), torch.cat(v, 0), torch.cat(bv2), torch.cat(o, 1)])
     return out
 
+def fold64(st, gq, ga, H, dh):
+    """certificate-side fold: invert and multiply in fp64, round ONCE to fp32 (the fp32 fold's inverse error is ~kappa*u per entry,
+    6 ulps on small_6, and moves the logits 15x more than the single rounding: 6e-8 vs 4e-9, measured 2026-09-10)"""
+    return [[t.float() for t in w] for w in effective([[t.double() for t in w] for w in st], gq.double().to(st[0][0].device), ga.double().to(st[0][0].device), H, dh)]
+
 def leaves(net):
     return [t for q, k, v, o in net.attn_modules() for t in (q.weight, q.bias, k.weight, k.bias, v.weight, v.bias, o.weight)]
 
@@ -422,7 +427,7 @@ def cmd_eval(a):
         else: print(f"# {a.save_json} exists but its instances differ -> recomputing everything", flush=True)
     for tag, (gq, ga) in [("stock", eye_gauge(L, H, dh, torch.float64))] + list(zip(tags, gauges)):
         if tag in res: continue
-        load_eff(net, effective(st, gq.float().to(dev), ga.float().to(dev), H, dh)); t0 = time.time()
+        load_eff(net, fold64(st, gq, ga, H, dh)); t0 = time.time()
         rad = np.array([certified_radius(lirpas[e.shape[1]], e, i, y, dev, hi=a.hi, iters=a.iters) for j, i, e, y, _ in inst])
         fixed = {eps: np.array([crown_lb(lirpas[e.shape[1]], e, i, eps, y, dev) for j, i, e, y, _ in inst]) for eps in eps_list}
         res[tag] = (rad, fixed)
@@ -468,7 +473,7 @@ def cmd_eval_alpha(a):
     Gq, Ga = load_gauge(a.gauge, L, H, dh); res = {}
     for tag, (gq, ga) in [("stock", eye_gauge(L, H, dh, torch.float64)), ("gauged", (Gq, Ga))]:
         if tag == "stock" and a.skip_stock: continue
-        load_eff(net, effective(st, gq.float().to(dev), ga.float().to(dev), H, dh)); t0 = time.time(); res[tag] = {}
+        load_eff(net, fold64(st, gq, ga, H, dh)); t0 = time.time(); res[tag] = {}
         for eps in eps_list:
             vc = [alpha_and_crown(e, i, eps, y) for j, i, e, y, _ in inst]; v = np.array([x[0] for x in vc]); c = np.array([x[1] for x in vc])
             res[tag][eps] = (v, c); print(f"# {tag} eps {eps}: alpha-CROWN verified {(v > 0).sum()}/{len(v)} (nan {np.isnan(v).sum()}) mean lb {np.nanmean(v):+.4f} | CROWN verified {(c > 0).sum()} mean lb {np.nanmean(c):+.4f}  [{time.time()-t0:.0f}s]", flush=True)
@@ -595,7 +600,7 @@ def cmd_eval_pq(a):
         oom_len = [out["inst"][int(k)][2] for k, r in out["rec"].items() if any(isinstance(v, dict) and v.get("oom") for v in r.values())]
         if oom_len and min(oom_len) - 1 < a.pq_max_tokens:   # adaptive cap: a length that ran out of memory once will again; stop trying it (and longer)
             a.pq_max_tokens = min(oom_len) - 1; print(f"# per-query token cap lowered to {a.pq_max_tokens} (an instance of length {min(oom_len)} ran out of memory earlier)", flush=True)
-    def fixed_lb(gq, ga, lp, e, i, eps, y): load_eff(net, effective(st, gq.float().to(dev), ga.float().to(dev), H, dh)); return crown_lb(lp, e, i, eps, y, dev)
+    def fixed_lb(gq, ga, lp, e, i, eps, y): load_eff(net, fold64(st, gq, ga, H, dh)); return crown_lb(lp, e, i, eps, y, dev)
     t_all = time.time()
     for idx, (j, i, e, y, toks) in enumerate(inst):
         if str(idx) in out["rec"]: continue
@@ -610,8 +615,8 @@ def cmd_eval_pq(a):
                 else: pq = (r_[0], r_[2], r_[3])
             rec[str(eps)] = {"stock": s_, "fixed": f_, "pq": pq[0], "pq_best_step": pq[1], "pq_steps_run": pq[2], "oom": pq[1] == -1}
         if a.pq_radius:
-            load_eff(net, effective(st, I64[0].float().to(dev), I64[1].float().to(dev), H, dh)); r_s = certified_radius(lp, e, i, y, dev, hi=a.hi, iters=a.iters)
-            load_eff(net, effective(st, Gq0.float().to(dev), Ga0.float().to(dev), H, dh)); r_f = certified_radius(lp, e, i, y, dev, hi=a.hi, iters=a.iters)
+            load_eff(net, fold64(st, I64[0], I64[1], H, dh)); r_s = certified_radius(lp, e, i, y, dev, hi=a.hi, iters=a.iters)
+            load_eff(net, fold64(st, Gq0, Ga0, H, dh)); r_f = certified_radius(lp, e, i, y, dev, hi=a.hi, iters=a.iters)
             m0 = crown_lb(lp, e, i, r_f, y, dev)
             r_ = pq_safe(net, st, lp, e, i, r_f, y, dev, Gq0, Ga0, H, dh, a.pq_steps, a.pq_lr, a.cond_pen, a.clip, stop_at=None, max_tokens=a.pq_max_tokens)
             if r_ is None: v, bs, r_pq = m0, -1, r_f

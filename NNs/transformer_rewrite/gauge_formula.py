@@ -28,7 +28,7 @@ gauges like CROWN does (the overfit gauge must come out worst).
 import argparse, json, os, random, sys, time, math, numpy as np, torch, torch.nn as nn
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from deept_gauge import (build, load_data, short_instances, pos_sets, positions, stock_tensors, effective, load_eff, eye_gauge, make_lirpas,
-                         certified_radius, crown_lb, load_gauge, load_sst)
+                         certified_radius, crown_lb, load_gauge, load_sst, fold64)
 
 def layer_inputs(net, e, i, delta):
     """residual stream entering each layer (L, T, hid) for the embedding e with row i shifted by delta (differentiable in delta)"""
@@ -307,7 +307,7 @@ def main():
     a = ap.parse_args(); torch.manual_seed(a.seed); random.seed(a.seed)
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh, hid = len(net.layers), net.H, net.dh, net.hid
     st = [[t.to(dev) for t in w] for w in stock_tensors(net)]; st64 = [[t.double() for t in w] for w in st]; I64 = eye_gauge(L, H, dh, torch.float64)
-    def set_gauge(gq, ga): load_eff(net, effective(st, gq.float().to(dev), ga.float().to(dev), H, dh))
+    def set_gauge(gq, ga): load_eff(net, fold64(st, gq, ga, H, dh))   # fp64 fold, rounded once (see deept_gauge.fold64)
     # ---- boxes: random-token (data-free) and the learner's own SST-dev tuning boxes
     a.data = "random"; R = load_data(a, "dev"); Sr = short_instances(net, m, tok, R, a.max_len, a.n_sent, seed=a.seed); rng = random.Random(a.seed)
     if a.probe_label >= 0:   # label-conditioned manual rule: keep only probes the model assigns to this label (random tokens carry the model's prediction as label), so M, N_out and every cand:* row are built for that class
