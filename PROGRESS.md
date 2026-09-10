@@ -3367,3 +3367,24 @@ and the verified count goes 5 → 13. One-sided at every ε (0 looser). Together
 every ε) and small_3 (104 → 104, Δ +0.015) this is the whole "train once, compare α-CROWN" result: the once-trained gauge never
 hurts CROWN-Optimized, helps most near the radius where α-CROWN starts to fail, and its per-class refinements add nothing at
 this tier (previous entry).
+
+**15:11 — alternating α / gauge learner: result (job 39969388, ckpt A100, learner 3 h 26 wall, 0 preemptions this time;
+`gauges/deept_small6_alt_seed0.pt`, best step 59 of 60, held-in eval mean lb +3.02; eval `results/deept_small6_alt_eval_alpha_seed0.json`).**
+Warm-started from the plain-learned gauge, 60 steps, 10 α-iterations per box (CROWN-Optimized inner loop, weight gradient
+through the plain pass with α reused), 60 dev sentences ≤ 6 tokens. α-tier eval on the same 49 test instances as the once-
+trained gauge (ε 0.02, per-instance join):
+
+| small_6, 49 inst, ε 0.02, CROWN-Optimized | stock | once-trained gauge | alternating gauge |
+|---|---|---|---|
+| verified | 24 | 27 | 27 |
+| mean margin | +0.143 | **+0.400** | +0.364 |
+| alternating vs once-trained, per instance | | | tighter 10 / looser 39 (Δ −0.036, median −0.019) |
+| plain CROWN column: verified / mean | 11 / −3.52 | 15 / −1.73 | 15 / −1.91 |
+
+The alternating objective does not improve the α-tier bound: it ends slightly below the gauge it started from, at both tiers
+(looser on 39 of 49 under α, 35 of 49 under plain CROWN), with the same verified counts. Reading: the plain-CROWN margin
+already selects the gauge that α-CROWN benefits from (the α tier keeps the once-trained gauge's ordering on every model),
+and optimising through α's inner loop with 10 iterations per box (vs 20 at evaluation) on 6-token boxes trades a little
+generality for the tuning boxes' held-in value (+3.02 held-in vs the once-trained gauge's held-in at the same boxes not
+measured here — the test result is the verdict). Closed: the alternating scheme is not the way to a better α-tier gauge;
+"train once" stands.
