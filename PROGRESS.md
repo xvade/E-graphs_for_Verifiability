@@ -3135,3 +3135,11 @@ big_3 label 0: 9.8 vs 10.0 → 9.9; big_3 label 1: 12.0 vs 11.1 → 18.5; small_
 +2.4 points, reaching 0.82 of the per-class learner's gain) and does nothing on the unfavoured class (≤ 1 point) — which is
 exactly where the per-class learners win big. Verdict stands: the per-class gain is the plane-sign trade; a per-class manual
 rule needs a sign-aware surrogate. Not adopted as a procedure; `--probe_label` stays as a documented option.
+
+**17:47 — PBverifierI started at the Baseline plane, small_6 (job 39885883, 6 h 10; 35 instances).** Stock: v = 0 gives
+0.01468 vs their Baseline 0.01686 (**−12.9 %**, 13 larger / 22 smaller) against −15.6 % with the published v = −4. So on the
+6-layer model the initial plane accounts for ≈ 3 of the 15.6 points and the per-layer objective / freezing for the rest; on
+small_3 it accounted for none. Gauge under PBverifierI(v = 0): 0.01468 → 0.01517, **+3.3 %, larger on 35 / smaller on 0**
+(published start: +2.9 %, 18 / 17 mixed). Same pattern as small_3: with the optimiser started sanely the gauge's effect inside
+their verifier is one-sided, and its size (≈ 3 %) is what their optimised relaxation leaves of the +13.4 % it gives under their
+Baseline. Recorded in RELATED_WORK.md.

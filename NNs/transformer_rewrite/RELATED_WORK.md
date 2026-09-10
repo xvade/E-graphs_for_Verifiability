@@ -183,15 +183,20 @@ length 16, seed 0). Results (`results/pbv_s3_originPlus_v0_{stock,gauged}.json`;
 | PBverifierI v = 0 vs v = −4 (stock) | — | −0.7 % | 9 / 20 / 6 |
 | gauge under PBverifierI v = 0 (stock → gauged) | 0.03544 → 0.03599 | **+1.6 %** | **32 / 0 / 3** |
 | gauge under PBverifierI v = −4 (for reference) | 0.03569 → 0.03534 | −1.0 % | 21 / 12 / 2 |
+| **small_6**, PBverifierI v = −4, stock | 0.01422 | −15.6 % | 9 / 26 / 0 |
+| small_6, PBverifierI v = 0, stock | 0.01468 | −12.9 % | 13 / 22 / 0 |
+| small_6, gauge under PBverifierI v = 0 | 0.01468 → 0.01517 | **+3.3 %** | **35 / 0 / 0** |
+| small_6, gauge under PBverifierI v = −4 | 0.01422 → 0.01463 | +2.9 % | 18 / 17 / 0 |
 
 **Reading.** Starting at the Baseline plane does not repair the deficit — it is marginally worse — so the earlier attribution
 to the initial plane (the 12:45 note above) was wrong; the cause is the per-layer width objective with per-layer freezing and
 the absence of margin tracking against the Baseline. It remains an optimiser artefact and not a weakness of the relaxation
 family (auto_LiRPA's version of the same family never falls below the Baseline). Two useful side facts: (i) under the Baseline
 start the gauge's effect inside PBverifierI on small_3 becomes one-sided (+1.6 %, 32 / 0 / 3) where it was mixed under the
-published start, consistent with the gauge helping the relaxation and the published optimiser adding noise on top; (ii) the
-small_6 run (job 39885883) is pending — there the published-default deficit was −15.6 %, and a −3 %-level result at v = 0
-would confirm that the deficit scales with depth through the frozen layers rather than with the start.
+published start, consistent with the gauge helping the relaxation and the published optimiser adding noise on top; (ii) **small_6
+(job 39885883, done):** v = 0 gives −12.9 % vs their Baseline (13 / 22) against −15.6 % at v = −4 — the start accounts for ≈ 3 of
+the 15.6 points on the 6-layer model and for none on the 3-layer one; the remainder scales with depth through the frozen
+layers. Gauge under PBverifierI(v = 0) on small_6: 0.01468 → 0.01517, +3.3 %, **35 / 0 / 0** (published start: +2.9 %, 18 / 17).
 
 **Relation to per-class gauges (same day, FORMULA.md and PROGRESS.md 2026-09-09 13:10).** Their method adapts the relaxation
 per query at ≈ 5× verification cost; a gauge is fixed per model at zero query cost; a per-class gauge (one exact rewrite per
