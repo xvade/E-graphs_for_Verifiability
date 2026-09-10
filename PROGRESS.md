@@ -3222,3 +3222,35 @@ one point, and (ii) the same comparison on big_3 (hidden 256, 3 layers), which h
 comparison, not to the alternating experiment: smoke 39969387 → full 39969388 (afterok, --requeue). The smoke learner's final
 gauge (`partial False`) survived the cancellation, so the chain skips it and resumes the smoke eval from its 1-instance part
 file; the full learner starts from scratch (no checkpoint existed).
+
+**10:05 — per-label derived gauges, round 7: a SIGN-AWARE surrogate (user: keep working on per-label derived gauges).** The
+diagnosis of 09-08 was that the manual rule's residual gap is a label split because the ℓ1 surrogate is sign-blind. The
+missing ingredient is in `auto_LiRPA/operators/bivariate.py` (`mul_middle` False, the default we run): plain CROWN relaxes each
+product x·y with the lower McCormick plane through the corner (x_l, y_l) when the backward coefficient on the product is positive
+and the upper plane through (x_l, y_u) when it is negative; x is input 0 (q in q·kᵀ, p in p·v). Both planes touch the box at
+x = x_l, and the plane choice flips with the sign of the coefficient, i.e. with the label. New in `gauge_formula.py`:
+`signed_probe_data` (per probe box: layer-input Jacobians, the margin's first-order worst corner z* = −sign ∂margin/∂δ, the
+score gradients λ = ∂margin/∂(qkᵀ), the dense-output gradients g, the softmax Jacobians) and `signed_cost`: Σ |coef| × plane error
+at z*, with error (x − x_l)(y − y_l) or (x − x_l)(y_u − y) from first-order intervals (x − x_l = ε(‖r‖₁ + r·z*), y_u − y =
+ε(‖r‖₁ − r·z*)); `candidate_signed` = Adam on it (`--signed 1 --signed_steps N --signed_init <gauge>`; `--cost_only` prints the
+table). Invariances: positive diagonal gauges leave it unchanged; a sign flip does not (moves the shared corner to x_u).
+
+Ordering test first (cost-only, no CROWN, CPU; probes = 24 random-token boxes of the target class; signed cost / identity):
+
+| probes | single | label-0 learner | label-1 learner | init (warm) | initlab0 | initlab1 | closed form | unified rule |
+|---|---|---|---|---|---|---|---|---|
+| small_6 label 0 | 0.255 | **0.198** | 1.48 | 0.212 | **0.187** | 1.49 | 1.50 | 0.88 |
+| small_6 label 1 | 0.577 | 0.805 | **0.091** | 0.518 | 0.695 | **0.072** | 0.184 | 0.313 |
+| big_3 label 0 | 0.331 | 0.315 | 0.501 | 0.309 | **0.270** | 0.450 | 0.464 | (n/a) |
+| big_3 label 1 | 0.299 | 0.495 | 0.283 | 0.258 | 0.384 | **0.250** | 0.350 | 0.280 |
+
+On small_6 the signed cost reproduces the held-out screen's order on both labels (label 0: lab0 17.2 % > single 15.8 % > unified
+13.5 %; label 1: lab1 23.1 % > closed form 17.9 % > unified 16.5 % > single 12.8 %) and puts the wrong-label learner at ≈ 1.5 × identity,
+where the ℓ1N surrogate has every gauge at 0.74–0.78. On big_3 it ranks the per-class learners right on their own label but over-rates
+the unified rule on label 1 (0.280 ≈ lab1 0.283; screen 11.1 % vs 18.5 %) — its AV part dominates the total there and the AV term
+uses first-order softmax widths (the known weak spot). Structural check: lab0⁻¹·lab1 per head is a stretch (singular values
+0.5–1.9) with no reflections (det > 0 on 72/72 heads, polar eigenvalues rarely past 90°) — the class trade is continuous, not a
+sign flip. Now running: `candidate_signed` from the unified rule on label-y probes (400 steps, CPU; both sides `sgn` and QK-only
+`sgn_qk`) → `gauges/formula_<name>_sgn{,_qk}_lab<y>.pt`, then the plab held-out screens (same 24 sentences / 48 boxes; chain
+modes `sgn{0,1}_{big3,small6}`; smoke 39969941 on the L40S). Also on the L40S: `diagnostics/_sign_flip_test.py` (job 39969671) —
+random diag(±1) gauges under plain CROWN and CROWN-Optimized, and whether the per-class learners keep their lead under α.

@@ -250,6 +250,81 @@ def gauge_drift(G0, G1, dh):
     D = torch.linalg.solve(G0.double(), G1.double()); I = torch.eye(dh, dtype=torch.float64, device=D.device)
     return ((D - I).flatten(-2).norm(dim=-1) / math.sqrt(dh)).mean(-1)
 
+def signed_probe_data(net, boxes, dev):
+    """Per probe box, the first-order ingredients of the SIGN-AWARE cost (all at the stock net and the box centre, gauge-independent):
+    J (L, T, hid, hid_in) = d x_l[t] / d delta (layer inputs; as box_shapes, without the 2 eps);  zs (hid_in) = -sign(d margin / d delta), the
+    box corner that minimises the margin to first order;  lam (L, H, T, T) = d margin / d (q k^T) (score gradient / sqrt(dh): the backward
+    coefficient on each QK product, its SIGN picks the McCormick plane);  g (L, T, hid) = d margin / d u_l (attention dense output);
+    Jp (L, H, T, T, hid_in) = d p / d delta (softmax outputs, first order);  eps.  margin = logit[y] - logit[1 - y]."""
+    out = []
+    for e, i, y, n, eps in boxes:
+        e = e.to(dev); hid = net.hid
+        def fwd(delta, keep=None):
+            x = net.ln0(e + torch.zeros_like(e).index_fill_(1, torch.tensor([i], device=dev), 1.0) * delta); B, nT, _ = x.shape; ps = []
+            for l in net.layers:
+                at = l.attention.self
+                q = at.query(x).view(B, nT, net.H, net.dh).transpose(1, 2); k = at.key(x).view(B, nT, net.H, net.dh).transpose(1, 2); v = at.value(x).view(B, nT, net.H, net.dh).transpose(1, 2)
+                sc = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(net.dh); pr = torch.softmax(sc, dim=-1); ps.append(pr[0])
+                c = torch.matmul(pr, v).transpose(1, 2).reshape(B, nT, net.H * net.dh); u = l.attention.output.dense(c)
+                if keep is not None: sc.retain_grad(); u.retain_grad(); keep.append((sc, u))
+                h = l.attention.output.LayerNorm(u + x); x = l.output.LayerNorm(l.output.dense(torch.relu(l.intermediate.dense(h))) + h)
+            logits = net.classifier(torch.tanh(net.pooler.dense(x[:, 0]))); return logits[0, y] - logits[0, 1 - y], torch.stack(ps)
+        J = torch.autograd.functional.jacobian(lambda d: layer_inputs(net, e, i, d), torch.zeros(hid, device=dev), vectorize=True).double()   # (L, T, hid, hid_in)
+        Jp = torch.autograd.functional.jacobian(lambda d: fwd(d)[1], torch.zeros(hid, device=dev), vectorize=True).double()               # (L, H, T, T, hid_in)
+        with torch.enable_grad():
+            delta = torch.zeros(hid, device=dev, requires_grad=True); keep = []; margin, _ = fwd(delta, keep); margin.backward()
+        zs = -torch.sign(delta.grad).double(); lam = torch.stack([sc.grad[0] for sc, u in keep]).double() / math.sqrt(net.dh); g = torch.stack([u.grad[0] for sc, u in keep]).double()
+        out.append((J, zs, lam, g, Jp, float(eps), int(y)))
+    return out
+
+def signed_cost(st64, Gq, Ga, D, H, dh, per_layer=False):
+    """Sign-aware cost: the McCormick plane error plain CROWN pays, summed over probe boxes, layers, heads, token pairs and coordinates.
+    auto_LiRPA (mul_middle False) relaxes x·y with the LOWER plane through the corner (x_l, y_l) [error (x - x_l)(y - y_l)] when the backward
+    coefficient on the product is positive and the UPPER plane through (x_l, y_u) [error (x - x_l)(y_u - y)] when it is negative; x = input 0
+    (q in q k^T, p in p v).  Intervals are first order ([c - eps|r|_1, c + eps|r|_1] for a functional with delta-Jacobian row r) and the
+    error is evaluated at the margin's first-order worst corner zs, where x - x_l = eps (|r|_1 + r . zs) and y_u - y = eps (|r|_1 - r . zs).
+    The plane choice and the corner both flip with the label, which is what the sign-blind l1 surrogate cannot see.  Invariances: a
+    positive diagonal gauge leaves it unchanged; a sign flip does not (it moves the shared corner x_l to x_u).  Returns (S_qk, S_av)."""
+    Sqk = torch.zeros((), dtype=torch.float64, device=Gq.device); Sav = torch.zeros((), dtype=torch.float64, device=Gq.device); per = []
+    for (J, zs, lam, g, Jp, eps, y) in D:
+        for l, (Wq, bq, Wk, bk, Wv, bv, Wo) in enumerate(st64):
+            Jl = J[l]; lq = la = 0.0
+            for h in range(H):
+                sl = slice(h * dh, (h + 1) * dh); G = Gq[l][h]; A = Ga[l][h]
+                a = G.T @ Wq[sl]; b = torch.linalg.inv(G) @ Wk[sl]; v = A.T @ Wv[sl]; o = Wo[:, sl] @ torch.linalg.inv(A).T           # (dh, hid); o (hid, dh)
+                aJ = torch.einsum("ch,thk->tck", a, Jl); bJ = torch.einsum("ch,thk->tck", b, Jl); vJ = torch.einsum("ch,thk->tck", v, Jl)   # (T, dh, hid_in)
+                lo = lambda R: eps * (R.abs().sum(-1) + R @ zs); up = lambda R: eps * (R.abs().sum(-1) - R @ zs)                       # (T, dh): x - x_l ; y_u - y
+                Lm = lam[l, h]                                                                                                          # (Ti, Tj)
+                kf = torch.where(Lm.unsqueeze(-1) > 0, lo(bJ).unsqueeze(0), up(bJ).unsqueeze(0))                                        # (Ti, Tj, dh)
+                eq = (Lm.abs().unsqueeze(-1) * lo(aJ).unsqueeze(1) * kf).sum()
+                mu = g[l] @ o                                                                                                           # (Ti, dh): coefficient on p_ij v'_jc
+                lp = eps * (Jp[l, h].abs().sum(-1) + Jp[l, h] @ zs)                                                                    # (Ti, Tj): p - p_l
+                vf = torch.where(mu.unsqueeze(1) > 0, lo(vJ).unsqueeze(0), up(vJ).unsqueeze(0))                                         # (Ti, Tj, dh)
+                ea = (mu.abs().unsqueeze(1) * lp.unsqueeze(-1) * vf).sum()
+                Sqk = Sqk + eq; Sav = Sav + ea; lq += eq.item(); la += ea.item()
+            per.append((l, lq, la))
+    if per_layer:
+        L = len(st64); agg = [(sum(x for l_, x, y_ in per if l_ == l), sum(y_ for l_, x, y_ in per if l_ == l)) for l in range(L)]; return Sqk, Sav, agg
+    return Sqk, Sav
+
+def candidate_signed(st64, D, H, dh, init, steps=400, lr=0.02, cond_pen=1e-4, log=None, sides=("qk", "av"), l1_mix=0.0, Ms=None, Ns=None):
+    """Adam on the sign-aware cost from `init` (Gq, Ga); `sides` restricts which gauge moves (the other stays at init); optional l1_mix * l1N
+    surrogate added as a sign-blind regulariser (0 = pure signed cost).  Best step kept; cond penalty as candidate_l1."""
+    Gq = nn.Parameter(init[0].detach().clone()); Ga = nn.Parameter(init[1].detach().clone()); ps = ([Gq] if "qk" in sides else []) + ([Ga] if "av" in sides else [])
+    opt = torch.optim.Adam(ps, lr=lr); sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=max(steps, 1), eta_min=lr * 0.05); best = (float("inf"), None)
+    for step in range(steps + 1):
+        s1, s2 = signed_cost(st64, Gq, Ga, D, H, dh); tot = s1 + s2
+        if l1_mix > 0:
+            for l, (Wq, bq, Wk, bk, Wv, bv, Wo) in enumerate(st64):
+                t1, t2 = surrogate(Wq, Wk, Wv, Wo, Gq[l], Ga[l], Ms[l] if Ms is not None else None, 1, H, dh, Ns[l] if Ns is not None else None); tot = tot + l1_mix * (t1 + t2)
+        val = tot.item()
+        if val < best[0]: best = (val, (Gq.detach().clone(), Ga.detach().clone()))
+        if step == steps: break
+        loss = tot + cond_pen * sum((p ** 2).sum() + (torch.linalg.inv(p) ** 2).sum() for p in ps)
+        opt.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(ps, 10.0); opt.step(); sched.step()
+        if log and step % 100 == 0: print(f"    signed step {step}: cost {val:.4g} (qk {s1.item():.4g}, av {s2.item():.4g})", flush=True)
+    return best[1], best[0]
+
 def cost_report(a, net, st64, I64, boxes_r, gpaths, L, H, dh, dev):
     """--cost_only: NO CROWN anywhere.  Probe boxes get eps = --probe_eps (uniform; the r-runs used each box's stock CROWN radius, so the token
     blocks of M are weighted equally here instead of by radius -- the surrogate's gauge ORDERING is what is compared).  Builds M_l, N_l, the closed
@@ -278,6 +353,19 @@ def cost_report(a, net, st64, I64, boxes_r, gpaths, L, H, dh, dev):
         tot = lambda p: (sum(x + y for x, y in per[p]) / sum(x + y for x, y in base[p]), sum(x for x, y in per[p]) / sum(x for x, y in base[p]), sum(y for x, y in per[p]) / sum(y for x, y in base[p]))
         t1, t2 = tot(1), tot(2); rows[name] = {"l1N": per[1], "l2N": per[2], "l1N_tot": t1, "l2N_tot": t2, "cond": cond}
         print(f"  {name:26s} | {t1[0]:.4f} ({t1[1]:.4f}, {t1[2]:.4f}) | {t2[0]:.4f} ({t2[1]:.4f}, {t2[2]:.4f}) | {cond:6.2f} | " + " ".join(f"{x/bx_[0]:.3f}" for (x, y), bx_ in zip(per[1], base[1])) + " | " + " ".join(f"{y/bx_[1]:.3f}" for (x, y), bx_ in zip(per[1], base[1])), flush=True)
+    if a.signed:   # sign-aware cost (plane-corner error at the margin's worst corner) per gauge, per layer, normalised to identity
+        t1 = time.time(); D = signed_probe_data(net, bx, dev); print(f"# signed cost: probe data for {len(D)} boxes (labels {sorted(set(d[6] for d in D))}) [{time.time()-t1:.0f}s]", flush=True)
+        if a.signed_steps > 0:
+            if a.signed_init: zoo["init:" + os.path.basename(a.signed_init).replace(".pt", "")] = tuple(t.double().to(dev) for t in load_gauge(a.signed_init, L, H, dh))
+            for nm0 in [k for k in list(k_ for k_ in zoo if k_.startswith("init:")) + ["cand:l1N", "cand:svd_jacN_all"] if k in zoo][:1]:
+                for sides, tag in ((("qk", "av"), "sgn"), (("qk",), "sgn_qk")):
+                    t1 = time.time(); (gq, ga), v = candidate_signed(st64, D, H, dh, zoo[nm0], steps=a.signed_steps, lr=a.l1_lr, log=True, sides=sides); zoo[f"cand:{tag}"] = (gq, ga); print(f"# {tag} from {nm0} [{time.time()-t1:.0f}s]", flush=True)
+        print(f"\n# {'gauge':26s} | signed total (QK, AV) / identity | per-layer QK | per-layer AV", flush=True); sb = None
+        for name, (Gq, Ga) in zoo.items():
+            s1, s2, agg = signed_cost(st64, Gq.double().to(dev), Ga.double().to(dev), D, H, dh, per_layer=True)
+            if sb is None: sb = (s1.item(), s2.item(), agg)
+            rows.setdefault(name, {})["signed"] = {"qk": s1.item(), "av": s2.item(), "per_layer": agg}
+            print(f"  {name:26s} | {(s1.item()+s2.item())/(sb[0]+sb[1]):.4f} ({s1.item()/sb[0]:.4f}, {s2.item()/sb[1]:.4f}) | " + " ".join(f"{x/bx_[0]:.3f}" for (x, y_), bx_ in zip(agg, sb[2])) + " | " + " ".join(f"{y_/bx_[1]:.3f}" for (x, y_), bx_ in zip(agg, sb[2])), flush=True)
     names = list(zoo); print(f"\n# gauge drift per layer, mean over heads of ||G_a^-1 G_b - I||_F/sqrt(dh)  (QK ; AV):")
     drift = {}
     for i_, na_ in enumerate(names):
@@ -288,7 +376,7 @@ def cost_report(a, net, st64, I64, boxes_r, gpaths, L, H, dh, dev):
     if a.out:
         os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True); fo = open(a.out, "w"); json.dump({"rows": rows, "drift": drift, "boxes_random": len(boxes_r), "args": vars(a)}, fo, indent=1); fo.close()
         gd = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gauges")
-        for k in [k for k in zoo if k.startswith("cand:l1N")]:
+        for k in [k for k in zoo if k.startswith(("cand:l1N", "cand:sgn"))]:
             torch.save({"qk": zoo[k][0].double().cpu(), "av": zoo[k][1].double().cpu(), "formula": k + " (cost-only run, uniform probe eps)", "args": vars(a)}, os.path.join(gd, f"formula_{a.name}_{k.split(':', 1)[1].replace('+', '-').replace('@', '_')}{a.tag}.pt"))
         print(f"# saved {a.out} and gauges/formula_{a.name}_l1N*{a.tag}.pt")
 
@@ -303,7 +391,7 @@ def main():
     ap.add_argument("--dev_probes", type=int, default=0, help="also build M / N_out from this many unlabeled dev sentences (disjoint from the learner's and the screen's) -> cand:svd_jacN_all_dev"); ap.add_argument("--tag", default="", help="suffix for the saved candidate gauge files")
     ap.add_argument("--sens", type=int, default=0, help="sensitivity-weighted token blocks (cand:svd_sens*)"); ap.add_argument("--infl", type=int, default=0, help="rounds of CROWN-inflation rescaling of M (cand:svd_infl<k>)")
     ap.add_argument("--l1rot", type=int, default=0, help="rotation-only l1N refinement of the closed form (cand:l1N_rot, cand:l1N_rot_qk+av0)"); ap.add_argument("--cost_only", type=int, default=0, help="no CROWN: surrogate tables per layer/side for --gauges, closed form, l1N (cost_report)"); ap.add_argument("--probe_eps", type=float, default=1.0); ap.add_argument("--l1_init", default="", help="gauge file to warm-start the l1N optimiser from (cand:l1N_init / cand:l1N_from_*)")
-    ap.add_argument("--l1_lr", type=float, default=0.02); ap.add_argument("--probe_label", type=int, default=-1, help="-1 = all probes; 0/1 = only probes the model predicts as that label (label-conditioned manual rule)"); ap.add_argument("--l1N", type=int, default=0, help="l1 (box-width) surrogate with the downstream functionals N, minimised by Adam from svd_jacN_all: cand:l1N, cand:l1N@L0, cand:l1N_qk, cand:l1N_infl"); ap.add_argument("--dev_split", default="", help="split for the held-out radius screen / text probes (default: the learner's split, minus its sentences; SST models: train)")
+    ap.add_argument("--l1_lr", type=float, default=0.02); ap.add_argument("--signed", type=int, default=0, help="sign-aware (plane-corner) cost: table in --cost_only, candidates cand:sgn / cand:sgn_qk in validate"); ap.add_argument("--signed_steps", type=int, default=0, help="Adam steps of candidate_signed from the unified rule (0 = table only)"); ap.add_argument("--signed_init", default="", help="cost_only: gauge file to start candidate_signed from (default: cand:l1N if built, else the closed form)"); ap.add_argument("--probe_label", type=int, default=-1, help="-1 = all probes; 0/1 = only probes the model predicts as that label (label-conditioned manual rule)"); ap.add_argument("--l1N", type=int, default=0, help="l1 (box-width) surrogate with the downstream functionals N, minimised by Adam from svd_jacN_all: cand:l1N, cand:l1N@L0, cand:l1N_qk, cand:l1N_infl"); ap.add_argument("--dev_split", default="", help="split for the held-out radius screen / text probes (default: the learner's split, minus its sentences; SST models: train)")
     a = ap.parse_args(); torch.manual_seed(a.seed); random.seed(a.seed)
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh, hid = len(net.layers), net.H, net.dh, net.hid
     st = [[t.to(dev) for t in w] for w in stock_tensors(net)]; st64 = [[t.double() for t in w] for w in st]; I64 = eye_gauge(L, H, dh, torch.float64)
@@ -391,6 +479,11 @@ def main():
         if a.infl:
             (gq, ga), v = candidate_l1(st64, [Ms[l] * rho[l] for l in range(L)], H, dh, zoo[f"cand:svd_infl{a.infl}"], steps=a.l1_steps, lr=a.l1_lr, log=True, Ns=Na); zoo["cand:l1N_infl"] = (gq, ga)
         print(f"# l1N candidates built [{time.time()-t1:.0f}s]", flush=True)
+    if a.signed and a.signed_steps > 0:   # sign-aware refinement of the unified rule (or the closed form): both sides, QK side only
+        t1 = time.time(); D = signed_probe_data(net, [(b[0], b[1], b[2], b[3], b[4]) for b in boxes_r], dev); base_ = zoo.get("cand:l1N_qk+av0", zoo["cand:svd_jacN_all"])
+        for sides, tag in ((("qk", "av"), "sgn"), (("qk",), "sgn_qk")):
+            (gq, ga), v = candidate_signed(st64, D, H, dh, base_, steps=a.signed_steps, lr=a.l1_lr, log=True, sides=sides); zoo[f"cand:{tag}"] = (gq, ga)
+        print(f"# signed candidates built from {'unified rule' if 'cand:l1N_qk+av0' in zoo else 'closed form'} [{time.time()-t1:.0f}s]", flush=True)
     # ---- localisation: which side / layer of the candidate falls short of the learned gauge? (swap one side or one layer at a time)
     dd = lambda g: g.double().to(dev)
     if first and a.hybrids:
