@@ -435,7 +435,7 @@ def main():
     print(f"# CROWN-width surrogate: q/k/v bound nodes found for {[len(v) for v in bnodes.values()]} layers per sentence length", flush=True)
     # ---- gauge zoo
     zoo = {"identity": I64}
-    for pth in gpaths: zoo[os.path.basename(pth).replace("_seed0.pt", "").replace("deept_", "").replace("pbvtrained_", "pbv_")] = load_gauge(pth, L, H, dh)
+    for pth in gpaths: zoo[os.path.basename(pth).replace("_seed0.pt", "").replace(".pt", "").replace("deept_", "").replace("pbvtrained_", "pbv_")] = load_gauge(pth, L, H, dh)
     first = [k for k in zoo if k != "identity"]
     if first:
         Gq0, Ga0 = zoo[first[0]]; zoo[f"{first[0]}:qk_only"] = (Gq0, I64[1]); zoo[f"{first[0]}:av_only"] = (I64[0], Ga0)

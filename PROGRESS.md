@@ -3295,3 +3295,25 @@ small_6 the unified rule (+15.2 %) also edges the single identity-init learner (
 paired tie. The label split is unchanged: the manual rule sits at 0.86 of the learned gain on label 0 (13.6 vs 15.8) and above
 it on label 1 (16.5 vs 12.8) — the class the sign-blind rule favours — which is what round 7 (sign-aware surrogate, running)
 targets.
+
+**12:04 — sign-flip test (job 39971187, L40S, 30 min; `diagnostics/_sign_flip_test.py`, `results/sign_flip_small6_signs.json`).**
+Prediction from the relaxation code: a positive diagonal gauge is neutral in both tiers, a sign-flip diagonal (G = diag(±1), an
+exact rewrite) is NOT neutral for plain CROWN because negating x moves the planes' shared corner from x_l to x_u, while
+CROWN-Optimized (α interpolates the two corners) should be indifferent. small_6, 9 test instances ≤ 5 tokens, ε 0.02:
+
+| gauge | plain CROWN Δ vs identity (tighter / looser) | CROWN-Optimized Δ (tighter / looser) |
+|---|---|---|
+| positive diagonal (random 0.5–2) | +0.0000, max 7e-6 | +0.0000, max 9e-6 |
+| random diag(±1), pattern 0 | **+0.118** (9 / 0) | +0.055 (6 / 3) |
+| random diag(±1), pattern 1 | **+0.115** (9 / 0) | +0.008 (5 / 4) |
+
+Both predictions hold (the α-tier residue is finite-iteration noise: 20 steps from the default corner, mixed signs). Two facts
+follow. (i) The memory note "diagonal gauges are CROWN-neutral" is exact only for positive diagonals; sign patterns are a
+discrete plane choice worth ≈ +0.12 of margin here on every instance — small next to the learned gauge's +1.9 on the same
+instances, and both random patterns help, i.e. the default all-(x_l) corner is systematically the worse choice and any mixing of
+corners improves plain CROWN (auto_LiRPA's `mul: middle` option does the same continuously). (ii) The per-class trade is not a
+sign story: the label-0 and label-1 learned gauges differ by a stretch with det > 0 on every head (structural check above), and
+a sign gauge cannot reach the +8–10-point per-class gains. The sign-aware surrogate handles sign patterns anyway (lo(−r) = up(r)).
+The long sign-flip run (39969671; identity / learned / lab0 / lab1 on 29 instances, 39 min per gauge) will hit its 3-hour wall
+before its per-label print; a 4-gauge per-class rerun on 5 sentences is queued on the ckpt A100 (job 39974929) to answer whether the
+per-class lead survives the α tier.

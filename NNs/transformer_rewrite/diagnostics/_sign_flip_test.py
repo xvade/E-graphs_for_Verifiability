@@ -5,7 +5,7 @@ single learned gauge under CROWN-Optimized?  Runs plain CROWN and CROWN-Optimize
 single / label-0 / label-1 learned gauges, and 3 random diag(+-1) gauges (both sides).  Run from NNs/transformer_rewrite on a GPU.
   python diagnostics/_sign_flip_test.py <name> <max_len> <n_sent> <eps>"""
 import sys, time, gc, torch, numpy as np; args = sys.argv[1:]; sys.argv = ["x"]; sys.path.insert(0, "."); import deept_gauge as g
-name, max_len, n_sent, eps = args[0], int(args[1]), int(args[2]), float(args[3]); dev = "cuda"; m, tok, net = g.build(name, dev); L, H, dh = len(net.layers), net.H, net.dh
+name, max_len, n_sent, eps = args[0], int(args[1]), int(args[2]), float(args[3]); only = args[4].split(",") if len(args) > 4 else None; tag = args[5] if len(args) > 5 else ""; dev = "cuda"; m, tok, net = g.build(name, dev); L, H, dh = len(net.layers), net.H, net.dh
 st = [[t.to(dev) for t in w] for w in g.stock_tensors(net)]; data = g.load_sst("test"); S = g.short_instances(net, m, tok, data, max_len, n_sent, seed=0)
 inst = [(j, i, e, ex["label"]) for j, ex, e, toks in S for i in g.positions(toks)]; print(f"# {name}: {len(inst)} instances <= {max_len} tokens, eps {eps}", flush=True)
 short = {"small6": "small6", "small_6": "small6", "big_3": "big3"}; key = "small6" if "small_6" in name else "big3"
@@ -17,6 +17,7 @@ for r in range(3):
     zoo[f"sign{r}"] = (torch.diag_embed(sq), torch.diag_embed(sa))
 zoo["scale"] = (torch.diag_embed(torch.rand(L, H, dh, generator=gen).double() * 1.5 + 0.5), torch.diag_embed(torch.rand(L, H, dh, generator=gen).double() * 1.5 + 0.5))   # positive diagonal: must be neutral in both tiers
 res = {}
+if only: zoo = {k: v for k, v in zoo.items() if k in only}
 for nm, (gq, ga) in zoo.items():
     g.load_eff(net, g.fold64(st, gq, ga, H, dh)); t0 = time.time(); rows = []
     for (j, i, e, y) in inst:
@@ -32,5 +33,5 @@ for nm in zoo:
 for y in (0, 1):
     mk = np.array([x[3] == y for x in inst])
     if mk.sum() == 0: continue
-    print(f"# label {y} ({mk.sum()} inst): " + " | ".join(f"{nm} plain {np.nanmean(res[nm][mk, 0]):+.3f} alpha {np.nanmean(res[nm][mk, 1]):+.3f}" for nm in ("identity", "learned", "learned_lab0", "learned_lab1")), flush=True)
-import json; json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y in inst], "res": {k: v.tolist() for k, v in res.items()}}, open(f"results/sign_flip_{key}.json", "w")); print("SIGN_DONE")
+    print(f"# label {y} ({mk.sum()} inst): " + " | ".join(f"{nm} plain {np.nanmean(res[nm][mk, 0]):+.3f} alpha {np.nanmean(res[nm][mk, 1]):+.3f}" for nm in [n_ for n_ in ("identity", "learned", "learned_lab0", "learned_lab1") if n_ in res]), flush=True)
+import json; json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y in inst], "res": {k: v.tolist() for k, v in res.items()}}, open(f"results/sign_flip_{key}{tag}.json", "w")); print("SIGN_DONE")
