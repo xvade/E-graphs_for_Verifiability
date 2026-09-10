@@ -367,8 +367,16 @@ def cmd_learn(a):
         with torch.no_grad(): leaves(net)[0].mul_(1.01)
         v2 = [crown_lb(lirpas[b[3]], b[0], b[1], b[4], b[2], dev) for b in (b1, b2)]; load_eff(net, effective(st, Gq.detach(), Ga.detach(), H, dh))
         print(f"# parameter-sharing check across BoundedModules: lb before {['%+.4f' % v for v in v1]} after perturbing a leaf {['%+.4f' % v for v in v2]} (both must change)", flush=True)
-    t0 = time.time(); best = (ev[0], (Gq.detach().double().cpu().clone(), Ga.detach().double().cpu().clone()), -1); skipped = 0
-    for step in range(a.steps):
+    t0 = time.time(); best = (ev[0], (Gq.detach().double().cpu().clone(), Ga.detach().double().cpu().clone()), -1); skipped = 0; start_step = 0
+    ck = (a.out + ".ckpt") if a.out else None
+    if ck and a.resume and os.path.exists(ck):   # preemptible partitions: continue from the last checkpoint (current gauge, optimiser state, best so far)
+        c = torch.load(ck); start_step = c["step"] + 1
+        with torch.no_grad(): Gq.copy_(c["gq_cur"].float().to(dev)); Ga.copy_(c["ga_cur"].float().to(dev))
+        opt.load_state_dict(c["opt"]); best = (c["best_val"], (c["qk"], c["av"]), c["best_step"]); skipped = c.get("skipped", 0)
+        print(f"# resumed from {ck}: continuing at step {start_step} (best so far {best[0]:+.4f} at step {best[2]})", flush=True)
+    def save_ckpt(step):
+        if ck: torch.save({"step": step, "gq_cur": Gq.detach().double().cpu(), "ga_cur": Ga.detach().double().cpu(), "opt": opt.state_dict(), "qk": best[1][0], "av": best[1][1], "best_val": best[0], "best_step": best[2], "skipped": skipped, "args": vars(a)}, ck + ".tmp"); os.replace(ck + ".tmp", ck)
+    for step in range(start_step, a.steps):
         effs = effective(st, Gq, Ga, H, dh); load_eff(net, effs); lv = leaves(net)
         for p in lv: p.grad = None
         objs = []
@@ -396,9 +404,9 @@ def cmd_learn(a):
             with torch.no_grad(): cond = max(torch.linalg.cond(p.reshape(-1, dh, dh)).max().item() for p in params)
             ev = evaluate(ev_boxes); print(f"  step {step:4d} batch_obj={obj:+.4f} grad_norm={gn.item():.3e} | eval mean lb {ev[0]:+.4f} frac_ver {ev[1]:.3f} nan {ev[2]} | max cond(G)={cond:.2f} | {time.time()-t0:.0f}s", flush=True)
             if ev[0] > best[0]: best = (ev[0], (Gq.detach().double().cpu().clone(), Ga.detach().double().cpu().clone()), step)
-            if alt and a.out: torch.save({"qk": best[1][0], "av": best[1][1], "args": vars(a), "best_step": best[2], "skipped": skipped, "partial": True}, a.out)   # checkpoint (preemptible partitions)
+        if ck and a.ckpt_every and (step % a.ckpt_every == 0 or step == a.steps - 1): save_ckpt(step)
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
-    torch.save({"qk": best[1][0], "av": best[1][1], "args": vars(a), "best_step": best[2], "skipped": skipped}, a.out)
+    torch.save({"qk": best[1][0], "av": best[1][1], "args": vars(a), "best_step": best[2], "skipped": skipped, "partial": False}, a.out + ".tmp"); os.replace(a.out + ".tmp", a.out)
     print(f"# saved best gauges (step {best[2]}, eval mean lb {best[0]:+.4f}, skipped steps {skipped}) -> {a.out}; wall {time.time()-t0:.0f}s")
     print(f"# fp64 GATE (random points in 16 tuning boxes): {fp64_gate(a.name, best[1][0], best[1][1], [(b[0], b[1], b[4]) for b in boxes[:16]]):.2e}")
 
@@ -475,7 +483,13 @@ def cmd_eval_alpha(a):
         if tag == "stock" and a.skip_stock: continue
         load_eff(net, fold64(st, gq, ga, H, dh)); t0 = time.time(); res[tag] = {}
         for eps in eps_list:
-            vc = [alpha_and_crown(e, i, eps, y) for j, i, e, y, _ in inst]; v = np.array([x[0] for x in vc]); c = np.array([x[1] for x in vc])
+            part = (a.save_json + f".part_{tag}_{eps}") if a.save_json else None; done = json.load(open(part)) if part and os.path.exists(part) else []
+            if done: print(f"# resumed {len(done)} of {len(inst)} instances for {tag} eps {eps} from {part}", flush=True)
+            for k, (j, i, e, y, _) in enumerate(inst):
+                if k < len(done): continue
+                done.append(list(alpha_and_crown(e, i, eps, y)))
+                if part: json.dump(done, open(part + ".tmp", "w")); os.replace(part + ".tmp", part)
+            vc = done; v = np.array([x[0] for x in vc], dtype=float); c = np.array([x[1] for x in vc], dtype=float)
             res[tag][eps] = (v, c); print(f"# {tag} eps {eps}: alpha-CROWN verified {(v > 0).sum()}/{len(v)} (nan {np.isnan(v).sum()}) mean lb {np.nanmean(v):+.4f} | CROWN verified {(c > 0).sum()} mean lb {np.nanmean(c):+.4f}  [{time.time()-t0:.0f}s]", flush=True)
     for eps in (eps_list if "stock" in res else []):
         s_, g_ = res["stock"][eps][0], res["gauged"][eps][0]; d = g_ - s_
@@ -653,7 +667,7 @@ if __name__ == "__main__":
     ap.add_argument("--split", default="dev"); ap.add_argument("--pos_per_sent", type=int, default=3); ap.add_argument("--eps_scale", type=float, default=1.0); ap.add_argument("--radius_iters", type=int, default=8)
     ap.add_argument("--steps", type=int, default=150); ap.add_argument("--accum", type=int, default=4); ap.add_argument("--lr", type=float, default=0.01); ap.add_argument("--cond_pen", type=float, default=1e-4); ap.add_argument("--clip", type=float, default=1.0)
     ap.add_argument("--which", default="both"); ap.add_argument("--seed", type=int, default=0); ap.add_argument("--log_every", type=int, default=10); ap.add_argument("--debug", type=int, default=0); ap.add_argument("--n_eval", type=int, default=48); ap.add_argument("--label", type=int, default=-1, help="learn: keep only tuning boxes with this label (-1 = all)")
-    ap.add_argument("--out", default=None); ap.add_argument("--gauge", default=None); ap.add_argument("--alpha_iters", type=int, default=0, help="learn: >0 = alternating alpha-CROWN / gauge optimisation with this many alpha iterations per box"); ap.add_argument("--alpha_lr", type=float, default=0.1); ap.add_argument("--alpha_shared", type=int, default=0); ap.add_argument("--skip_stock", type=int, default=0, help="eval_alpha: only the gauged weight set (join stock from an earlier file)"); ap.add_argument("--eps_list", default="0.01,0.02,0.03")
+    ap.add_argument("--out", default=None); ap.add_argument("--gauge", default=None); ap.add_argument("--alpha_iters", type=int, default=0, help="learn: >0 = alternating alpha-CROWN / gauge optimisation with this many alpha iterations per box"); ap.add_argument("--alpha_lr", type=float, default=0.1); ap.add_argument("--alpha_shared", type=int, default=0); ap.add_argument("--skip_stock", type=int, default=0, help="eval_alpha: only the gauged weight set (join stock from an earlier file)"); ap.add_argument("--resume", type=int, default=1, help="learn: continue from <out>.ckpt if present"); ap.add_argument("--ckpt_every", type=int, default=5); ap.add_argument("--eps_list", default="0.01,0.02,0.03")
     ap.add_argument("--obj", default="mean", help="mean | hinge"); ap.add_argument("--hinge_w", type=float, default=4.0)
     ap.add_argument("--max_len", type=int, default=12); ap.add_argument("--n_sent", type=int, default=20); ap.add_argument("--alpha", type=int, default=1); ap.add_argument("--hi", type=float, default=0.1); ap.add_argument("--iters", type=int, default=10); ap.add_argument("--save_json", default=None); ap.add_argument("--name", default="sst_bert_small_3"); ap.add_argument("--data", default="auto", help="sst | yelp | auto (from --name prefix)"); ap.add_argument("--eps", type=float, default=0.03); ap.add_argument("--softmax", default="lse"); ap.add_argument("--crown_batch", type=int, default=512)
     ap.add_argument("--split_attrib", type=int, default=0, help="attrib: also linearise ONE nonlinearity at a time (qk / softmax / av) and all three"); ap.add_argument("--factors", default="1,1.5", help="attrib: eps as multiples of the stock radius")

@@ -3183,3 +3183,15 @@ target for the gauge (four self-attention layers + one attention pooling, 400 to
 has no operator for (the Q/DQ round-trips are part of the function, not just weight storage). A gauge experiment would need
 the audio branch alone at a small radius with the QDQ nodes removed (then it is no longer the benchmark's function) — a
 research target, not a competition run. Downloaded copy: session scratchpad `smart_turn.onnx`.
+
+**09:28 — alternating α/gauge run: lost to ckpt preemption, made restart-safe, resubmitted.** Job 39889886 finished its
+learner at 18:08 on 09-09 (3 h 23) and was then preempted and requeued 46 times (38 restarts since midnight, one every
+≈ 15 min); the chain re-ran the learner from scratch on every restart, and its step-−1 checkpoint overwrote the completed
+gauge at 00:21 (`best_step −1, partial True` — i.e. the warm-start init). The completed gauge and its log are gone; nothing
+was evaluated. The small_6 warm-start screen (39888763) was in the same state (67 restarts). Both cancelled at 09:40.
+Fixes: the learner now checkpoints the CURRENT gauge, optimiser state and best-so-far to `<out>.ckpt` every 5 steps (atomic
+rename) and resumes from it (`--resume 1`, default); the final gauge is written atomically with `partial False`;
+`eval_alpha` saves per-instance results to `<json>.part_<tag>_<eps>` and resumes; the chain skips each stage once its output
+exists. Resubmitted with --requeue: smoke 39968845, full 39968846 (afterok). The warm-start screen moved to the free L40S slot
+(job 39968836, non-preemptible, ≈ 3.3 h). Lesson for the memory file: on ckpt, every stage must be resumable and no stage
+may re-run on restart.
