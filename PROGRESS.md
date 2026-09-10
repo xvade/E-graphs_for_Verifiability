@@ -3272,3 +3272,26 @@ small_6 (plain CROWN Δ +1.36 vs α Δ +0.29 at ε 0.015) but stays positive on 
 Δ +0.31 (7 → 8), label 1 Δ +0.24 (5 → 6). Three-model α-tier picture now: small_3 (≤ 8 tokens, 205 inst) Δ +0.015, 104 → 104;
 small_6 (≤ 6, 49 inst) Δ +0.33, 24 → 27; big_3 (≤ 5, 29 inst) Δ +0.29, 12 → 14 — the α tier keeps the attention-share
 ordering of the plain-CROWN results.
+
+**11:44 — small_6 warm-start screen landed (job 39968836, L40S, 1 h 57; `results/formula_small6_init.json`; 24 test sentences,
+48 boxes, split by label with `screen_label_split.py`).** Learners warm-started from the manual unified rule vs the identity-
+initialised ones, held-out certified-radius gain over stock (larger / smaller vs stock; head to head vs the single learned gauge):
+
+| small_6 gauge | all 48 | label 0 (24, stock mean 0.01427) | label 1 (24, stock mean 0.01925) |
+|---|---|---|---|
+| single learned (identity init) | +14.1 % (42 / 0) | +15.8 % | +12.8 % |
+| **single, warm start** | **+15.6 % (42 / 0; vs learned 16 / 0)** | +18.5 % (9 / 0) | +13.4 % (7 / 0) |
+| label-0 learner | +10.7 % | +17.2 % (7 / 0) | +5.8 % |
+| **label-0, warm start** | +12.5 % | **+19.2 % (10 / 0)** | +7.5 % |
+| label-1 learner | +15.5 % | +5.4 % | +23.1 % (21 / 0) |
+| **label-1, warm start** | +17.5 % | +7.0 % | **+25.3 % (21 / 0)** |
+| closed form | +14.9 % | +10.7 % | +17.9 % |
+| unified rule | +15.2 % (42 / 0) | +13.6 % | +16.5 % |
+
+The warm start from the unified rule ends above the identity-initialised learner on every row, single and per class, on
+small_6 as on big_3 (big_3: +13.7 % vs +12.7 %, 15 / 0; per label +16.1 % vs +14.9 %). Per-class choice by the label being
+verified: warm-started +19.2 / +25.3 % vs identity-init +17.2 / +23.1 % vs the single warm-started gauge +18.5 / +13.4 %. On
+small_6 the unified rule (+15.2 %) also edges the single identity-init learner (+14.1 %) on this screen, consistent with the
+paired tie. The label split is unchanged: the manual rule sits at 0.86 of the learned gain on label 0 (13.6 vs 15.8) and above
+it on label 1 (16.5 vs 12.8) — the class the sign-blind rule favours — which is what round 7 (sign-aware surrogate, running)
+targets.
