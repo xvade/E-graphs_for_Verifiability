@@ -3539,7 +3539,10 @@ term) and β = ‖Y‖∞ρ/(1−ρ) bound every entry of |inv(G₃₂) − Y|, 
 β; max half-width still 1.19e-7). (iii) Runtime ratios were cross-card: on the same A100 (7-instance smoke, 9 calls each)
 plain gauged 97 s vs interval 221 s = **2.3× per call** (not 1.9×); the four-sided folded tier's ~3× was on its own card.
 Certify mode needs 4 interval calls per instance vs 14 plain calls for the bisection, so the rigorous add-on costs ≈ 0.65×
-the plain protocol (92 min here). The "tighter on 51/294" entries in the lb comparison are fp32 bound-arithmetic noise at
+the plain protocol (92 min here). To be clear (user's question, 09-11): the interval network is NOT cheaper per call — it
+is 2.3× — certify mode is cheap only because it takes the candidate radius from the plain run and makes one confirming call
+instead of an 11-call bisection; the total for a rigorous certificate is plain + confirmation ≈ 1.65× the plain protocol
+(the ≤ 8-token run, which bisected on the interval network, shows the raw cost: 1255 s vs ~550 s plain for 27 instances). The "tighter on 51/294" entries in the lb comparison are fp32 bound-arithmetic noise at
 1e-5, four orders above the 1e-9 fold error being certified. Remaining uncovered term, shared with the stock certificate:
 auto_LiRPA's own fp32 arithmetic. Code committed (`deept_unfolded.py`, 1c0ca88).
 
