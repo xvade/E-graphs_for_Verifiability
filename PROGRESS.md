@@ -3510,3 +3510,21 @@ control `stock_unf`: radii equal 27/27, lb loss ≤ 7.2e-5. 3.3 s per CROWN call
 layer. So on this subset every certified instance now carries the rigorous statement (the bounded family contains an exact
 rewrite of the original network) at no change in the certified radius. Full 294-instance certify-mode run still going
 (job 39999430, 22 s / instance, 4 calls each so far).
+
+**20:00 — G⁻¹-interval, FULL 294-instance protocol in certify mode (A100, job 39999430, 92 min, 4 CROWN calls per instance).**
+For every instance the interval network (G⁻¹, A⁻¹ as 2-ulp fp32 intervals, everything else exact) verifies the plain gauged
+run's certified radius on the first call — no step-downs, so **`gauged_unf` radius = `gauged` radius on 294/294** (mean 0.0249
+vs stock 0.0220, +10.6 %, larger on 273 / equal 21 / smaller 0, i.e. the published small_6 headline unchanged) — and the
+fixed-ε verified counts and NaN patterns are identical (275 / 183 / 95 verified, NaN 0 / 0 / 6 at ε 0.01 / 0.02 / 0.03; the
+ε-0.03 flips 41 → 95 all survive). lb loss vs the plain gauged network: mean −2e-6 / −5e-6 / −1.4e-5, max 1.0e-4. Runtime:
+~4.7 s per interval call at ≤ 12 tokens vs ~2.5 s plain, so the rigorous add-on costs ≈ 0.5× the plain bisection protocol
+(92 min vs ~3 h) instead of the > 11 h the four-sided folded tier needed. Files `results/deept_small6_unf_{smoke,smoke_d5e9,
+med8,full_cert}.json`, logs `_scratch/deept_unf_*.log`.
+- **Statement now backed by a certificate, per instance:** for each of the 294 (sentence, position) boxes, the CROWN lower
+  bound computed on the unfolded family holds for every network in it, and the family contains the exact rewrite
+  (G, inv(G), A, inv(A) with the true inverses), which equals the original network as a real function. What it does not cover
+  (unchanged by the gauge): auto_LiRPA's own fp32 arithmetic while computing the bound, which is the same caveat the stock
+  CROWN certificate carries. The sampled fp64 gate (≤ 1e-15) is now a sanity check rather than the evidence.
+- The user's "±5e-9": that is the folded-weight rounding figure; on the unfolded G⁻¹ (entries ≤ 1.165) the fp number is one
+  ulp = 1.19e-7 absolute, and ±5e-9 is not fp32-representable around such entries — its smallest fp32 envelope is the same
+  2-ulp interval (`smoke_d5e9`: identical radii, lb within 2e-5). Both readings give the same experiment.
