@@ -378,6 +378,20 @@ their per-query optimisation absorbs ≈ 1.5 points). Not a scoop; a natural nex
 | Huang et al., AAAI-26 (above) | parameterised product relaxations | SST/Yelp ≤ 3 layers, +2–9 % radius | closest; see above |
 | α-CROWN / auto_LiRPA (Xu et al. 2021) | per-query optimisable slopes incl. `BoundMul` interpolation | — | what our alpha tier uses; already contains the AAAI-26 (I) family |
 
+### VNN-COMP 2026 `smart_turn_multimodal_2026` (the first competition benchmark with real transformer layers) — noted 2026-09-11
+
+`smart-turn-multimodal-cpu.onnx` (41.6 M parameters, int8 QDQ export): a Whisper-style 4-layer audio encoder (384-wide
+self-attention over 400 frames) + a 3-D ResNet video backbone + attention pooling → fusion MLP → sigmoid, 50 instances that
+perturb every input coordinate (1.26 M box dimensions, 100 s each). Two reasons it is not a gauge target as posed: the
+fake-quantised activations (Q/DQ round-trips are part of the function; auto_LiRPA has no operator for them) and the size of the
+perturbation set. **Export defect worth reporting upstream:** the classifier's final logit passes through a uint8
+QuantizeLinear / DequantizeLinear pair with scale 0.00945 and zero point 0 before the sigmoid, so every negative logit is
+clipped to 0 and the exported output is exactly 0.5 (instance 0: float logit −4.44, exported output 0.5). The property
+"Y[0,0] > 0.5 is unsafe" is therefore decided at the boundary for all negative-logit inputs; a verifier that reasons about
+the exported graph faithfully sees a constant 0.5 on that side, which is not the model the benchmark authors intend. (Diary
+2026-09-10, structure mapped from the downloaded ONNX; the gauge experiment on this model was not pursued — the user chose the
+DeepT single comparison instead.)
+
 ## Symmetry / reparametrisation work
 
 | work | content | relation |
