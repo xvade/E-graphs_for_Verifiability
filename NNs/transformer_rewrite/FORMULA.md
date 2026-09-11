@@ -1,6 +1,6 @@
 # The formula for the attention gauge
 
-Status 2026-09-09 08:45. Goal (second phase): a *manual* procedure — weights plus a handful of random probe sequences, no
+Status 2026-09-10 17:30 (round 7 added below: a sign-aware surrogate gives a PER-CLASS manual rule that reaches the per-class learners on small_6; paired confirmation running). Earlier status 2026-09-09 08:45. Goal (second phase): a *manual* procedure — weights plus a handful of random probe sequences, no
 verifier in the loop — whose gauge beats the learned one (`deept_gauge.py learn`, Adam on CROWN's lower bound over tuning boxes).
 What is settled: the closed form below reaches 61–64 % of the learned radius gain on the paired protocol (big_3, Yelp small_3);
 refining it on the ℓ1 version of the same cost model (step 2) lifts the paired share to 0.91 on big_3 (one-sided, per-instance
@@ -158,6 +158,53 @@ does not (it said 0.82–0.83 for Yelp, and 0.86 for the both-sided l1N on small
 Round 6 (last GPU window before the maintenance): rotation-only ℓ1 refinement `l1N_rot` (closed-form metric kept, Cayley-
 parametrised rotation optimised on the ℓ1 surrogate; unified variant), screened on all three models and Yelp seed 1; per-class
 learners on big_3 (label-0-only / label-1-only boxes) to bound what a sign-aware manual rule could gain.
+
+## Round 7 (2026-09-10): the sign-aware surrogate and the per-class manual rule
+
+**What plain CROWN actually does with a product** (`auto_LiRPA/operators/bivariate.py`, `mul_middle` False = our setting): x·y is
+replaced by the lower McCormick plane through the corner (x_l, y_l) when the backward coefficient on the product is positive
+[error (x − x_l)(y − y_l)] and by the upper plane through (x_l, y_u) when it is negative [error (x − x_l)(y_u − y)]; x is input 0
+(q in q·kᵀ, p in p·v). Both planes touch the box at x = x_l; which plane applies flips with the sign of the coefficient, i.e.
+with the label; and the error is paid where the bound's minimiser sits, not uniformly. The ℓ1 width product of the earlier
+rounds is the sign-blind envelope of this.
+
+**The sign-aware cost** (`signed_probe_data`, `signed_cost`, `candidate_signed`; `gauge_formula.py --signed 1`): per probe
+box, first-order intervals from the layer-input Jacobians, the margin's first-order worst corner z* = −sign ∂margin/∂δ, the
+score gradients λ = ∂margin/∂(qkᵀ) (their sign picks the plane) and the dense-output gradients g; cost = Σ |coef| × plane
+error at z*, with x − x_l = ε(‖r‖₁ + r·z*) and y_u − y = ε(‖r‖₁ − r·z*) for a functional with Jacobian row r. Positive
+diagonal gauges leave it unchanged; sign flips do not (verified on CROWN: diag(±1) gauges tighten plain CROWN by ≈ +0.12 on
+9 / 9 boxes and are α-neutral; positive diagonals neutral in both tiers).
+
+**Ordering test (cost-only, label-y random-token probes, no verifier):** on small_6 the signed cost reproduces the held-out
+screen's order on both labels — label-y learner best, single learned next, unified rule / closed form, wrong-label learner at
+≈ 1.5 × identity — where ℓ1N has every gauge within 0.74–0.78. On big_3 it ranks the per-class learners right but over-rates
+the unified rule on label 1 (its AV term, built on first-order softmax widths, dominates).
+
+**Optimising it (400 Adam steps from the unified rule on label-y probes, held-out screen split by label, 24 + 24 boxes):**
+
+| small_6 rule (label-y probes → gain on label y \| other label) | label 0 | label 1 |
+|---|---|---|
+| single learned gauge | +15.8 \| +12.8 | +12.8 \| +15.8 |
+| unified rule (start point) | +13.7 \| +16.5 | +16.5 \| +13.7 |
+| per-class learner (`--label`) | +17.2 \| +5.8 | +23.1 \| +5.4 |
+| pure signed, both sides / QK only | −16.8 / +2.6 | −27.2 / +6.7 |
+| cond penalty 1e-2, both / QK | −4.1 / +10.8 | −13.6 / +13.8 |
+| rotation-only (Cayley), both / QK | +9.2 / **+17.2** \| +8.4 | +14.4 / **+20.9** \| +8.0 |
+| ℓ1N mix (normalised, weight 1), both / QK | +5.9 / **+17.6** (8 / 0 vs single) \| +8.6 | +4.6 / **+22.0** (21 / 0 vs single) \| +7.4 |
+
+The pure cost is exploitable: Adam drives it to 0.03 of identity (the QK part to ≈ 0 at deeper layers) by arranging every
+product on its plane's zero-error edge at z*, and CROWN's actual minimiser moves elsewhere (−17 … −31 % radius). Constrained
+to the QK side and either to rotations of the unified rule's gauge or to the ℓ1N envelope, it becomes a **per-class manual
+rule** that reaches the per-class learners: +17.6 % on label 0 (learner +17.2 %) and +22.0 % on label 1 (learner +23.1 %),
+with the same trade-away of the other class the learners show. The AV gauge must stay at the unified rule (every both-sided
+variant loses). big_3 label 0 was already at its ceiling (+10.3 % vs +9.9 %); big_3 label 1 and the paired-protocol
+confirmation (per-class manual vs per-class learners vs single learned, gauge chosen by the label being verified) are in
+`PROGRESS.md` 2026-09-10 evening.
+
+**Procedure of record for a per-class gauge (label y):** unified rule → `candidate_signed` on label-y random-token probes, QK
+side only, ℓ1N mix weight 1 (or rotation-only), 400 Adam steps lr 0.02 → `gauges/formula_<name>_sgn_mix_qk_mix_lab<y>.pt`.
+Note that the α tier absorbs the per-class refinement (CROWN-Optimized: label-1 learner +2.40 vs single +2.38 on label 1);
+per-class gauges are a plain-CROWN-tier gain.
 
 ## What did not help (all three models unless noted)
 
