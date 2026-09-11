@@ -3501,3 +3501,12 @@ net: 3.6e-10); fp32 forward vs stock on the box centres 2.4e-7.
 - Running: the ≤ 8-token subset of the standard 40-sentence protocol (27 instances, full bisection, `gauged_unf` + `stock_unf`,
   job 39999429) and the full 294-instance protocol in certify mode (test the plain gauged radius with the interval network, step
   down the bisection grid on failure; job 39999430, ckpt, per-instance resume) → `results/deept_small6_unf_{med8,full_cert}.json`.
+
+**19:09 — G⁻¹-interval, ≤ 8-token subset of the standard protocol (27 instances, full bisection, A100, job 39999429, 46 min).**
+`gauged_unf` certified radius equal to the plain gauged run on **27/27** (max |Δ| 0; mean 0.0263 vs stock 0.0219, +19.7 %,
+larger on 27/27), fixed-ε lb loss mean −1.7e-6 / −6.5e-6 / −2.1e-5 (max 5.0e-5) at ε 0.01 / 0.02 / 0.03, verified counts
+27 / 21 / 10 unchanged (incl. the 4 unverified→verified flips at ε 0.03 the gauge produces), NaN count unchanged. Identity
+control `stock_unf`: radii equal 27/27, lb loss ≤ 7.2e-5. 3.3 s per CROWN call at ≤ 8 tokens with the two interval nodes per
+layer. So on this subset every certified instance now carries the rigorous statement (the bounded family contains an exact
+rewrite of the original network) at no change in the certified radius. Full 294-instance certify-mode run still going
+(job 39999430, 22 s / instance, 4 calls each so far).
