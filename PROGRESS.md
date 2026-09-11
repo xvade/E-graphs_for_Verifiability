@@ -3471,3 +3471,8 @@ to the true label on the correctly classified instances the protocol uses); each
 costs nothing in soundness. (v) Still to check when the paired logs land: the fp64 gate (1e-15) and the conditioning of the
 `sgn_mix_qk` gauges (unmeasured; if κ > 30, add the κ·u fold-error figure); and whether the smaller trade-away of the other
 class (big_3 label 0: +6.3 % vs the learner's +3.7 %) holds on the paired protocol.
+
+**18:04 — conditioning of the round-7 gauges (check (v) above, first half).** fp64 κ of the `sgn_mix_qk` gauges: big_3 QK max
+6.1 / 5.4 (label 0 / 1), AV 4.4; small_6 QK max 4.9 / 5.0, AV 7.1 — same order as the learned gauge (4.9), so the fold error
+stays at κ·u ≈ 4e-7 relative and no separate error-budget figure is needed. The rotation-only variants are worse conditioned
+(small_6 `sgn_rot_qk` label 1 κ 28.7), one more reason the mixed variant is the procedure of record.
