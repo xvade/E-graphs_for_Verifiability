@@ -31,46 +31,68 @@ from auto_LiRPA import BoundedParameter, PerturbationLpNorm
 def blockdiag(m):   # (H, dh, dh) -> (H*dh, H*dh)
     return torch.block_diag(*[m[h] for h in range(m.shape[0])])
 
-def fp32_envelope(t64, delta):
-    """smallest fp32 interval [lo, hi] containing [t64 - delta, t64 + delta] (delta = None -> the two fp32 neighbours of fl32(t64));
-    entries that are exactly zero in fp64 (identity blocks, off-block zeros) get the exact interval [0, 0]."""
+def fp32_envelope(t64, delta, inblock, beta):
+    """smallest fp32 interval [lo, hi] containing [t64 - delta, t64 + delta] (delta = None -> the two fp32 neighbours of fl32(t64)) on the
+    in-block entries; structural off-block zeros get the exact interval [0, 0].  `beta` (per entry, fp64) bounds |true inverse - t64|
+    (see inverse_error_bound); the interval is REQUIRED to contain t64 +- beta, so it contains the exact inverse of the fp32 gauge."""
     w = t64.float(); ninf = torch.full_like(w, -float("inf")); pinf = torch.full_like(w, float("inf"))
     if delta is None: lo = torch.nextafter(w, ninf); hi = torch.nextafter(w, pinf)
     else:
         lo = (t64 - delta).float(); hi = (t64 + delta).float()   # round-to-nearest, then push outward where the cast rounded inward
         lo = torch.where(lo.double() > t64 - delta, torch.nextafter(lo, ninf), lo); hi = torch.where(hi.double() < t64 + delta, torch.nextafter(hi, pinf), hi)
-    z = t64 == 0; lo = torch.where(z, torch.zeros_like(lo), lo); hi = torch.where(z, torch.zeros_like(hi), hi)
-    assert bool(((lo.double() <= t64) & (t64 <= hi.double())).all()), "interval does not contain the fp64 inverse"
-    nz = ~z; margin = torch.minimum(t64 - lo.double(), hi.double() - t64)[nz] / t64[nz].abs()   # relative slack between the fp64 inverse and the interval edge
-    stats = {"n_interval": int(nz.sum()), "halfwidth_abs_max": float(((hi - lo).double() / 2).max()), "halfwidth_rel_max": float((((hi - lo).double() / 2)[nz] / t64[nz].abs()).max()),
-             "margin_rel_min": float(margin.min()), "entry_abs_max": float(t64.abs().max())}
+    # widen to cover t64 +- beta (the verified inverse error): matters only for entries so small that their fp32 ulp is below beta
+    lo2 = (t64 - beta).float(); hi2 = (t64 + beta).float()
+    lo2 = torch.where(lo2.double() > t64 - beta, torch.nextafter(lo2, ninf), lo2); hi2 = torch.where(hi2.double() < t64 + beta, torch.nextafter(hi2, pinf), hi2)
+    lo = torch.minimum(lo, lo2); hi = torch.maximum(hi, hi2)
+    z = ~inblock; lo = torch.where(z, torch.zeros_like(lo), lo); hi = torch.where(z, torch.zeros_like(hi), hi)
+    assert bool((t64[z] == 0).all()), "off-block entries must be structural zeros"
+    ok = (lo.double() <= t64 - beta) & (t64 + beta <= hi.double()); assert bool(ok[inblock].all()), "interval does not contain the true inverse (t64 +- beta)"
+    nz = inblock & (t64 != 0); margin = (torch.minimum(t64 - lo.double(), hi.double() - t64) - beta)[inblock]   # absolute slack beyond the verified error bound
+    stats = {"n_interval": int(inblock.sum()), "halfwidth_abs_max": float(((hi - lo).double() / 2)[inblock].max()), "halfwidth_rel_max": float((((hi - lo).double() / 2)[nz] / t64[nz].abs()).max()),
+             "margin_abs_min": float(margin.min()), "beta_max": float(beta[inblock].max()), "entry_abs_max": float(t64.abs().max())}
     return w, lo, hi, stats
 
+def inverse_error_bound(G32, Y):
+    """verified entrywise bound on |inv(G) - Y| for the fp32 matrix G (as fp64) and its fp64 approximate inverse Y (per head, (H, d, d)):
+    with R = I - G Y and rho = ||R||_inf < 1, inv(G) = Y (I - R)^{-1} so |inv(G) - Y| <= ||Y||_inf * rho / (1 - rho) entrywise.  R is
+    computed in fp64; its own rounding error is <= d * u64 * ||G||_inf ||Y||_inf per entry, added before taking the norm."""
+    G = G32.double(); d = G.shape[-1]; R = torch.eye(d, dtype=torch.float64) - G @ Y; u64 = 2.0 ** -53
+    rho = R.abs().sum(-1).max(-1).values + d * u64 * G.abs().sum(-1).max(-1).values * Y.abs().sum(-1).max(-1).values * d   # (H,)
+    assert bool((rho < 1e-6).all()), f"inverse residual too large: {rho}"
+    beta = Y.abs().sum(-1).max(-1).values * rho / (1 - rho)   # (H,)
+    return rho, beta
+
 def unfold_maps(Gq, Ga):
-    """per layer (Wt_q, Wt_kinv64, Wt_v, Wt_ainv64) in the x @ Wt convention: q'_row = q_row @ G (= (G^T q)^T), k'_row = k_row @ G^{-T},
-    v'_row = v_row @ A, c''_row = c'_row @ A^{-1} (= (A^{-T} c')^T).  Gq, Ga: (L, H, dh, dh) fp32 (the gauge as defined); inverses in fp64."""
+    """per layer (Wt_q, Wt_kinv64, Wt_v, Wt_ainv64, beta_k, beta_a, rho) in the x @ Wt convention: q'_row = q_row @ G (= (G^T q)^T),
+    k'_row = k_row @ G^{-T}, v'_row = v_row @ A, c''_row = c'_row @ A^{-1} (= (A^{-T} c')^T).  Gq, Ga: (L, H, dh, dh) fp32 (the gauge as
+    defined); inverses in fp64 with a verified entrywise error bound (beta, block-diagonal like the map; off-block = 0)."""
     out = []
     for l in range(Gq.shape[0]):
         G = Gq[l]; A = Ga[l]; Gi = torch.linalg.inv(G.double()); Ai = torch.linalg.inv(A.double())
-        out.append((blockdiag(G), blockdiag(Gi.transpose(-1, -2)), blockdiag(A), blockdiag(Ai)))
+        rg, bg = inverse_error_bound(G, Gi); ra, ba = inverse_error_bound(A, Ai); H, d = G.shape[0], G.shape[-1]
+        bk = blockdiag(bg.view(H, 1, 1).expand(H, d, d)); bav = blockdiag(ba.view(H, 1, 1).expand(H, d, d))
+        out.append((blockdiag(G), blockdiag(Gi.transpose(-1, -2)), blockdiag(A), blockdiag(Ai), bk, bav, max(rg.max().item(), ra.max().item())))
     return out
 
 def install_unfolded(net, Gq, Ga, interval=True, delta=None, dtype=torch.float32):
     """wrap the stock attention projections with the unfolded gauge maps.  interval=True: G^{-1}, A^{-1} as BoundedParameters (fp32
-    envelopes, see fp32_envelope); interval=False: plain parameters in `dtype` (fp64 exactness check).  Returns interval stats."""
-    dev = next(net.parameters()).device; net._orig_attn = []; stats = []
+    envelopes verified to contain the exact inverses, see fp32_envelope / inverse_error_bound); interval=False: plain parameters in
+    `dtype` (fp64 exactness check).  Returns interval stats."""
+    dev = next(net.parameters()).device; net._orig_attn = []; stats = []; H, d = Gq.shape[1], Gq.shape[-1]
+    inblock = blockdiag(torch.ones(H, d, d, dtype=torch.bool))
     def const(Wt): return nn.Parameter(Wt.to(dtype).unsqueeze(0).to(dev), requires_grad=False)
-    def ival(Wt64):
+    def ival(Wt64, beta):
         if not interval: return const(Wt64)
-        w, lo, hi, st = fp32_envelope(Wt64, delta); stats.append(st)
+        w, lo, hi, st = fp32_envelope(Wt64, delta, inblock, beta); stats.append(st)
         return BoundedParameter(w.unsqueeze(0).to(dev), PerturbationLpNorm(norm=np.inf, x_L=lo.unsqueeze(0).to(dev), x_U=hi.unsqueeze(0).to(dev)), requires_grad=False)
-    for layer, (Wq, Ki, Wv, Ai) in zip(net.layers, unfold_maps(Gq, Ga)):
-        at = layer.attention.self; od = layer.attention.output; net._orig_attn.append((at.query, at.key, at.value, od.dense))
-        at.query = nn.Sequential(at.query, IntervalLinear(const(Wq), None)); at.key = nn.Sequential(at.key, IntervalLinear(ival(Ki), None))
-        at.value = nn.Sequential(at.value, IntervalLinear(const(Wv), None)); od.dense = nn.Sequential(IntervalLinear(ival(Ai), None), od.dense)
+    rho_max = 0.0
+    for layer, (Wq, Ki, Wv, Ai, bk, bav, rho) in zip(net.layers, unfold_maps(Gq, Ga)):
+        at = layer.attention.self; od = layer.attention.output; net._orig_attn.append((at.query, at.key, at.value, od.dense)); rho_max = max(rho_max, rho)
+        at.query = nn.Sequential(at.query, IntervalLinear(const(Wq), None)); at.key = nn.Sequential(at.key, IntervalLinear(ival(Ki, bk), None))
+        at.value = nn.Sequential(at.value, IntervalLinear(const(Wv), None)); od.dense = nn.Sequential(IntervalLinear(ival(Ai, bav), None), od.dense)
     if not stats: return None
     return {"n_interval": sum(s["n_interval"] for s in stats), "halfwidth_abs_max": max(s["halfwidth_abs_max"] for s in stats), "halfwidth_rel_max": max(s["halfwidth_rel_max"] for s in stats),
-            "margin_rel_min": min(s["margin_rel_min"] for s in stats), "entry_abs_max": max(s["entry_abs_max"] for s in stats)}
+            "margin_abs_min": min(s["margin_abs_min"] for s in stats), "beta_max": max(s["beta_max"] for s in stats), "rho_max": rho_max, "entry_abs_max": max(s["entry_abs_max"] for s in stats)}
 
 def remove_unfolded(net):
     for l, (q, k, v, o) in zip(net.layers, net._orig_attn): l.attention.self.query, l.attention.self.key, l.attention.self.value, l.attention.output.dense = q, k, v, o
@@ -99,7 +121,7 @@ def main():
     ap.add_argument("--rad_mode", default="bisect", help="bisect: full bisection for the interval sets; certify: test the plain set's radius, step down the bisection grid on failure (lower bound)")
     ap.add_argument("--ref_json", default=None, help="JSON of an earlier deept_gauge.py eval / this script: plain stock/gauged (and any other complete set) taken from it when the instances match")
     ap.add_argument("--save_json", default=None); ap.add_argument("--subset_len", type=int, default=0, help="keep only instances with <= this many tokens (0 = all)")
-    ap.add_argument("--n_check", type=int, default=24, help="instances for the fp64 exactness check")
+    ap.add_argument("--n_check", type=int, default=24, help="instances for the fp64 exactness check"); ap.add_argument("--confirm", type=int, default=0, help="1: only recompute the interval-net lb at each recorded radius of the finished --sets in --save_json")
     a = ap.parse_args(); assert a.k_words == 1, "one-word spec only"
     dev = "cuda" if torch.cuda.is_available() else "cpu"; m, tok, net = build(a.name, dev); L, H, dh = len(net.layers), net.H, net.dh; st = [[t.to(dev) for t in w] for w in stock_tensors(net)]
     data = load_data(a, "test"); S = short_instances(net, m, tok, data, a.max_len, a.n_sent, seed=a.seed)
@@ -123,6 +145,7 @@ def main():
         for t in [k[:-4] for k in d if k.endswith("_rad")]:
             if all(t in d["fixed"].get(str(eps), {}) for eps in eps_list):
                 out[t] = {"rad": [d[f"{t}_rad"][n] for n in idx], "fixed": {str(eps): [d["fixed"][str(eps)][t][n] for n in idx] for eps in eps_list}, "done": True, "calls": []}
+                if f"{t}_rad_lb" in d and idx == list(range(len(keys))): out[t]["rad_lb"] = d[f"{t}_rad_lb"]   # (possibly partial) confirmation pass of THIS instance list
         for t, s in d.get("partial", {}).items():
             if idx == list(range(len(keys))) and s.get("inst_n") == len(keys): out[t] = s   # in-progress set of THIS instance list
         return out
@@ -135,7 +158,9 @@ def main():
         d = {"inst": keys, "gauge": a.gauge, "delta": a.delta, "rad_mode": a.rad_mode, "fixed": {str(eps): {} for eps in eps_list}, "partial": {}, "meta": res.get("_meta", {})}
         for t, s in res.items():
             if t == "_meta": continue
-            if s["done"]: d[f"{t}_rad"] = s["rad"]; [d["fixed"][str(eps)].__setitem__(t, s["fixed"][str(eps)]) for eps in eps_list]
+            if s["done"]:
+                d[f"{t}_rad"] = s["rad"]; [d["fixed"][str(eps)].__setitem__(t, s["fixed"][str(eps)]) for eps in eps_list]
+                if "rad_lb" in s: d[f"{t}_rad_lb"] = s["rad_lb"]
             else: d["partial"][t] = {**s, "inst_n": len(keys)}
         json.dump(d, open(a.save_json + ".tmp", "w")); os.replace(a.save_json + ".tmp", a.save_json)
     def run_set(tag, lirpas, ref_tag=None):
@@ -143,11 +168,11 @@ def main():
         for n in range(n0, len(inst)):
             j, i, e, y, _ = inst[n]; lp = lirpas[e.shape[1]]; t1 = time.time(); calls = 0
             if a.rad_mode == "certify" and ref_tag in res and res[ref_tag]["done"]:
-                r = res[ref_tag]["rad"][n]; g = a.hi / 2 ** a.iters; step = g
-                while r > 0 and crown_lb(lp, e, i, r, y, dev) <= 0: r = max(0.0, r - step); step *= 2; calls += 1
-                calls += 1; rad = r
-            else: rad = certified_radius(lp, e, i, y, dev, hi=a.hi, iters=a.iters); calls = a.iters + 1
-            s["rad"].append(rad)
+                r = res[ref_tag]["rad"][n]; g = a.hi / 2 ** a.iters; step = g; lb_r = crown_lb(lp, e, i, r, y, dev); calls += 1
+                while r > 0 and not (lb_r > 0): r = max(0.0, r - step); step *= 2; lb_r = crown_lb(lp, e, i, r, y, dev); calls += 1   # NaN counts as a failure
+                rad = r
+            else: rad = certified_radius(lp, e, i, y, dev, hi=a.hi, iters=a.iters); calls = a.iters + 1; lb_r = crown_lb(lp, e, i, rad, y, dev) if rad > 0 else float("nan"); calls += 1
+            s["rad"].append(rad); s.setdefault("rad_lb", []).append(lb_r)
             for eps in eps_list: s["fixed"][str(eps)].append(crown_lb(lp, e, i, eps, y, dev)); calls += 1
             s["calls"].append(calls); save()
             lbs = "".join(", lb@%g %+.4f" % (eps, s["fixed"][str(eps)][-1]) for eps in eps_list)
@@ -155,6 +180,17 @@ def main():
         s["done"] = True; save(); rad = np.array(s["rad"]); fx = {eps: np.array(s["fixed"][str(eps)]) for eps in eps_list}; cpi = np.mean(s["calls"][n0:]) if len(inst) > n0 else 0.0
         print(f"# {tag}: certified radius mean {rad.mean():.4f} median {np.median(rad):.4f} | " + "; ".join(f"eps {eps}: verified {(v > 0).sum()}/{len(inst)} (nan {np.isnan(v).sum()}) mean lb {np.nanmean(v):+.4f}" for eps, v in fx.items()) + f"  [{time.time() - t0:.0f}s for {len(inst) - n0} instances, {cpi:.1f} calls/inst]", flush=True)
     lengths = [e.shape[1] for _, _, e, _, _ in inst]
+    if a.confirm:   # recompute the interval network's lb at every recorded radius of the finished interval sets (NaN-safe evidence, one call per instance)
+        load_eff(net, fold64(st, *eye_gauge(L, H, dh, torch.float64), H, dh))
+        for tag in a.sets.split(","):
+            s = res[tag]; assert s["done"], tag; gq, ga = (Gq32, Ga32) if tag == "gauged_unf" else eye_gauge(L, H, dh, torch.float32)
+            stats = install_unfolded(net, gq, ga, interval=True, delta=delta); lirpas = make_lirpas(net, lengths, dev, a.softmax); lbs = s.setdefault("rad_lb", []); t0 = time.time()
+            for n in range(len(lbs), len(inst)):
+                j, i, e, y, _ = inst[n]; lbs.append(crown_lb(lirpas[e.shape[1]], e, i, s["rad"][n], y, dev) if s["rad"][n] > 0 else float("nan")); save()
+                if (n + 1) % 25 == 0: print(f"  [{tag} confirm] {n + 1}/{len(inst)}  {time.time() - t0:.0f}s", flush=True)
+            v = np.array(lbs); r = np.array(s["rad"]); print(f"# {tag} CONFIRM: lb at the recorded radius finite and > 0 on {int(((v > 0) & np.isfinite(v)).sum())}/{int((r > 0).sum())} instances with radius > 0 (NaN {int(np.isnan(v[r > 0]).sum())}, <= 0 {int((v[r > 0] <= 0).sum())}); min lb {np.nanmin(v[r > 0]) if (r > 0).any() else float('nan'):+.3e}  [{time.time() - t0:.0f}s]", flush=True)
+            del lirpas; remove_unfolded(net); torch.cuda.empty_cache()
+        return
     # plain sets (fp32-folded weights, as in deept_gauge.py eval)
     for tag, (gq, ga) in (("stock", eye_gauge(L, H, dh, torch.float64)), ("gauged", (Gq64, Ga64))):
         if res.get(tag, {}).get("done"): continue
@@ -165,7 +201,7 @@ def main():
         if res.get(tag, {}).get("done"): continue
         gq, ga = (Gq32, Ga32) if tag == "gauged_unf" else eye_gauge(L, H, dh, torch.float32)
         stats = install_unfolded(net, gq, ga, interval=True, delta=delta); res.setdefault("_meta", {})[tag] = stats
-        print(f"# {tag}: {stats['n_interval']} interval entries (G^-1, A^-1 blocks; |entry| <= {stats['entry_abs_max']:.3f}); half-width max {stats['halfwidth_abs_max']:.2e} absolute, {stats['halfwidth_rel_max']:.2e} relative; fp64 inverse sits >= {stats['margin_rel_min']:.2e} (relative) inside the interval", flush=True)
+        print(f"# {tag}: {stats['n_interval']} interval entries (G^-1, A^-1 blocks; |entry| <= {stats['entry_abs_max']:.3f}); half-width max {stats['halfwidth_abs_max']:.2e} absolute, {stats['halfwidth_rel_max']:.2e} relative; VERIFIED inclusion of the exact inverse: residual rho <= {stats['rho_max']:.2e}, entrywise error beta <= {stats['beta_max']:.2e}, slack beyond beta >= {stats['margin_abs_min']:.2e}", flush=True)
         with torch.no_grad():   # fp32 forward sanity: unfolded fp32 network vs the stock fp32 network on the box centres (fp32 arithmetic noise expected)
             worst = max((net(e.to(dev)) - stock_logits[n]).abs().max().item() for n, (_, _, e, _, _) in enumerate(inst[:a.n_check]))
         print(f"# {tag}: fp32 forward |unfolded - stock| on {min(a.n_check, len(inst))} box centres = {worst:.2e}", flush=True)
