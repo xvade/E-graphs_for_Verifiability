@@ -296,8 +296,13 @@ matrix; the cond-28 overfit gauge is ranked worst by every Jacobian-shaped surro
   bar (mean above the learned gauge's on two models) is not met.
 - Ceiling test done: the CROWN learner warm-started from the closed form (Yelp, 100 steps) ties the learned-from-identity gauge
   (+10.0 % vs +10.1 %, 94 / 94 / 89 head to head) — the learned gauge is the optimum of its objective.
-- Round 6 screens and the per-class learners (above); the small_6 refined paired eval; the fp32-interval-weight run (cut at 8 h,
-  resubmit after the maintenance).
+- Round 6 screens and the per-class learners: done (round-7 paired verdict above). Rigorous certificate transfer: done with the
+  gauge UNFOLDED (`deept_unfolded.py`, G⁻¹/A⁻¹ as verified 2-ulp intervals): the interval network certifies the plain gauged
+  radius on 294/294 small_6 instances, confirmed per instance (PROGRESS.md 2026-09-10 20:00–20:36); the four-sided folded
+  interval tier is superseded.
+- α-CROWN tier for the manual per-class rule (the learners' per-class lead was absorbed there on 15 instances): jobs submitted
+  2026-09-11 (small_6 ≤ 6 tokens ε 0.02, big_3 ≤ 5 tokens ε 0.015 / 0.02; one gauge per job, combined by label offline against
+  the once-trained single gauge's α results).
 - Verifier-free and probe-seed checks of step 1 (done): big_3 `svd_jacN_all_u` +0.384 / +0.947, second seed +0.382 / +0.941 vs
   +0.384 / +0.946; Yelp verifier-free +0.190 / +1.517 matches, seed dependence as described above.
 

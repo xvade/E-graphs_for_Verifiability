@@ -3662,3 +3662,12 @@ under a wrong label (0 / 3 / 0 / 0 instances below stock; learners 25 / 22 / 0 /
 absorbs per-class gains (09-10 sign-flip test), so this is a result about the cheap tier and about the surrogate, not about α-CROWN.
 Caveats: screens were selected on 24 test sentences that overlap the paired set slightly (1 / 40, 4 / 40); the signed cost is a
 direction only (see the round-7 caveats entry of 09-10). Round 7 closed; the procedure of record stands.
+
+**01:31 — round-7 verdict, two qualifications (advisor review).** (i) The big_3 label-1 learner was tuned on 17 boxes (label 0:
+53; 09-09 note), so the manual rule's win over the per-class learners on big_3 (+14.3 % vs +13.3 %) is against a data-starved
+learner; on small_6, where both classes had ample boxes, the learners still lead by 0.6 points (+18.6 % vs +18.0 %). Read it
+as: the rule needs less data, not that it beats a well-fed learner. (ii) "No verifier calls at construction" holds for the
+procedure of record (unified rule → `sgn_mix_qk`); choosing that variant used CROWN screens once, on 24 held-out test
+sentences per model — the screen / paired sentence overlap is being counted and will be stated. α-tier runs of the manual
+per-class gauges submitted (jobs 40022976–40022979: small_6 ≤ 6 tokens ε 0.02, big_3 ≤ 5 tokens ε 0.015 / 0.02; one gauge per
+job, `alpha_gauge.sbatch`, stock taken from the earlier single-comparison JSONs).
