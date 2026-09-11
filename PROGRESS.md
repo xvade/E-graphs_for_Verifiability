@@ -3616,3 +3616,21 @@ from the SST test split; replicated the selections): small_6 1 of 40 paired sent
 bias is therefore only PARTIALLY removed by the paired protocol (about 3 % / 10 % of the paired instances were seen when the
 variant was chosen); the bar-vs-single-learned comparison does not depend on which variant was chosen and stands, but the
 "unbiased read" wording above should be read as "nearly unbiased". Future screens should draw from dev, not test.
+
+**01:28 (09-11) — round 7 CLOSED: big_3 per-class LEARNERS on the paired protocol (job 39996393) and the two-model verdict.**
+big_3 learners chosen by label: +13.3 % vs stock (larger 276 / 0), vs the single learned gauge (+11.9 %) larger 167 / smaller
+15; per label +11.2 % / +16.5 %; verified 258 / 135 / 51. The MANUAL per-class rule on the same instances: **+14.3 %**, vs single
+learned 208 / 0, per label +12.4 % / +17.0 %, verified 258 / 132 / 52 — it beats the per-class learners on big_3 and reaches
+0.97 of them on small_6 (+18.0 % vs +18.6 %). Paired-protocol summary (mean radius gain vs stock; head-to-head vs the single
+learned gauge as larger / smaller):
+
+| model | single learned | per-class learners | manual per-class rule |
+|---|---|---|---|
+| small_6 (294) | +13.1 % | +18.6 % (232 / 0) | **+18.0 % (246 / 0)** |
+| big_3 (288) | +11.9 % | +13.3 % (167 / 15) | **+14.3 % (208 / 0)** |
+
+The manual procedure (unified rule → QK-only ℓ1N-mixed sign-aware refinement per predicted label, AV gauge from the unified
+rule) therefore beats the single learned gauge on both models with no instance smaller, and the learned per-class gauges no
+longer hold a lead over it. Cost: no verifier calls at construction time beyond the probe Jacobians (the learners need
+hundreds of CROWN calls per class). Still open: whether CROWN-Optimized absorbs the per-class lead (the 15-instance α probe
+said yes for the learners; not yet measured for the manual rule), and Yelp / smaller_3 where the unified rule is weak.

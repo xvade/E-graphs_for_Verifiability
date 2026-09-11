@@ -232,6 +232,27 @@ side only, ℓ1N mix weight 1 (or rotation-only), 400 Adam steps lr 0.02 → `ga
 Note that the α tier absorbs the per-class refinement (CROWN-Optimized: label-1 learner +2.40 vs single +2.38 on label 1);
 per-class gauges are a plain-CROWN-tier gain.
 
+### Round-7 paired verdict (2026-09-11)
+
+Both per-class constructions were run on the full paired protocol (small_6: 294 instances, ε 0.01 / 0.02 / 0.03; big_3: 288
+instances, ε 0.00957 / 0.0191 / 0.0287), each label's gauge on every instance and then chosen by the instance's label
+(`perclass_paired.py`; at verification time the choice uses the model's prediction, which equals the label on the correctly
+classified instances the protocol uses, and each gauge is an exact rewrite so the choice costs nothing in soundness).
+
+| model | single learned | per-class learners | **manual per-class rule** (`sgn_mix_qk`) |
+|---|---|---|---|
+| small_6 | +13.1 % | +18.6 % (vs single: 232 larger / 0 smaller) | **+18.0 %** (246 / 0); per label +18.0 / +18.0 |
+| big_3 | +11.9 % | +13.3 % (167 / 15) | **+14.3 %** (208 / 0); per label +12.4 / +17.0 |
+
+Verified counts at the largest ε: small_6 stock 41 → single 95 → learners 105 → manual 103; big_3 stock 4 → single 48 →
+learners 51 → manual 52. Either manual per-class gauge used on *all* instances is within a point of the single learned gauge
+(+12.3 % / +12.2 % on small_6, +11.0 % / +11.1 % on big_3), so the rule matches the learned gauge as a single gauge and beats it
+by choosing per label; used on the wrong class it degrades less than the learners do (+7.1 / +5.8 % vs +3.8 / +3.8 % on
+small_6). The screen overstated the small_6 label-1 cell (+22.0 % → +18.0 % paired) by variant selection; the other cells
+held. Conclusion: the manual procedure beats the single learned gauge on both models with no instance smaller, and the learned
+per-class gauges no longer lead it (0.97× on small_6, 1.07× on big_3). Not yet measured for the manual rule: the α-CROWN tier
+(the learners' per-class lead was absorbed there on 15 instances) and the weak-rule models (Yelp, smaller_3).
+
 ## What did not help (all three models unless noted)
 
 - More probes (Yelp, 24 → 96): random-box share 0.58 → 0.65, learner-box share unchanged.
