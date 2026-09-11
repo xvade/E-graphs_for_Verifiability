@@ -3457,3 +3457,17 @@ unified rule (sign-blind, whole model), then the sign-aware plane-corner cost re
 envelope — the pure cost, any both-sided use and the strong-conditioning version all lose. Paired-protocol confirmation is
 running on both models (per-class manual + per-class learners; jobs 39996390–39996393; `perclass_paired.py` combines the two
 per-class files by label against the single learned gauge's paired file).
+
+**18:00 — round-7 caveats (advisor review, before the paired verdict).** (i) The screen numbers above are SELECTED: eight
+variants per (model, label) cell were screened on the same 48 boxes and the best is reported, so the chosen cell's number is
+biased upward by a point or two; the paired protocol (variant fixed before it runs: `sgn_mix_qk`) is the unbiased read.
+(ii) The ablation that shows the signed term is load-bearing is the 09-09 label-conditioned rule (closed form + ℓ1N on label-y
+probes, no signed term): big_3 label 1 +12.0 % vs all-probe +11.1 %, small_6 label 0 +13.3 % vs +13.5 % — the same probes
+without the signed term move ≤ 1 point; with it +19.6 % / +17.6 %. (iii) The signed cost is a gradient direction, not a score:
+the collapsed pure gauge sits at 0.033 of identity with CROWN −16.8 %, the working mixed gauge at 0.042 with +17.6 %; the
+value does not separate them, the ℓ1N envelope does. Use it only inside the ℓ1N-constrained set, never unconstrained, never as
+a predictor of CROWN gain. (iv) Choosing the gauge by label uses the model's prediction (available at verification time; equal
+to the true label on the correctly classified instances the protocol uses); each gauge is an exact rewrite, so the choice
+costs nothing in soundness. (v) Still to check when the paired logs land: the fp64 gate (1e-15) and the conditioning of the
+`sgn_mix_qk` gauges (unmeasured; if κ > 30, add the κ·u fold-error figure); and whether the smaller trade-away of the other
+class (big_3 label 0: +6.3 % vs the learner's +3.7 %) holds on the paired protocol.

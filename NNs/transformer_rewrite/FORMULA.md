@@ -209,7 +209,14 @@ Above the single learned gauge in every cell, at or above the per-class learners
 confirmation (per-class manual vs per-class learners vs single learned, gauge chosen by the label being verified;
 `perclass_paired.py`) in `PROGRESS.md` 2026-09-10 evening.
 
-**Procedure of record for a per-class gauge (label y):** unified rule → `candidate_signed` on label-y random-token probes, QK
+**Caveats.** The screen numbers are selected (eight variants per cell screened on the same boxes; the paired protocol with the
+variant fixed in advance is the unbiased read — pending). Ablation: the same label-y probes WITHOUT the signed term (round 6's
+label-conditioned rule) move ≤ 1 point (big_3 label 1 +12.0 vs +11.1; small_6 label 0 +13.3 vs +13.5), so the signed term is
+what carries the gain. The signed cost is a gradient direction, not a score: the collapsed pure gauge (0.033 of identity) and
+the working mixed gauge (0.042) are indistinguishable by it and differ by 34 points of CROWN radius — never optimise it
+unconstrained and never read its value as a predictor.
+
+**Procedure of record for a per-class gauge (label y; pending paired confirmation):** unified rule → `candidate_signed` on label-y random-token probes, QK
 side only, ℓ1N mix weight 1 (or rotation-only), 400 Adam steps lr 0.02 → `gauges/formula_<name>_sgn_mix_qk_mix_lab<y>.pt`.
 Note that the α tier absorbs the per-class refinement (CROWN-Optimized: label-1 learner +2.40 vs single +2.38 on label 1);
 per-class gauges are a plain-CROWN-tier gain.
