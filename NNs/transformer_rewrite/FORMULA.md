@@ -197,9 +197,17 @@ product on its plane's zero-error edge at z*, and CROWN's actual minimiser moves
 to the QK side and either to rotations of the unified rule's gauge or to the ℓ1N envelope, it becomes a **per-class manual
 rule** that reaches the per-class learners: +17.6 % on label 0 (learner +17.2 %) and +22.0 % on label 1 (learner +23.1 %),
 with the same trade-away of the other class the learners show. The AV gauge must stay at the unified rule (every both-sided
-variant loses). big_3 label 0 was already at its ceiling (+10.3 % vs +9.9 %); big_3 label 1 and the paired-protocol
-confirmation (per-class manual vs per-class learners vs single learned, gauge chosen by the label being verified) are in
-`PROGRESS.md` 2026-09-10 evening.
+variant loses). **big_3 confirms it:** label 0 +10.3 % (learner +9.9 %, single +9.5 %; the ceiling), label 1 **+19.6 %**
+(learner +18.5 %, single +15.1 %, unified rule +11.2 %; 19 / 0 vs the single gauge), rotation-only +9.1 / +17.5 %.
+
+| held-out screen, gain on label 0 \| label 1 | single learned | per-class learners | **per-class manual** | rotation-only |
+|---|---|---|---|---|
+| big_3 | +9.5 \| +15.1 | +9.9 \| +18.5 | **+10.3 \| +19.6** | +9.1 \| +17.5 |
+| small_6 | +15.8 \| +12.8 | +17.2 \| +23.1 | **+17.6 \| +22.0** | +17.2 \| +20.9 |
+
+Above the single learned gauge in every cell, at or above the per-class learners in three of four. Paired-protocol
+confirmation (per-class manual vs per-class learners vs single learned, gauge chosen by the label being verified;
+`perclass_paired.py`) in `PROGRESS.md` 2026-09-10 evening.
 
 **Procedure of record for a per-class gauge (label y):** unified rule → `candidate_signed` on label-y random-token probes, QK
 side only, ℓ1N mix weight 1 (or rotation-only), 400 Adam steps lr 0.02 → `gauges/formula_<name>_sgn_mix_qk_mix_lab<y>.pt`.

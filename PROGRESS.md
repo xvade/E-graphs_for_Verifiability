@@ -3429,3 +3429,31 @@ the value side) and the QK gauge may only rotate or move under the ℓ1N envelop
 Paired-protocol confirmation launched on small_6 (40 test sentences ≤ 12 tokens, all positions): the two manual per-class
 gauges (job 39996390) and the two per-class learners (job 39996391), to be combined by label offline against the single learned gauge's
 existing paired file.
+
+**17:58 — sign-aware rule, big_3 label-1 probes (job 39981960, L40S, 45 min; `results/formula_big3_sgn1.json`, split by label):
+the manual per-class rule passes on the second model.** Target class label 1 (26 boxes) | other class label 0 (22): single learned
++15.1 % | +9.5 %; unified rule +11.2 % | +9.9 %; label-1 learner +18.5 % | +3.7 %.
+
+| variant (from the unified rule, label-1 probes) | label 1 | label 0 |
+|---|---|---|
+| pure, both / QK | −26.8 % / +5.0 % | −28.3 % / −5.3 % |
+| cond 1e-2, both / QK | −22.9 % / +9.5 % | −25.1 % / −1.9 % |
+| rotation-only, both / QK | +16.5 % / **+17.5 %** (15 / 0 vs single) | +4.0 % / +4.5 % |
+| ℓ1N mix, both / QK | +7.4 % / **+19.6 %** (19 / 0 vs single) | −1.2 % / +6.3 % |
+
+The QK-only ℓ1N-mixed signed refinement reaches +19.6 % on label 1 — above the label-1 learner (+18.5 %) and the single
+learned gauge (+15.1 %), from a start of +11.2 % — and trades label 0 less than the learner does (+6.3 % vs +3.7 %). The
+rotation-only version gets +17.5 %. Consolidated held-out picture, gauge chosen by the label being verified (screens of 48
+boxes per model, 24 sentences the learners never saw):
+
+| held-out screen, gain on label 0 \| label 1 | single learned | per-class learners | **per-class manual (ℓ1N-mixed QK signed)** | rotation-only |
+|---|---|---|---|---|
+| big_3 | +9.5 \| +15.1 | +9.9 \| +18.5 | **+10.3 \| +19.6** | +9.1 \| +17.5 |
+| small_6 | +15.8 \| +12.8 | +17.2 \| +23.1 | **+17.6 \| +22.0** | +17.2 \| +20.9 |
+
+The manual per-class rule is above the single learned gauge on every (model, label) cell and at or above the per-class
+learners on three of four (0.95 of the learner's gain on small_6 label 1). Ingredients, in order of what they bought: the
+unified rule (sign-blind, whole model), then the sign-aware plane-corner cost restricted to the QK side and held inside the ℓ1N
+envelope — the pure cost, any both-sided use and the strong-conditioning version all lose. Paired-protocol confirmation is
+running on both models (per-class manual + per-class learners; jobs 39996390–39996393; `perclass_paired.py` combines the two
+per-class files by label against the single learned gauge's paired file).
