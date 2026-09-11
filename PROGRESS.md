@@ -3634,3 +3634,28 @@ rule) therefore beats the single learned gauge on both models with no instance s
 longer hold a lead over it. Cost: no verifier calls at construction time beyond the probe Jacobians (the learners need
 hundreds of CROWN calls per class). Still open: whether CROWN-Optimized absorbs the per-class lead (the 15-instance α probe
 said yes for the learners; not yet measured for the manual rule), and Yelp / smaller_3 where the unified rule is weak.
+
+**2026-09-11 01:28 — big_3 per-class LEARNERS on the paired protocol (job 39996393) and the round-7 verdict.** Learners chosen by label:
+mean 0.01883 vs stock 0.01662 (+13.3 %, larger 276 / smaller 0) vs the single learned gauge +11.9 % (head to head 167 / 15);
+per label +11.2 % / +16.5 %; ε-0.0287 verified 4 → 51. Each per-class learner on all instances +8.9 % / +8.8 % (0 smaller).
+**Manual per-class rule vs per-class learners, head to head:** larger 113 / smaller 19 / equal 156; label 0 +12.4 % vs +11.2 %
+(76 / 1), label 1 +17.0 % vs +16.5 % (37 / 18) — on big_3 the manual rule is AHEAD of the learners on both labels. Wrong class:
+manual +9.0 % / +6.9 %, learners +5.7 % / +3.5 %, 0 smaller than stock all four ways. fp64 gate 8.9e-16.
+
+Consolidated, paired protocol, plain CROWN, gain of the mean certified radius vs stock (larger / smaller vs stock):
+
+| model | single learned | per-class learners | per-class MANUAL rule | manual vs single | manual vs learners |
+|---|---|---|---|---|---|
+| small_6 (294) | +13.1 % (273/0) | +18.6 % (280/0) | **+18.0 % (281/0)** | 246 / 0 | 31 / 128 / 135 eq |
+| big_3 (288) | +11.9 % (274/0) | +13.3 % (276/0) | **+14.3 % (277/0)** | 208 / 0 | 113 / 19 / 156 eq |
+
+ε-cliff verified counts: small_6 ε 0.03 stock 41 → single 95 → learners 105 → manual 103; big_3 ε 0.0287: 4 → 48 → 51 → 52.
+
+**Verdict.** (a) Against the single learned gauge (the pre-registered bar: higher ratio of means, smaller count ≤ its, two
+models): MET on both, with 0 smaller instances and a strict head-to-head sweep (246 / 0, 208 / 0). (b) Against the like-for-like
+per-class learners: ahead on big_3 (113 / 19, both labels), tie on small_6 label 0, 1.2 points behind on small_6 label 1 — the
+manual procedure reaches the per-class learners' level without a verifier in the loop. (c) The manual per-class gauges are safe
+under a wrong label (0 / 3 / 0 / 0 instances below stock; learners 25 / 22 / 0 / 0). (d) Plain-CROWN tier: CROWN-Optimized
+absorbs per-class gains (09-10 sign-flip test), so this is a result about the cheap tier and about the surrogate, not about α-CROWN.
+Caveats: screens were selected on 24 test sentences that overlap the paired set slightly (1 / 40, 4 / 40); the signed cost is a
+direction only (see the round-7 caveats entry of 09-10). Round 7 closed; the procedure of record stands.

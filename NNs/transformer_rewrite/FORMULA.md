@@ -225,7 +225,17 @@ nothing vs stock.
 **Paired confirmation, big_3 (288 instances):** chosen by label +14.3 % vs stock (277 / 0), vs the single learned gauge (+11.9 %)
 208 / 0 head to head — bar MET (label 0 +12.4 vs +11.0, label 1 +17.0 vs +13.2); ε-0.0287 verified 4 → 52 (single 48); other-class
 0 / 0 smaller than stock. **The pre-registered bar (ratio of means above the single learned gauge's, smaller count ≤ it, two
-models) is met.** Per-class learners on big_3: pending.
+models) is met.** Per-class learners on big_3: +13.3 % (276 / 0; vs single 167 / 15); manual vs learners head to head 113 / 19 / 156 equal, ahead
+on both labels (+12.4 vs +11.2, +17.0 vs +16.5).
+
+| paired, plain CROWN | single learned | per-class learners | per-class MANUAL | manual vs single | manual vs learners |
+|---|---|---|---|---|---|
+| small_6 (294) | +13.1 % (273/0) | +18.6 % (280/0) | **+18.0 % (281/0)** | 246 / 0 | 31 / 128 / 135 eq |
+| big_3 (288) | +11.9 % (274/0) | +13.3 % (276/0) | **+14.3 % (277/0)** | 208 / 0 | 113 / 19 / 156 eq |
+
+**Round-7 verdict:** the per-class manual rule beats the single learned gauge on both models (bar met, 0 smaller, strict
+head-to-head sweeps) and reaches the per-class learners (ahead on big_3, tie / −1.2 pts on small_6); it never falls below stock
+under a wrong label where the learners do (small_6 25 / 22). Plain-CROWN tier only — CROWN-Optimized absorbs per-class gains.
 
 **Procedure of record for a per-class gauge (label y):** unified rule → `candidate_signed` on label-y random-token probes, QK
 side only, ℓ1N mix weight 1 (or rotation-only), 400 Adam steps lr 0.02 → `gauges/formula_<name>_sgn_mix_qk_mix_lab<y>.pt`.
