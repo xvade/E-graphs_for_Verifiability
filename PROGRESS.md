@@ -3690,3 +3690,17 @@ verified stock 12 → single 14 → **manual per-class 14**, lb tighter than the
 per-class lead is NOT absorbed by CROWN-Optimized: every instance is tighter, though on this 29-instance set no verified
 count moves. Each manual gauge on all instances: label-0 gauge tighter than the single gauge on 29 / 26, label-1 gauge on
 23 / 21 (of 29). small_6 α runs (≤ 6 tokens, 49 instances, ε 0.02) still in the ckpt queue.
+
+**02:44 — α-CROWN tier, small_6 (≤ 6 tokens, 49 instances: 32 label 0 / 17 label 1, ε 0.02; jobs 40023058 / 40023060, A100,
+~64 min each) and the α-tier verdict for the manual per-class rule.** Reference `deept_small6_eval_alpha_seed0.json`: stock
+24 / 49 verified (mean lb +0.143), once-trained single gauge 27 (+0.400). Manual per-class chosen by label: **28 / 49**
+(+0.412), tighter than the single gauge on 37 / looser on 12 (mean Δ +0.011, range −0.055 … +0.037), one instance flipped to
+verified, none lost; per label 11 / 32 and 17 / 17 (single 11 / 32, 16 / 17). Each manual gauge on all instances: label-0 27
+(tighter 28 / 21 vs single), label-1 28 (17 / 32). For comparison the alternating learner was 27 with 10 / 39. So at the α
+tier the per-class lead is mostly absorbed (as it was for the per-class learners: +2.40 vs +2.38 mean lb on 15 instances) but
+not reversed: the manual rule is at or above the once-trained single gauge on both models — big_3 tighter on 29 / 29 at both
+ε with verified 14 / 3 unchanged, small_6 37 / 12 with 27 → 28. Files `results/deept_{small6,big3}_eval_alpha_manlab{0,1}.json`.
+**Standing goal, state of play:** the manual procedure (unified rule → QK-only ℓ1N-mixed sign-aware refinement per predicted
+label) beats the learned gauges at the plain-CROWN tier on both models (paired, no instance smaller) and ties-or-beats the
+once-trained single gauge at the α tier; the per-class learners were not run at the α tier on these sets (only the 15-instance
+probe), so "beats the learners at the α tier" is not claimed.

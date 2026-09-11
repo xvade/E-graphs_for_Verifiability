@@ -263,8 +263,12 @@ by choosing per label; used on the wrong class it degrades less than the learner
 small_6). The screen overstated the small_6 label-1 cell (+22.0 % → +18.0 % paired) by variant selection; the other cells
 held. Test-set reuse: the 24 screen sentences that chose the variant overlap the paired protocol on 1 sentence (3 of 294
 instances) for small_6 and 4 sentences (17 of 288) for big_3. Conclusion: the manual procedure beats the single learned gauge on both models with no instance smaller, and the learned
-per-class gauges no longer lead it (0.97× on small_6, 1.07× on big_3). Not yet measured for the manual rule: the α-CROWN tier
-(the learners' per-class lead was absorbed there on 15 instances) and the weak-rule models (Yelp, smaller_3).
+per-class gauges no longer lead it (0.97× on small_6, 1.07× on big_3). α-CROWN tier (CROWN-Optimized, 20 it; one manual gauge per
+run, chosen by label offline, vs the once-trained single gauge): big_3 ≤ 5 tokens (29 instances) tighter on 29 / 29 at ε 0.015
+and 0.02 with verified 14 / 3 unchanged; small_6 ≤ 6 tokens (49 instances, ε 0.02) verified 27 → 28, tighter on 37 / looser 12
+(mean lb +0.412 vs +0.400) — the per-class lead is mostly absorbed by the α optimisation, as it was for the learners, but the
+rule stays at or above the single gauge. Not measured for the manual rule: the per-class learners at the α tier, and the
+weak-rule models (Yelp, smaller_3).
 
 ## What did not help (all three models unless noted)
 
@@ -301,9 +305,8 @@ matrix; the cond-28 overfit gauge is ranked worst by every Jacobian-shaped surro
   gauge UNFOLDED (`deept_unfolded.py`, G⁻¹/A⁻¹ as verified 2-ulp intervals): the interval network certifies the plain gauged
   radius on 294/294 small_6 instances, confirmed per instance (PROGRESS.md 2026-09-10 20:00–20:36); the four-sided folded
   interval tier is superseded.
-- α-CROWN tier for the manual per-class rule (the learners' per-class lead was absorbed there on 15 instances): jobs submitted
-  2026-09-11 (small_6 ≤ 6 tokens ε 0.02, big_3 ≤ 5 tokens ε 0.015 / 0.02; one gauge per job, combined by label offline against
-  the once-trained single gauge's α results).
+- α-CROWN tier for the manual per-class rule: done 2026-09-11 (see the round-7 paired verdict): at or above the once-trained
+  single gauge on both models (big_3 29 / 29 tighter, small_6 27 → 28 verified, 37 / 12).
 - Verifier-free and probe-seed checks of step 1 (done): big_3 `svd_jacN_all_u` +0.384 / +0.947, second seed +0.382 / +0.941 vs
   +0.384 / +0.946; Yelp verifier-free +0.190 / +1.517 matches, seed dependence as described above.
 
