@@ -270,8 +270,11 @@ procedure makes cheap (no verifier calls per class) and which the learners can a
 run, chosen by label offline, vs the once-trained single gauge): big_3 ≤ 5 tokens (29 instances) tighter on 29 / 29 at ε 0.015
 and 0.02 with verified 14 / 3 unchanged; small_6 ≤ 6 tokens (49 instances, ε 0.02) verified 27 → 28, tighter on 37 / looser 12
 (mean lb +0.412 vs +0.400) — the per-class lead is mostly absorbed by the α optimisation, as it was for the learners, but the
-rule stays at or above the single gauge. Not measured for the manual rule: the per-class learners at the α tier, and the
-weak-rule models (Yelp, smaller_3).
+rule stays at or above the single gauge. The per-class learners at the same α tier (chosen by label): big_3 14 / 3 verified, mean lb +0.042 / −2.73, i.e.
+below the manual rule on 29 / 29 instances at both ε; small_6 28 verified, mean +0.397, below the manual rule on 27 / 22
+(the learners' plain-CROWN lead over the single gauge is absorbed under α: 26 / 23, mean Δ −0.004; the manual rule keeps
+37 / 12). So the ordering manual ≥ learners ≥ single, given the label, holds at both tiers, with small margins at α. Not
+measured for the manual rule: the weak-rule models (Yelp, smaller_3).
 
 ## What did not help (all three models unless noted)
 

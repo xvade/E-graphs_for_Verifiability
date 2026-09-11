@@ -3722,3 +3722,25 @@ learner gauge used on all instances is at or below the single gauge (label 0: 13
 each manual gauge is above it (29 / 0 and 23 / 6): the learners' per-class gain is absorbed by CROWN-Optimized, the manual
 rule's is not — consistent with the 09-10 15-instance probe (learners +2.40 vs single +2.38). Caveat as before: the label-1
 learner had 17 tuning boxes. small_6 learner α runs (40024562 / 40024563) pending.
+
+**03:59 — α tier, small_6, like-for-like (jobs 40024562 / 40024563, ~62 min each) — and the α-tier verdict for round 7.**
+Learners chosen by label at ε 0.02: verified 28 / 49, mean lb +0.397, vs the single gauge tighter 26 / looser 23 (mean Δ
+−0.004: their plain-CROWN lead is absorbed by CROWN-Optimized, as the 15-instance probe said). Manual chosen by label: 28 / 49,
+mean +0.412, vs the learners **tighter 27 / looser 22** (mean Δ +0.015), vs the single gauge 37 / 12. Per label 11 / 32 and
+17 / 17 for both per-class constructions (single 11 / 32, 16 / 17; stock 10 / 32, 14 / 17). Each learner gauge on all instances
+sits below the single gauge (9 / 40 and 17 / 32), each manual gauge at or near it (28 / 21 and 17 / 32).
+
+α-tier summary (CROWN-Optimized, 20 it, one gauge per run, chosen by label offline; verified counts equal in every cell):
+
+| model / ε | stock | single | learners (by label) | manual (by label) | manual vs learners |
+|---|---|---|---|---|---|
+| big_3 ε 0.015 (29) | 12, −0.251 | 14, +0.035 | 14, +0.042 | 14, +0.061 | tighter 29 / 0 |
+| big_3 ε 0.02 (29) | 3, −4.08 | 3, −2.79 | 3, −2.73 | 3, −2.63 | tighter 29 / 0 |
+| small_6 ε 0.02 (49) | 24, +0.143 | 27, +0.400 | 28, +0.397 | 28, +0.412 | tighter 27 / 22 |
+
+So at the α tier the manual per-class rule is at or above both learned constructions on both models: the per-class lead is
+mostly absorbed by the α optimisation (mean lb moves of 0.01–0.16, one verified count), but the ordering that the paired
+protocol gave (manual ≥ learners ≥ single, given the label) survives, and the manual gauges are the ones whose gain survives
+best (big_3: learners' per-class gauges fall to or below the single gauge under α, the manual ones do not). Caveats unchanged:
+17-box big_3 label-1 learner; 29 / 49-instance sets; as a single gauge the rule is 0.94 / 0.93 of the learned one at plain
+CROWN. Files `results/deept_{small6,big3}_eval_alpha_{man,lrn}lab{0,1}.json`, combiner `perclass_alpha.py`.
