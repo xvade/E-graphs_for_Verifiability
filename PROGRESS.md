@@ -3542,3 +3542,11 @@ Certify mode needs 4 interval calls per instance vs 14 plain calls for the bisec
 the plain protocol (92 min here). The "tighter on 51/294" entries in the lb comparison are fp32 bound-arithmetic noise at
 1e-5, four orders above the 1e-9 fold error being certified. Remaining uncovered term, shared with the stock certificate:
 auto_LiRPA's own fp32 arithmetic. Code committed (`deept_unfolded.py`, 1c0ca88).
+
+**21:13 — small_6 per-class LEARNERS on the paired protocol (job 39996391, `perclass_paired.py`).** 294 instances (label 0: 146,
+label 1: 148), 40 test sentences ≤ 12 tokens, plain CROWN. Gauge chosen by the instance's label: mean radius 0.02608 vs stock
+0.02199 (**+18.6 %**, larger 280 / smaller 0) vs the single learned gauge 0.02486 (+13.1 %): head to head larger 232 / smaller 0.
+Per label: label 0 +18.0 % (single +16.1 %), label 1 +19.2 % (single +10.4 %). Verified at ε 0.03: stock 41 → 105 (single 95);
+ε 0.02: 181 → 185 (183); ε 0.01 275 = 275. Each per-class gauge on ALL instances is worse than the single gauge (+10.5 % /
++11.9 %, 25 / 22 smaller) — the gain is entirely the label choice. fp64 gate 8.9e-16 both gauges. The screen (+20.6 %) was ≈ 2
+points optimistic, as expected of a selected number. The per-class MANUAL rule's paired eval (39996390) is still running.
