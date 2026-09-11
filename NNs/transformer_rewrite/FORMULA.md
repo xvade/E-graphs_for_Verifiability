@@ -210,7 +210,8 @@ confirmation (per-class manual vs per-class learners vs single learned, gauge ch
 `perclass_paired.py`) in `PROGRESS.md` 2026-09-10 evening.
 
 **Caveats.** The screen numbers are selected (eight variants per cell screened on the same boxes; the paired protocol with the
-variant fixed in advance is the unbiased read — pending). Ablation: the same label-y probes WITHOUT the signed term (round 6's
+variant fixed in advance is the nearly unbiased read: 1 of 40 small_6 and 4 of 40 big_3 paired sentences were also in the
+screen). Probes are the learner's dev boxes; the paired label is the model's own prediction (correctly classified sentences only). Ablation: the same label-y probes WITHOUT the signed term (round 6's
 label-conditioned rule) move ≤ 1 point (big_3 label 1 +12.0 vs +11.1; small_6 label 0 +13.3 vs +13.5), so the signed term is
 what carries the gain. The signed cost is a gradient direction, not a score: the collapsed pure gauge (0.033 of identity) and
 the working mixed gauge (0.042) are indistinguishable by it and differ by 34 points of CROWN radius — never optimise it

@@ -3606,3 +3606,13 @@ instances +6.9 %, 0 smaller than stock either way. fp64 gate 1.3e-15 both gauges
 that is the pre-registered bar on TWO models: the per-class manual rule beats the single learned gauge on the paired protocol.
 Screen (+10.3 / +19.6) vs paired (+12.4 / +17.0): the selected label-1 number was 2.6 points optimistic, label 0 came out higher.
 The big_3 per-class LEARNERS' paired eval (39996393) started at 23:25 − 8 min; that comparison follows.
+
+**23:37 — three provenance checks on the round-7 paired claim (advisor's list).** (1) Probe split: the `--n_sst 48` probes are the
+learner's own tuning boxes rebuilt from the gauge file's stored args (`gauge_formula.py` validate, split = dev, seed 0), so the
+manual rule and the learners see the same dev sentences and neither sees the paired test sentences — clean. (2) Label field:
+`inst[3]` is the dataset label, and `short_instances` keeps only sentences the model classifies correctly, so it equals the
+model's prediction on every paired instance — the gauge choice needs no oracle. (3) Screen-24 vs paired-40 overlap (both drawn
+from the SST test split; replicated the selections): small_6 1 of 40 paired sentences was in the screen, big_3 4 of 40. Selection
+bias is therefore only PARTIALLY removed by the paired protocol (about 3 % / 10 % of the paired instances were seen when the
+variant was chosen); the bar-vs-single-learned comparison does not depend on which variant was chosen and stands, but the
+"unbiased read" wording above should be read as "nearly unbiased". Future screens should draw from dev, not test.
