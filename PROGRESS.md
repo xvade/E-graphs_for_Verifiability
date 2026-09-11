@@ -3704,3 +3704,12 @@ not reversed: the manual rule is at or above the once-trained single gauge on bo
 label) beats the learned gauges at the plain-CROWN tier on both models (paired, no instance smaller) and ties-or-beats the
 once-trained single gauge at the α tier; the per-class learners were not run at the α tier on these sets (only the 15-instance
 probe), so "beats the learners at the α tier" is not claimed.
+
+**02:46 — per-class LEARNERS at the α tier, submitted (the like-for-like comparator the α verdict above lacks).** Same protocol
+as the manual runs (`alpha_gauge_ckpt.sbatch`, one gauge per job, stock from the single-comparison JSONs, combined by label
+offline): small_6 ≤ 6 tokens ε 0.02 and big_3 ≤ 5 tokens ε 0.015 / 0.02 with `gauges/deept_{small6,big3}_lab{0,1}_seed0.pt`
+(the gauges of the paired lrnlab evals): jobs 40024560 / 40024561 (big_3) and 40024562 / 40024563 (small_6). Disclosure: the
+first two small_6 submissions (40024558 / 40024559) carried a shell-variable typo in the gauge path (`$y_seed0`), so I
+cancelled them before they started and resubmitted. FORMULA.md now states both readings of "beats the learned gauge" (the
+pre-registered one-gauge bar is NOT met: the rule as a single gauge is 0.94 / 0.93 of the learned one; it is met under
+per-label selection against the single gauge, and the like-for-like comparator is the per-class learners) — commit 8767a9a.
