@@ -3586,3 +3586,12 @@ away (+3.8 % / +3.8 %, 25 / 22 smaller than stock). A wrong label choice therefo
 **Bar on small_6:** ratio of means 1.180 > single learned 1.131 with smaller count 0 ≤ 0 → MET against the single learned gauge
 (the pre-registered bar); against the per-class learners it ties on label 0 and trails by 1.2 points on label 1 (0.97 of their
 gain). Screen (+17.6 / +22.0) vs paired (+18.0 / +18.0): the label-1 screen number was 4 points optimistic (selected). big_3 pending.
+
+**23:25 — round 7 on big_3, paired protocol, MANUAL per-class rule (`formula_sst_bert_big_3_sgn_mix_qk_mix_lab{0,1}.pt`; job
+39996392, 288 instances, ε 0.00957 / 0.0191 / 0.0287).** Chosen by label: mean radius 0.01900 vs stock 0.01662 = **+14.3 %**
+(larger 277 / smaller 0), vs the single learned gauge (+11.9 %) **larger on 208 / smaller 0**; per label +12.4 % / +17.0 %
+(single learned +11.0 % / +13.2 %). Verified: stock 256 / 116 / 4 → manual per-class 258 / 132 / **52** (single learned
+258 / 129 / 48). fp64 gates 1.3e-15. Either gauge on all instances +11.0 % / +11.1 %, i.e. within a point of the single learned
+gauge as a single gauge, same as on small_6. So on both models the manual per-class rule beats the single learned gauge on the
+paired protocol with no instance smaller (small_6 246 / 0, big_3 208 / 0). The per-class learners' big_3 run (39996393) is the
+last piece; started 23:15, ~2 h 10 min.
