@@ -3529,7 +3529,7 @@ med8,full_cert}.json`, logs `_scratch/deept_unf_*.log`.
   ulp = 1.19e-7 absolute, and ±5e-9 is not fp32-representable around such entries — its smallest fp32 envelope is the same
   2-ulp interval (`smoke_d5e9`: identical radii, lb within 2e-5). Both readings give the same experiment.
 
-**21:05 — G⁻¹-interval: review fixes and the confirmed headline (jobs 40006054 / 40006055, both rc 0).** Advisor review found
+**20:36 — G⁻¹-interval: review fixes and the confirmed headline (jobs 40006054 / 40006055, both rc 0).** Advisor review found
 three gaps, all closed: (i) certify mode accepted a NaN bound as a pass (`lb <= 0` is False for NaN) — fixed to `not (lb > 0)`,
 and a confirmation pass recomputed the interval network's lb at every recorded radius: **finite and > 0 on 294/294**
 (min +3.96e-5 — the bisection's last accepted grid point, so small margins are expected; none flipped). (ii) "the interval
