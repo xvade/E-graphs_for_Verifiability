@@ -220,7 +220,11 @@ unconstrained and never read its value as a predictor.
 (281 / 0), vs the single learned gauge (+13.1 %) 246 / 0 head to head — bar MET; ε-0.03 verified 41 → 103 (single 95). Per-class
 learners on the same protocol: +18.6 % (label 0 +18.0 = manual, label 1 +19.2 vs manual +18.0; head to head 31 / 128 / 135 equal).
 The manual gauges never lose to stock on the other class (0 / 3 smaller) where the learners do (25 / 22), so a wrong label costs
-nothing vs stock. big_3 pending.
+nothing vs stock.
+**Paired confirmation, big_3 (288 instances):** chosen by label +14.3 % vs stock (277 / 0), vs the single learned gauge (+11.9 %)
+208 / 0 head to head — bar MET (label 0 +12.4 vs +11.0, label 1 +17.0 vs +13.2); ε-0.0287 verified 4 → 52 (single 48); other-class
+0 / 0 smaller than stock. **The pre-registered bar (ratio of means above the single learned gauge's, smaller count ≤ it, two
+models) is met.** Per-class learners on big_3: pending.
 
 **Procedure of record for a per-class gauge (label y):** unified rule → `candidate_signed` on label-y random-token probes, QK
 side only, ℓ1N mix weight 1 (or rotation-only), 400 Adam steps lr 0.02 → `gauges/formula_<name>_sgn_mix_qk_mix_lab<y>.pt`.

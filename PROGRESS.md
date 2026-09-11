@@ -3595,3 +3595,14 @@ gain). Screen (+17.6 / +22.0) vs paired (+18.0 / +18.0): the label-1 screen numb
 gauge as a single gauge, same as on small_6. So on both models the manual per-class rule beats the single learned gauge on the
 paired protocol with no instance smaller (small_6 246 / 0, big_3 208 / 0). The per-class learners' big_3 run (39996393) is the
 last piece; started 23:15, ~2 h 10 min.
+
+**23:25 — big_3 per-class MANUAL rule on the paired protocol (job 39996392; `sgn_mix_qk` gauges fixed in advance).** 288 instances
+(label 0: 179, label 1: 109), 40 test sentences ≤ 12 tokens, plain CROWN. Chosen by label: mean radius 0.01900 vs stock 0.01662
+(**+14.3 %**, larger 277 / smaller 0) vs the single learned gauge +11.9 %: head to head larger 208 / smaller 0. Per label: label 0
++12.4 % (single +11.0 %), label 1 +17.0 % (single +13.2 %). Verified at ε 0.0287: stock 4 → 52 (single 48); ε 0.0191: 116 → 132
+(129); ε 0.00957: 258 = 258. Other-class safety again: label-0 gauge on label-1 instances +9.0 %, label-1 gauge on label-0
+instances +6.9 %, 0 smaller than stock either way. fp64 gate 1.3e-15 both gauges; κ ≤ 6.1.
+**Bar on big_3:** ratio of means 1.143 > single learned 1.119 with smaller count 0 ≤ 0 → MET. With small_6 (1.180 > 1.131, 0 ≤ 0)
+that is the pre-registered bar on TWO models: the per-class manual rule beats the single learned gauge on the paired protocol.
+Screen (+10.3 / +19.6) vs paired (+12.4 / +17.0): the selected label-1 number was 2.6 points optimistic, label 0 came out higher.
+The big_3 per-class LEARNERS' paired eval (39996393) started at 23:25 − 8 min; that comparison follows.
