@@ -3550,3 +3550,12 @@ Per label: label 0 +18.0 % (single +16.1 %), label 1 +19.2 % (single +10.4 %). V
 ε 0.02: 181 → 185 (183); ε 0.01 275 = 275. Each per-class gauge on ALL instances is worse than the single gauge (+10.5 % /
 +11.9 %, 25 / 22 smaller) — the gain is entirely the label choice. fp64 gate 8.9e-16 both gauges. The screen (+20.6 %) was ≈ 2
 points optimistic, as expected of a selected number. The per-class MANUAL rule's paired eval (39996390) is still running.
+
+**21:14 — round 7, paired protocol, small_6 per-class LEARNED gauges (job 39996391, 3 h 24 min; label-0 and label-1 learners each
+run on all 294 instances, then chosen by the instance's label; `perclass_paired.py`).** Chosen-by-label mean radius 0.02608 vs
+stock 0.02199 = **+18.6 %** (larger on 280 / smaller 0), against the single learned gauge's +13.1 % — larger on 232 / smaller 0
+head to head; per label +18.0 % / +19.2 % vs the single gauge's +16.1 % / +10.4 %. Verified at ε 0.01 / 0.02 / 0.03:
+stock 275 / 181 / 41 → chosen-by-label 275 / 185 / 105 (single learned 275 / 183 / 95). Each per-class gauge used on the wrong
+class is worth only +3.8 %, so the label choice is doing the work, as the screen predicted. fp64 gates 8.9e-16. The manual
+per-class rule's paired run (job 39996390) has finished its stock set only (slow node: 1.9 h per set), so its verdict — and
+the big_3 pair (39996392/3, still queued behind the L40S limit) — come later.
