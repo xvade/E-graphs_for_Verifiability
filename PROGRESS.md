@@ -3653,8 +3653,11 @@ Consolidated, paired protocol, plain CROWN, gain of the mean certified radius vs
 
 **Verdict.** (a) Against the single learned gauge (the pre-registered bar: higher ratio of means, smaller count ≤ its, two
 models): MET on both, with 0 smaller instances and a strict head-to-head sweep (246 / 0, 208 / 0). (b) Against the like-for-like
-per-class learners: ahead on big_3 (113 / 19, both labels), tie on small_6 label 0, 1.2 points behind on small_6 label 1 — the
-manual procedure reaches the per-class learners' level without a verifier in the loop. (c) The manual per-class gauges are safe
+per-class learners (the IDENTITY-initialised pair `deept_<m>_lab{0,1}_seed0.pt`, per the `gauges` key of the lrnlab JSONs):
+ahead on big_3 (113 / 19, both labels), tie on small_6 label 0, 1.2 points behind on small_6 label 1 — the manual procedure
+reaches that learned baseline with no verifier at construction time (its design choices — variant, mix weight, QK-only — were
+selected with CROWN radius screens). The warm-started per-class learners (`initlab`, screen +19.2 / +25.3 on small_6) are the
+stronger learned baseline and were NOT paired-evaluated; that is a possible next round, not part of this verdict. (c) The manual per-class gauges are safe
 under a wrong label (0 / 3 / 0 / 0 instances below stock; learners 25 / 22 / 0 / 0). (d) Plain-CROWN tier: CROWN-Optimized
 absorbs per-class gains (09-10 sign-flip test), so this is a result about the cheap tier and about the surrogate, not about α-CROWN.
 Caveats: screens were selected on 24 test sentences that overlap the paired set slightly (1 / 40, 4 / 40); the signed cost is a

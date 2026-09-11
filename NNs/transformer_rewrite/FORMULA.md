@@ -1,6 +1,6 @@
 # The formula for the attention gauge
 
-Status 2026-09-10 17:30 (round 7 added below: a sign-aware surrogate gives a PER-CLASS manual rule that reaches the per-class learners on small_6; paired confirmation running). Earlier status 2026-09-09 08:45. Goal (second phase): a *manual* procedure — weights plus a handful of random probe sequences, no
+Status 2026-09-11 01:45 (round 7 CLOSED: the PER-CLASS manual rule — unified rule + sign-aware QK refinement on label-y probes, gauge chosen by the model's prediction — beats the single learned gauge on the paired protocol on both models, small_6 +18.0 % vs +13.1 % and big_3 +14.3 % vs +11.9 %, 246/0 and 208/0 head to head, and reaches the identity-initialised per-class learners; plain-CROWN tier; see "Round 7" below). Earlier status 2026-09-10 17:30, Earlier status 2026-09-09 08:45. Goal (second phase): a *manual* procedure — weights plus a handful of random probe sequences, no
 verifier in the loop — whose gauge beats the learned one (`deept_gauge.py learn`, Adam on CROWN's lower bound over tuning boxes).
 What is settled: the closed form below reaches 61–64 % of the learned radius gain on the paired protocol (big_3, Yelp small_3);
 refining it on the ℓ1 version of the same cost model (step 2) lifts the paired share to 0.91 on big_3 (one-sided, per-instance
@@ -234,8 +234,10 @@ on both labels (+12.4 vs +11.2, +17.0 vs +16.5).
 | big_3 (288) | +11.9 % (274/0) | +13.3 % (276/0) | **+14.3 % (277/0)** | 208 / 0 | 113 / 19 / 156 eq |
 
 **Round-7 verdict:** the per-class manual rule beats the single learned gauge on both models (bar met, 0 smaller, strict
-head-to-head sweeps) and reaches the per-class learners (ahead on big_3, tie / −1.2 pts on small_6); it never falls below stock
-under a wrong label where the learners do (small_6 25 / 22). Plain-CROWN tier only — CROWN-Optimized absorbs per-class gains.
+head-to-head sweeps) and reaches the identity-initialised per-class learners (ahead on big_3, tie / −1.2 pts on small_6; the
+warm-started `initlab` learners, the stronger learned baseline, were not paired-evaluated); it never falls below stock under a
+wrong label where the learners do (small_6 25 / 22). No verifier at construction time, but the design choices (variant, mix
+weight, QK-only) were selected with CROWN radius screens. Plain-CROWN tier only — CROWN-Optimized absorbs per-class gains.
 
 **Procedure of record for a per-class gauge (label y):** unified rule → `candidate_signed` on label-y random-token probes, QK
 side only, ℓ1N mix weight 1 (or rotation-only), 400 Adam steps lr 0.02 → `gauges/formula_<name>_sgn_mix_qk_mix_lab<y>.pt`.
