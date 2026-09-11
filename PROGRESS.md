@@ -3404,3 +3404,28 @@ Every variant that moves away from the unified rule loses; the only row at or ab
 on label 0, +11.2 = +11.2 on label 1), i.e. a gauge that barely left its start. big_3 label 0 was already at the per-class
 ceiling, so this screen tests harm, not gain; the decisive ones are big_3 label 1 (unified 11.2 → label-1 learner 18.5) and
 small_6 label 0 (13.6 → 17.2), queued on the L40S with all eight variants.
+
+**17:20 — sign-aware rule, small_6: the QK-only constrained refinements reach the per-class learners (jobs 39976552 / 39979851,
+L40S, 2 h each; `results/formula_small6_sgn{0,1}.json`, split by label).** Held-out gain on the target class | the other class
+(24 + 24 boxes; single learned +15.8 % | +12.8 %; unified rule +13.7 % | +16.5 %; per-class learners: label-0 +17.2 % | +5.8 %,
+label-1 +5.4 % | +23.1 %):
+
+| variant (from the unified rule, label-y probes) | label-0 probes → label 0 \| label 1 | label-1 probes → label 1 \| label 0 |
+|---|---|---|
+| pure, both sides / QK only | −16.8 / +2.6 \| −20.5 / −3.8 | −27.2 / +6.7 \| −30.2 / −2.7 |
+| cond 1e-2, both / QK | −4.1 / +10.8 \| −10.4 / +3.5 | −13.6 / +13.8 \| −18.9 / +2.5 |
+| rotation-only, both / QK | +9.2 / **+17.2** \| +0.8 / +8.4 | +14.4 / **+20.9** \| +1.8 / +8.0 |
+| ℓ1N mix, both / QK | +5.9 / **+17.6** (8 / 0 vs single) \| −2.1 / +8.6 | +4.6 / **+22.0** (21 / 0 vs single) \| −4.4 / +7.4 |
+
+Two rules work, both QK-only, both keeping the unified rule's AV gauge: the ℓ1N-mixed signed refinement reaches +17.6 % on
+label 0 (learner +17.2 %) and +22.0 % on label 1 (learner +23.1 %, 0.95 of its gain), the rotation-only one +17.2 % / +20.9 %.
+Both trade the other class away exactly as the per-class learners do (label 1 drops to ≈ +8 % for the label-0 rule, label 0 to
+≈ +8 % for the label-1 rule; the learners: +5.8 % / +5.4 %). Per-class manual (gauge chosen by the label being verified) is
+therefore ≈ +17.6 / +22.0 % on this screen vs +17.2 / +23.1 % for the per-class learners and +15.8 / +12.8 % for the single
+learned gauge — the first manual construction that beats the single learned gauge on BOTH classes. Every both-sided variant
+and every unconstrained one loses, so the AV gauge must stay at the unified rule (first-order softmax widths are wrong for
+the value side) and the QK gauge may only rotate or move under the ℓ1N envelope. big_3: label 0 was at the ceiling already
+(+10.3 % vs +9.9 %); the label-1 screen (unified 11.2 → learner 18.5) is the remaining test (job 39981960, queued).
+Paired-protocol confirmation launched on small_6 (40 test sentences ≤ 12 tokens, all positions): the two manual per-class
+gauges (job 39996390) and the two per-class learners (job 39996391), to be combined by label offline against the single learned gauge's
+existing paired file.
