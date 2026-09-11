@@ -3679,6 +3679,14 @@ discrete variant choice with that overlap cannot move the paired verdict (246 / 
 
 **01:36 — α-tier runs of the manual per-class gauges: L40S OOM, moved to ckpt A100.** Jobs 40022976–40022978 died with CUDA
 out-of-memory on the 44 GB L40S at the first instance (small_6 ≤ 6 tokens and big_3 ≤ 5 tokens both need the 80 GB A100, as
-the 09-10 single-comparison runs did — jobs 39969259 / 39969630 were on ckpt-all A100s); **I cancelled the last queued L40S
-job (40022979)** since it would have failed the same way, and resubmitted all four on ckpt A100 with `--requeue`
+the 09-10 single-comparison runs did — jobs 39969259 / 39969630 were on ckpt-all A100s); the fourth (40022979) had started and failed
+the same way in 18 s before my scancel landed (so all four L40S attempts ended in OOM; none was cancelled), and I resubmitted all four on ckpt A100 with `--requeue`
 (`alpha_gauge_ckpt.sbatch`; per-instance resume through the `.part_gauged_<eps>` files): jobs 40023058–40023061.
+
+**02:04 — α-CROWN tier, big_3 (≤ 5 tokens, 29 instances: 20 label 0 / 9 label 1; jobs 40023059 / 40023061, A100, ~24 min each).**
+Manual per-class gauges chosen by label vs the once-trained single gauge (`deept_big3_eval_alpha_l5_seed0.json`): at ε 0.015
+verified stock 12 → single 14 → **manual per-class 14**, lb tighter than the single gauge on **29 / 29** (mean lb +0.061 vs
++0.035; stock −0.251); at ε 0.02 verified 3 → 3 → 3, tighter on 29 / 29 (mean −2.63 vs −2.79; stock −4.08). So on big_3 the
+per-class lead is NOT absorbed by CROWN-Optimized: every instance is tighter, though on this 29-instance set no verified
+count moves. Each manual gauge on all instances: label-0 gauge tighter than the single gauge on 29 / 26, label-1 gauge on
+23 / 21 (of 29). small_6 α runs (≤ 6 tokens, 49 instances, ε 0.02) still in the ckpt queue.
