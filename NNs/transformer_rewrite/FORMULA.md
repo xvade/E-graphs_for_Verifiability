@@ -262,8 +262,11 @@ learners 51 → manual 52. Either manual per-class gauge used on *all* instances
 by choosing per label; used on the wrong class it degrades less than the learners do (+7.1 / +5.8 % vs +3.8 / +3.8 % on
 small_6). The screen overstated the small_6 label-1 cell (+22.0 % → +18.0 % paired) by variant selection; the other cells
 held. Test-set reuse: the 24 screen sentences that chose the variant overlap the paired protocol on 1 sentence (3 of 294
-instances) for small_6 and 4 sentences (17 of 288) for big_3. Conclusion: the manual procedure beats the single learned gauge on both models with no instance smaller, and the learned
-per-class gauges no longer lead it (0.97× on small_6, 1.07× on big_3). α-CROWN tier (CROWN-Optimized, 20 it; one manual gauge per
+instances) for small_6 and 4 sentences (17 of 288) for big_3. Conclusion: given the predicted label, the manual procedure beats the single learned gauge on both models with no instance
+smaller; against the like-for-like comparator (per-class learners) it is 0.97× on small_6 and 1.07× on big_3, where the
+label-1 learner had only 17 tuning boxes. As a single gauge (no label) it reaches 0.94 / 0.93 of the single learned gauge, so
+the pre-registered one-gauge bar is still not met — the gain over the learned gauge comes from per-label selection, which the
+procedure makes cheap (no verifier calls per class) and which the learners can also use. α-CROWN tier (CROWN-Optimized, 20 it; one manual gauge per
 run, chosen by label offline, vs the once-trained single gauge): big_3 ≤ 5 tokens (29 instances) tighter on 29 / 29 at ε 0.015
 and 0.02 with verified 14 / 3 unchanged; small_6 ≤ 6 tokens (49 instances, ε 0.02) verified 27 → 28, tighter on 37 / looser 12
 (mean lb +0.412 vs +0.400) — the per-class lead is mostly absorbed by the α optimisation, as it was for the learners, but the
@@ -294,11 +297,14 @@ matrix; the cond-28 overfit gauge is ranked worst by every Jacobian-shaped surro
 
 ## Pending
 
-- Pre-registered bar for "beats the learned gauge": paired radius ratio-of-means above the learned gauge's with a smaller-radius
-  count at or below it, on at least two models. Standing: paired shares 0.91 (big_3, unified rule), 0.84 (Yelp, `l1N`),
-  1.00 (small_6, unified rule; mean 0.02487 vs 0.02486 — a tie at the bisection's 1e-4 resolution; ahead head to head 142 / 122
-  and on eps-0.03 verified 98 vs 95; by label 0.79 / 1.30, the closed form's class trade evened out) — one-sided everywhere; the
-  bar (mean above the learned gauge's on two models) is not met.
+- Pre-registered bar for "beats the learned gauge" (paired radius ratio-of-means above the learned gauge's with a
+  smaller-radius count at or below it, on at least two models) — two readings, both stated: **as pre-registered, one gauge
+  against one gauge, NOT met**: either manual per-class gauge used on all instances reaches 0.94 / 0.93 of the single learned
+  gauge's gain (+12.3 % vs +13.1 % small_6, +11.0 % vs +11.9 % big_3), and the unified rule ties only on small_6 (1.00; big_3
+  0.91, Yelp 0.84). **Under per-label selection (the gauge chosen by the model's predicted label), MET against the single
+  learned gauge** on both models (small_6 +18.0 % vs +13.1 %, 246 larger / 0 smaller; big_3 +14.3 % vs +11.9 %, 208 / 0) — but
+  the single gauge does not get to use the label; the like-for-like learned comparator is the per-class learners, against
+  which the rule is 0.97× on small_6 and 1.07× on big_3 (whose label-1 learner was tuned on 17 boxes).
 - Ceiling test done: the CROWN learner warm-started from the closed form (Yelp, 100 steps) ties the learned-from-identity gauge
   (+10.0 % vs +10.1 %, 94 / 94 / 89 head to head) — the learned gauge is the optimum of its objective.
 - Round 6 screens and the per-class learners: done (round-7 paired verdict above). Rigorous certificate transfer: done with the
