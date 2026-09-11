@@ -3528,3 +3528,17 @@ med8,full_cert}.json`, logs `_scratch/deept_unf_*.log`.
 - The user's "±5e-9": that is the folded-weight rounding figure; on the unfolded G⁻¹ (entries ≤ 1.165) the fp number is one
   ulp = 1.19e-7 absolute, and ±5e-9 is not fp32-representable around such entries — its smallest fp32 envelope is the same
   2-ulp interval (`smoke_d5e9`: identical radii, lb within 2e-5). Both readings give the same experiment.
+
+**21:05 — G⁻¹-interval: review fixes and the confirmed headline (jobs 40006054 / 40006055, both rc 0).** Advisor review found
+three gaps, all closed: (i) certify mode accepted a NaN bound as a pass (`lb <= 0` is False for NaN) — fixed to `not (lb > 0)`,
+and a confirmation pass recomputed the interval network's lb at every recorded radius: **finite and > 0 on 294/294**
+(min +3.96e-5 — the bisection's last accepted grid point, so small margins are expected; none flipped). (ii) "the interval
+contains the true inverse" was an estimate — now a verified inclusion: per head, ρ = ‖I − G₃₂Y‖∞ (+ its own fp64 rounding
+term) and β = ‖Y‖∞ρ/(1−ρ) bound every entry of |inv(G₃₂) − Y|, and the envelope is required to contain Y ± β (ρ ≤ 3.1e-12,
+β ≤ 2.0e-11 on small_6; the 2-ulp envelope had to be widened on 3 of 4096 entries per layer where |Y| ~ 1e-5 has an ulp below
+β; max half-width still 1.19e-7). (iii) Runtime ratios were cross-card: on the same A100 (7-instance smoke, 9 calls each)
+plain gauged 97 s vs interval 221 s = **2.3× per call** (not 1.9×); the four-sided folded tier's ~3× was on its own card.
+Certify mode needs 4 interval calls per instance vs 14 plain calls for the bisection, so the rigorous add-on costs ≈ 0.65×
+the plain protocol (92 min here). The "tighter on 51/294" entries in the lb comparison are fp32 bound-arithmetic noise at
+1e-5, four orders above the 1e-9 fold error being certified. Remaining uncovered term, shared with the stock certificate:
+auto_LiRPA's own fp32 arithmetic. Code committed (`deept_unfolded.py`, 1c0ca88).
