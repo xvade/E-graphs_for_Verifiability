@@ -3676,3 +3676,9 @@ job, `alpha_gauge.sbatch`, stock taken from the earlier single-comparison JSONs)
 `sgn_mix_qk` variant was chosen share with the 40-sentence paired protocol: small_6 **1 sentence = 3 of 294 instances**,
 big_3 **4 sentences = 17 of 288** (same sentences for both label screens; `screen_overlap.py` in the job tmp dir). A 1-of-8
 discrete variant choice with that overlap cannot move the paired verdict (246 / 0 and 208 / 0 head to head).
+
+**01:36 — α-tier runs of the manual per-class gauges: L40S OOM, moved to ckpt A100.** Jobs 40022976–40022978 died with CUDA
+out-of-memory on the 44 GB L40S at the first instance (small_6 ≤ 6 tokens and big_3 ≤ 5 tokens both need the 80 GB A100, as
+the 09-10 single-comparison runs did — jobs 39969259 / 39969630 were on ckpt-all A100s); **I cancelled the last queued L40S
+job (40022979)** since it would have failed the same way, and resubmitted all four on ckpt A100 with `--requeue`
+(`alpha_gauge_ckpt.sbatch`; per-instance resume through the `.part_gauged_<eps>` files): jobs 40023058–40023061.
