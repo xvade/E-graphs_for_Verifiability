@@ -3671,3 +3671,8 @@ procedure of record (unified rule → `sgn_mix_qk`); choosing that variant used 
 sentences per model — the screen / paired sentence overlap is being counted and will be stated. α-tier runs of the manual
 per-class gauges submitted (jobs 40022976–40022979: small_6 ≤ 6 tokens ε 0.02, big_3 ≤ 5 tokens ε 0.015 / 0.02; one gauge per
 job, `alpha_gauge.sbatch`, stock taken from the earlier single-comparison JSONs).
+
+**01:32 — screen / paired overlap (the test-set-reuse check promised above).** The 24 held-out screen sentences on which the
+`sgn_mix_qk` variant was chosen share with the 40-sentence paired protocol: small_6 **1 sentence = 3 of 294 instances**,
+big_3 **4 sentences = 17 of 288** (same sentences for both label screens; `screen_overlap.py` in the job tmp dir). A 1-of-8
+discrete variant choice with that overlap cannot move the paired verdict (246 / 0 and 208 / 0 head to head).

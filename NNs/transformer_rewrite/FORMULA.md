@@ -261,7 +261,8 @@ learners 51 → manual 52. Either manual per-class gauge used on *all* instances
 (+12.3 % / +12.2 % on small_6, +11.0 % / +11.1 % on big_3), so the rule matches the learned gauge as a single gauge and beats it
 by choosing per label; used on the wrong class it degrades less than the learners do (+7.1 / +5.8 % vs +3.8 / +3.8 % on
 small_6). The screen overstated the small_6 label-1 cell (+22.0 % → +18.0 % paired) by variant selection; the other cells
-held. Conclusion: the manual procedure beats the single learned gauge on both models with no instance smaller, and the learned
+held. Test-set reuse: the 24 screen sentences that chose the variant overlap the paired protocol on 1 sentence (3 of 294
+instances) for small_6 and 4 sentences (17 of 288) for big_3. Conclusion: the manual procedure beats the single learned gauge on both models with no instance smaller, and the learned
 per-class gauges no longer lead it (0.97× on small_6, 1.07× on big_3). Not yet measured for the manual rule: the α-CROWN tier
 (the learners' per-class lead was absorbed there on 15 instances) and the weak-rule models (Yelp, smaller_3).
 
