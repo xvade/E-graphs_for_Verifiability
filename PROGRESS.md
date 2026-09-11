@@ -3713,3 +3713,12 @@ first two small_6 submissions (40024558 / 40024559) carried a shell-variable typ
 cancelled them before they started and resubmitted. FORMULA.md now states both readings of "beats the learned gauge" (the
 pre-registered one-gauge bar is NOT met: the rule as a single gauge is 0.94 / 0.93 of the learned one; it is met under
 per-label selection against the single gauge, and the like-for-like comparator is the per-class learners) — commit 8767a9a.
+
+**03:14 — α tier, big_3, like-for-like: manual per-class rule vs the per-class LEARNERS (jobs 40024560 / 40024561, ~25 min
+each; `perclass_alpha.py`).** Learners chosen by label: ε 0.015 verified 14 / 29, mean lb +0.042 (vs single +0.035, tighter
+22 / 7); ε 0.02 verified 3, mean −2.73 (vs single −2.79, tighter 28 / 1). Manual chosen by label: +0.061 and −2.63 — **tighter
+than the learners on 29 / 29 at both ε** (mean Δ +0.019 / +0.105), verified counts identical (14 / 3; stock 12 / 3). Each
+learner gauge used on all instances is at or below the single gauge (label 0: 13 / 16, label 1: 9 / 20 at ε 0.015), whereas
+each manual gauge is above it (29 / 0 and 23 / 6): the learners' per-class gain is absorbed by CROWN-Optimized, the manual
+rule's is not — consistent with the 09-10 15-instance probe (learners +2.40 vs single +2.38). Caveat as before: the label-1
+learner had 17 tuning boxes. small_6 learner α runs (40024562 / 40024563) pending.
