@@ -216,7 +216,13 @@ what carries the gain. The signed cost is a gradient direction, not a score: the
 the working mixed gauge (0.042) are indistinguishable by it and differ by 34 points of CROWN radius — never optimise it
 unconstrained and never read its value as a predictor.
 
-**Procedure of record for a per-class gauge (label y; pending paired confirmation):** unified rule → `candidate_signed` on label-y random-token probes, QK
+**Paired confirmation, small_6 (2026-09-10, 294 instances, `sgn_mix_qk` fixed in advance):** chosen by label +18.0 % vs stock
+(281 / 0), vs the single learned gauge (+13.1 %) 246 / 0 head to head — bar MET; ε-0.03 verified 41 → 103 (single 95). Per-class
+learners on the same protocol: +18.6 % (label 0 +18.0 = manual, label 1 +19.2 vs manual +18.0; head to head 31 / 128 / 135 equal).
+The manual gauges never lose to stock on the other class (0 / 3 smaller) where the learners do (25 / 22), so a wrong label costs
+nothing vs stock. big_3 pending.
+
+**Procedure of record for a per-class gauge (label y):** unified rule → `candidate_signed` on label-y random-token probes, QK
 side only, ℓ1N mix weight 1 (or rotation-only), 400 Adam steps lr 0.02 → `gauges/formula_<name>_sgn_mix_qk_mix_lab<y>.pt`.
 Note that the α tier absorbs the per-class refinement (CROWN-Optimized: label-1 learner +2.40 vs single +2.38 on label 1);
 per-class gauges are a plain-CROWN-tier gain.

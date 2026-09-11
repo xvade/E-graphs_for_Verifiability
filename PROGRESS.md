@@ -3573,3 +3573,16 @@ as a single gauge and beats it by choosing per label. This is the first manual c
 gauge on the paired protocol (on 246 / 294, never smaller). Screen-to-paired agreement: the screen said +17.6 / +22.0 per label,
 the paired protocol +18.0 / +18.0 — label 1 overstated by the screen's variant selection, as flagged at 18:00. big_3 pair:
 manual run (39996392) has stock + label-0 sets, label-1 set running; learned run (39996393) still queued.
+
+**23:17 — small_6 per-class MANUAL rule on the paired protocol (job 39996390; `sgn_mix_qk` gauges, variant fixed before the run).**
+Same 294 instances. Chosen by label: mean radius 0.02594 vs stock 0.02199 (**+18.0 %**, larger 281 / smaller 0) vs the single
+learned gauge +13.1 %: head to head larger 246 / smaller 0. Per label: label 0 +18.0 % (learner +18.0 %, single +16.1 %), label 1
++18.0 % (learner +19.2 %, single +10.4 %). Verified at ε 0.03: stock 41 → 103 (single 95, learners 105); ε 0.02: 185 (183).
+Head to head with the per-class LEARNERS chosen by label: larger 31 / smaller 128 / equal 135 (label 0: 30 / 16 — a tie; label 1:
+1 / 112 — the learner is 1.2 points ahead); mean 0.02594 vs 0.02608. fp64 gate 8.9e-16 both gauges; κ ≤ 5.0.
+Second advantage, confirmed on the paired protocol: the manual per-class gauges never lose to stock on the OTHER class (label-0
+gauge on label-1 instances +7.1 %, 0 smaller; label-1 gauge on label-0 instances +5.8 %, 3 smaller), where the learners trade it
+away (+3.8 % / +3.8 %, 25 / 22 smaller than stock). A wrong label choice therefore costs the manual rule nothing vs stock.
+**Bar on small_6:** ratio of means 1.180 > single learned 1.131 with smaller count 0 ≤ 0 → MET against the single learned gauge
+(the pre-registered bar); against the per-class learners it ties on label 0 and trails by 1.2 points on label 1 (0.97 of their
+gain). Screen (+17.6 / +22.0) vs paired (+18.0 / +18.0): the label-1 screen number was 4 points optimistic (selected). big_3 pending.
