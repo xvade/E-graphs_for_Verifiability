@@ -3559,3 +3559,17 @@ stock 275 / 181 / 41 → chosen-by-label 275 / 185 / 105 (single learned 275 / 1
 class is worth only +3.8 %, so the label choice is doing the work, as the screen predicted. fp64 gates 8.9e-16. The manual
 per-class rule's paired run (job 39996390) has finished its stock set only (slow node: 1.9 h per set), so its verdict — and
 the big_3 pair (39996392/3, still queued behind the L40S limit) — come later.
+
+**23:16 — round 7 VERDICT on small_6, paired protocol: the MANUAL per-class rule (QK-only ℓ1N-mixed signed refinement,
+`formula_sst_bert_small_6_sgn_mix_qk_mix_lab{0,1}.pt`; job 39996390, 5 h 53 min on a slow node).** Chosen by label: mean
+radius 0.02594 vs stock 0.02199 = **+18.0 %** (larger on 281 / smaller 0), vs the single learned gauge (+13.1 %) larger on
+**246 / smaller 0**, vs the per-class learners (+18.6 %) 0.97 of their gain; per label +18.0 % / +18.0 % (single learned
++16.1 % / +10.4 %, per-class learners +18.0 % / +19.2 %). Verified at ε 0.01 / 0.02 / 0.03: stock 275 / 181 / 41 → manual
+per-class 275 / 185 / **103** (single learned 95, per-class learners 105). fp64 gates 8.9e-16 on both gauges. Two further
+points: (i) each manual gauge used on the *wrong* class still gives +7.1 % / +5.8 % (the learners' +3.8 % / +3.8 %) — the manual
+gauges are less specialised; (ii) either manual per-class gauge used on *all* instances is +12.3 % / +12.2 % (larger 274 / 0 and
+260 / 3), essentially the single learned gauge's +13.1 % — so the unified rule + QK signed refinement matches the learned gauge
+as a single gauge and beats it by choosing per label. This is the first manual construction that beats the single learned
+gauge on the paired protocol (on 246 / 294, never smaller). Screen-to-paired agreement: the screen said +17.6 / +22.0 per label,
+the paired protocol +18.0 / +18.0 — label 1 overstated by the screen's variant selection, as flagged at 18:00. big_3 pair:
+manual run (39996392) has stock + label-0 sets, label-1 set running; learned run (39996393) still queued.
