@@ -3476,3 +3476,28 @@ class (big_3 label 0: +6.3 % vs the learner's +3.7 %) holds on the paired protoc
 6.1 / 5.4 (label 0 / 1), AV 4.4; small_6 QK max 4.9 / 5.0, AV 7.1 — same order as the learned gauge (4.9), so the fold error
 stays at κ·u ≈ 4e-7 relative and no separate error-budget figure is needed. The rotation-only variants are worse conditioned
 (small_6 `sgn_rot_qk` label 1 κ 28.7), one more reason the mixed variant is the procedure of record.
+
+**18:20 — G⁻¹ as interval parameters (user: "Run an experiment where all the G^{-1} get bounds of ±5e-9 (or whatever the fp
+number is)").** Design change before building: intervals on the *folded* G⁻¹ sides alone (key weight/bias, out-projection) are
+not a rigorous transfer — the folded query/value weights fl32(GᵀW_q) are already rounded out of the row space of W_q, so no
+member of that family equals the original network. Built the **unfolded** rewrite instead (`deept_unfolded.py`, new file; the
+pending paired jobs import deept_gauge.py, which is untouched): stock projections stay exact, G and A are inserted after the
+query/value projections as exact fp32 constants (the gauge *is* its fp32 matrix), and G⁻¹ (after the key projection) and A⁻¹
+(before the out-projection) are auto_LiRPA `BoundedParameter`s whose interval is the two fp32 neighbours of the fp64 inverse.
+For the exact inverse inside that interval, qᵀGG⁻¹k = qᵀk and A⁻ᵀAᵀc = c in real arithmetic, so the family CROWN bounds contains
+an exact rewrite of the original and the certificate transfers; the fp64 inverse error κ·u64 ≈ 5e-15 sits ≥ 3e-8 (relative)
+inside the interval. Checks: fp64 forward of the unfolded net vs the original 8.9e-16 over 7 boxes × 32 points (the fp32-folded
+net: 3.6e-10); fp32 forward vs stock on the box centres 2.4e-7.
+- **The fp number.** G⁻¹ entries are O(1) (max 1.165 on small_6), so their fp32 rounding is up to half an ulp ≈ 6e-8 and the
+  sound interval half-width is one ulp = **1.19e-7 absolute** (49,152 interval entries: 6 layers × 2 × 4 heads × 32²). The user's
+  5e-9 is the *folded*-weight figure (weights ~0.1: largest fp32 rounding 7.3e-9). A literal ±5e-9 on O(1) entries is below fp32
+  resolution: the smallest fp32-representable envelope of ±5e-9 is the same 2-ulp interval (run as `--delta 5e-9`: identical
+  radii, lb within 2e-5 of the ulp run), so the two readings of the request coincide.
+- **Smoke (same 7 instances as the 09-10 `wint` smoke, A100, jobs 39998394/39998395):** `gauged_unf` radii equal to the plain
+  gauged run on 7/7 (max |Δ| 0), lb loss mean −8e-7 / −8e-6 / −5e-5 at ε 0.01 / 0.02 / 0.03 (max 6.5e-5), verified counts
+  unchanged; the identity control `stock_unf` (G⁻¹ = I as interval) loses ≤ 4e-5. Versus the four-sided folded intervals
+  (`gauged_wint`): tighter on every instance at every ε (its loss was −6e-6 / −3.5e-5 / −2.3e-4), and **175 s vs 91 s plain
+  (1.9×)** instead of 252–274 s (2.8–3×): two 128×128 bilinear nodes per layer instead of four weights + three biases.
+- Running: the ≤ 8-token subset of the standard 40-sentence protocol (27 instances, full bisection, `gauged_unf` + `stock_unf`,
+  job 39999429) and the full 294-instance protocol in certify mode (test the plain gauged radius with the interval network, step
+  down the bisection grid on failure; job 39999430, ckpt, per-instance resume) → `results/deept_small6_unf_{med8,full_cert}.json`.
