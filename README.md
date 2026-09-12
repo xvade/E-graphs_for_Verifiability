@@ -14,6 +14,10 @@ documentation, specification, and testing, not just the changed files.
 
 ## Documentation map
 
+- **`TILLICUM_SETUP.md`** — start here on the H200 cluster: what the project is, reading order,
+  restore steps, scheduler discovery, the golden smoke, the final experiment list.
+- **`NNs/transformer_rewrite/PROVENANCE.md`** — every headline number with the card (L40S / A100 / CPU)
+  it was produced on and its sensitivity class; read before quoting or rerunning a result.
 - **`NNs/README.md`** — the pipeline code, indexed by stage (model builders →
   converters → rule-gen → reconstruct → bounds). The place to start for "what
   does this script do".

@@ -19,6 +19,20 @@ sys.path.insert(0, os.path.join(REPO, "alpha-beta-CROWN/complete_verifier")); sy
 from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 NAMES = ["query.weight", "query.bias", "key.weight", "key.bias", "value.weight", "value.bias", "out.weight"]
 
+def run_meta():
+    """Provenance stamp written into every saved results JSON (added 2026-09-12): the card, Slurm job, host, date and the
+    fp32 matmul precision the numbers were produced under. See PROVENANCE.md for why the card matters per claim."""
+    import socket, datetime
+    dev = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"
+    return {"device": dev, "slurm_job": os.environ.get("SLURM_JOB_ID"), "host": socket.gethostname(),
+            "date": datetime.datetime.now().isoformat(timespec="seconds"), "torch": torch.__version__,
+            "matmul_precision": torch.get_float32_matmul_precision(), "tf32_override": os.environ.get("NVIDIA_TF32_OVERRIDE")}
+
+def dump_json(d, f):
+    """json.dump with the run_meta() stamp merged into a top-level dict (partial per-instance files are not stamped)."""
+    if isinstance(d, dict): d = {**d, "meta": {**(d.get("meta") or {}), "run": run_meta()}}
+    json.dump(d, f)
+
 def load_yelp(split, max_words=14):
     """Yelp Review Polarity (DeepT's yelp_bert_* models; csv label 1 -> 0 negative, 2 -> 1 positive).  Yelp has no dev split, so
     split 'dev' = train.csv and 'test' = test.csv (disjoint).  Only reviews with <= max_words words are kept (the pipeline needs
@@ -300,7 +314,7 @@ def cmd_radii(a):
         print(f"  sentence {j} len {e.shape[1]}: CROWN radii mean {np.mean([x[3] for x in rows if x[0] == j]):.4f}" + (f", alpha-CROWN {np.mean([x[4] for x in rows if x[0] == j]):.4f}" if a.alpha else "") + f"  [{time.time()-t0:.0f}s]", flush=True)
     R = np.array([x[3] for x in rows]); print(f"# stock vanilla CROWN certified radius over {len(R)} positions: mean {R.mean():.4f} median {np.median(R):.4f} min {R.min():.4f} max {R.max():.4f}; quantiles 25/75 {np.quantile(R, .25):.4f}/{np.quantile(R, .75):.4f}")
     if a.alpha: RA = np.array([x[4] for x in rows]); print(f"# stock alpha-CROWN certified radius: mean {RA.mean():.4f} median {np.median(RA):.4f}; ratio alpha/CROWN mean {np.mean(RA / np.maximum(R, 1e-9)):.2f}")
-    if a.save_json: json.dump({"rows": rows}, open(a.save_json, "w"))
+    if a.save_json: dump_json({"rows": rows}, open(a.save_json, "w"))
 
 
 def make_lirpas(net, lengths, dev, softmax="lse", alpha=False, alpha_iters=20, alpha_lr=0.1, alpha_shared=False):
@@ -440,7 +454,7 @@ def cmd_eval(a):
         fixed = {eps: np.array([crown_lb(lirpas[e.shape[1]], e, i, eps, y, dev) for j, i, e, y, _ in inst]) for eps in eps_list}
         res[tag] = (rad, fixed)
         if a.save_json:  # partial save after each half, so a job time-out keeps the finished half (small_12 eval lost 5 h this way)
-            json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], **{f"{t}_rad": r[0].tolist() for t, r in res.items()}, "fixed": {str(eps): {t: r[1][eps].tolist() for t, r in res.items()} for eps in eps_list}}, open(a.save_json, "w"))
+            dump_json({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], **{f"{t}_rad": r[0].tolist() for t, r in res.items()}, "fixed": {str(eps): {t: r[1][eps].tolist() for t, r in res.items()} for eps in eps_list}}, open(a.save_json, "w"))
         print(f"# {tag}: certified radius mean {rad.mean():.4f} median {np.median(rad):.4f} | " + "; ".join(f"eps {eps}: verified {(v > 0).sum()}/{len(v)} (nan {np.isnan(v).sum()}) mean lb {np.nanmean(v):+.4f}" for eps, v in fixed.items()) + f"  [{time.time()-t0:.0f}s]", flush=True)
     if a.weight_intervals:   # rigorous-transfer tier: fp32-neighbour intervals on the folded attention weights (see install_weight_intervals)
         st64 = [[t.double() for t in w] for w in st]; lengths = [e.shape[1] for _, _, e, _ in S]
@@ -452,7 +466,7 @@ def cmd_eval(a):
             rad = np.array([certified_radius(lw[e.shape[1]], e, i, y, dev, hi=a.hi, iters=a.iters) for j, i, e, y, _ in inst])
             fixed = {eps: np.array([crown_lb(lw[e.shape[1]], e, i, eps, y, dev) for j, i, e, y, _ in inst]) for eps in eps_list}
             res[tag] = (rad, fixed); remove_weight_intervals(net); del lw; torch.cuda.empty_cache()
-            if a.save_json: json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], **{f"{t}_rad": r[0].tolist() for t, r in res.items()}, "fixed": {str(eps): {t: r[1][eps].tolist() for t, r in res.items()} for eps in eps_list}}, open(a.save_json, "w"))
+            if a.save_json: dump_json({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], **{f"{t}_rad": r[0].tolist() for t, r in res.items()}, "fixed": {str(eps): {t: r[1][eps].tolist() for t, r in res.items()} for eps in eps_list}}, open(a.save_json, "w"))
             print(f"# {tag}: certified radius mean {rad.mean():.4f} median {np.median(rad):.4f} | " + "; ".join(f"eps {eps}: verified {(v > 0).sum()}/{len(v)} (nan {np.isnan(v).sum()}) mean lb {np.nanmean(v):+.4f}" for eps, v in fixed.items()) + f"  [{time.time()-t0:.0f}s]", flush=True)
     pairs = [(t, "stock") for t in tags] + [(t, "gauged") for t in tags[1:]]
     if a.weight_intervals: pairs += [("stock_wint", "stock"), ("gauged_wint", "gauged"), ("gauged_wint", "stock")]
@@ -463,7 +477,7 @@ def cmd_eval(a):
             s_, g_ = res[base][1][eps], res[t][1][eps]; d = g_ - s_
             print(f"# PAIRED {t}-{base} eps {eps}: lb tighter on {(d > 0).sum()}/{len(d)}, looser {(d < 0).sum()}, mean delta {np.nanmean(d):+.4f}; verified {(s_ > 0).sum()} -> {(g_ > 0).sum()}; flips unverified->verified {((s_ <= 0) & (g_ > 0)).sum()}, verified->unverified {((s_ > 0) & (g_ <= 0)).sum()}")
     for t, (gq, ga) in zip(tags, gauges): print(f"# fp64 GATE {t} (random points in 24 instance boxes at eps {eps_list[0]}): {fp64_gate(a.name, gq, ga, [(e, i, eps_list[0]) for j, i, e, y, _ in inst[:24]]):.2e}")
-    if a.save_json: json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], "k_words": a.k_words, "gauges": a.gauge.split(","), **{f"{t}_rad": r[0].tolist() for t, r in res.items()}, "fixed": {str(eps): {t: r[1][eps].tolist() for t, r in res.items()} for eps in eps_list}}, open(a.save_json, "w"))
+    if a.save_json: dump_json({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], "k_words": a.k_words, "gauges": a.gauge.split(","), **{f"{t}_rad": r[0].tolist() for t, r in res.items()}, "fixed": {str(eps): {t: r[1][eps].tolist() for t, r in res.items()} for eps in eps_list}}, open(a.save_json, "w"))
 
 def cmd_eval_alpha(a):
     """paired stock vs gauged alpha-CROWN (CROWN-Optimized, 20 it) at fixed eps on test sentences <= max_len tokens (<= 8 fits the 44 GB GPU)"""
@@ -494,7 +508,7 @@ def cmd_eval_alpha(a):
     for eps in (eps_list if "stock" in res else []):
         s_, g_ = res["stock"][eps][0], res["gauged"][eps][0]; d = g_ - s_
         print(f"# PAIRED alpha-CROWN eps {eps}: tighter on {(d > 0).sum()}/{len(d)}, looser {(d < 0).sum()}, mean delta {np.nanmean(d):+.4f}; verified {(s_ > 0).sum()} -> {(g_ > 0).sum()}; flips up {((s_ <= 0) & (g_ > 0)).sum()}, down {((s_ > 0) & (g_ <= 0)).sum()}")
-    if a.save_json: json.dump({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], "res": {t: {str(e): {"alpha": r[0].tolist(), "crown": r[1].tolist()} for e, r in d.items()} for t, d in res.items()}}, open(a.save_json, "w"))
+    if a.save_json: dump_json({"inst": [(j, i, e.shape[1], y) for j, i, e, y, _ in inst], "res": {t: {str(e): {"alpha": r[0].tolist(), "crown": r[1].tolist()} for e, r in d.items()} for t, d in res.items()}}, open(a.save_json, "w"))
 
 def cmd_attrib(a):
     """attention-slack attribution: CROWN lb with the attention probabilities frozen at their box-centre values (attention = constant
@@ -542,7 +556,7 @@ def cmd_attrib(a):
         line = f"# eps = {f:g} x stock radius over {len(rf)} finite instances: mean CROWN width {W/len(rf):.3f}; share of width removed by: frozen attention {(1 - Wf / W)*100:.1f}%"
         for md in modes: line += f"; lin-{md} {(1 - sum(x[9][md] for x in rf) / W)*100:.1f}%"
         print(line, flush=True)
-    if a.save_json: json.dump({"rows": rows, "modes": modes, "factors": factors}, open(a.save_json, "w"))
+    if a.save_json: dump_json({"rows": rows, "modes": modes, "factors": factors}, open(a.save_json, "w"))
 
 def pq_optimise(net, st, lirpa, e, i, eps, label, dev, Gq0, Ga0, H, dh, steps, lr, cond_pen, clip, stop_at=None):
     """Per-query gauge (route A): Adam on (Gq, Ga) from the given init, maximising THIS box's CROWN margin lb at eps; best-of over
@@ -639,7 +653,7 @@ def cmd_eval_pq(a):
                 v, G, bs, run = r_; load_eff(net, effective(st, G[0], G[1], H, dh)); r_pq = certified_radius(lp, e, i, y, dev, lo=r_f, hi=a.hi, iters=a.iters) if r_f < a.hi else r_f
             rec["radius"] = {"stock": r_s, "fixed": r_f, "pq": r_pq, "margin_at_rf_fixed": m0, "margin_at_rf_pq": v, "pq_best_step": bs, "oom": bs == -1}
         out["rec"][str(idx)] = rec
-        if a.save_json: json.dump(out, open(a.save_json, "w"))
+        if a.save_json: dump_json(out, open(a.save_json, "w"))
         if PQ_OOM:
             print(f"  inst {idx:3d} saved (per-query := fixed after OOM); exiting 3 for a clean restart (resume from the JSON)", flush=True); sys.exit(3)
         ran_heavy = e.shape[1] >= a.pq_restart_len and any(isinstance(v, dict) and v.get("pq_steps_run", 0) > 0 or (isinstance(v, dict) and v.get("pq_best_step", 0) not in (-1, 0)) for v in rec.values())

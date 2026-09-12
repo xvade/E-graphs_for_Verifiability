@@ -10,6 +10,11 @@ is the optimum of its own objective: parity is the realistic target for a manual
 objective. The procedure of record is the **unified rule**: closed form, then ℓ1 refinement of the QK gauge at every layer and of
 the value gauge at layer 0 only (the both-sided refinement is harmful on small_6).
 
+**Hardware note (2026-09-12):** every share, paired count and α-tier number in this file was produced on Hyak — paired plain-CROWN
+evals and screens on L40S (48 GB), α-tier runs on ckpt A100 80 GB, signed optimisations on CPU; per-claim jobs, cards and
+sensitivity classes in `PROVENANCE.md`. Plain/α-CROWN numbers are card-independent up to ≈ 1e-4; the α-tier instance sets
+(≤ 6 / ≤ 5 tokens) were chosen by the 80 GB ceiling.
+
 ## The construction
 
 For every layer l and head h, with the stock projections W_q, W_k, W_v (rows h·d_h … (h+1)·d_h − 1) and the output projection W_o

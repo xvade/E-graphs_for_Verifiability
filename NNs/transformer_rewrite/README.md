@@ -10,6 +10,11 @@ a verification spec. Nothing hand-made; all models are the authors' released che
 | DeepT SST transformers `sst_bert_small_3` (…6/12) | `eth-sri/DeepT` (PLDI'21), `deept_benchmarks/` | ℓ∞ ball (eps) around ONE word embedding of a test sentence; certified radius per (sentence, position) | `deept_gauge.py` — learner + paired eval (results in PROGRESS.md) |
 | DeepT release, further checkpoints: `yelp_bert_small_3/6`, `sst_bert_big_3` (hidden 256), `sst_bert_smaller_3` (hidden 64), `sst_bert_standard_layer_norm_3` | same download | same protocol (Yelp: reviews ≤ 14 words; tuning boxes from train.csv, eval on test.csv) | `deept_gauge.py --data auto`, `deept_yelp_chain.sh`; see "More DeepT-release checkpoints" below |
 
+**Hardware provenance:** every number below was produced on Hyak (L40S 48 GB = 44.4 GiB usable, or a ckpt A100 80 GB);
+`PROVENANCE.md` maps each claim to its results file, Slurm job, card and sensitivity class (time-capped counts are
+card-dependent; CROWN/α-CROWN bounds are not; the α-tier instance sets were chosen by the card's memory). New results
+JSONs carry `meta.run` (device, job, host, matmul precision). Moving to another cluster: `../../TILLICUM_SETUP.md`.
+
 ## Files
 - `deept_gauge.py` — the whole DeepT harness (one file, `python deept_gauge.py <cmd> --name sst_bert_small_3 ...`):
   - `probe` — fidelity of our re-implemented forward vs the DeepT forward (fp64), softmax interval widths, gauge sensitivity;
@@ -19,7 +24,7 @@ a verification spec. Nothing hand-made; all models are the authors' released che
     radius; `--obj mean|hinge`, `--steps`, `--accum`, `--lr`, `--cond_pen`, `--clip`, `--seed`; saves `{"qk","av",...}` to `--out`;
   - `eval` — paired stock vs gauged on SST **test** sentences: certified radii on the same bisection grid + fixed-eps
     verified counts (`--eps_list`), flips, fp64 exactness gate; `--save_json` writes per-instance arrays;
-  - `eval_alpha` — the same pairing with alpha-CROWN (`CROWN-Optimized`, 20 it, autograd on) at fixed eps — fits the 44 GB
+  - `eval_alpha` — the same pairing with alpha-CROWN (`CROWN-Optimized`, 20 it, autograd on) at fixed eps — fits the L40S (48 GB, 44.4 GiB usable)
     GPU only for sentences ≤ 8 tokens;
   - `attrib` — attention-slack attribution: CROWN width with the attention probabilities frozen at their box-centre values
     (removes the QKᵀ-bilinear, softmax and A·V slack) vs the real width, at eps = 1× and 1.5× the stock radius.
@@ -49,7 +54,7 @@ a verification spec. Nothing hand-made; all models are the authors' released che
 - `deept_2w_chain.sh` — two-word perturbation (`--k_words 2`: two embedding rows widened at once; tuning = 3 random position pairs
   per dev sentence, eval = up to `--pairs_per_sent` 7 pairs per test sentence): two-word-trained gauge vs the one-word S6 gauge
   vs stock in one eval (`--gauge a.pt,b.pt` → JSON tags `gauged`, `gauged2`).
-- `run_on_bigger_gpu.sh <chain args>` — sbatch wrapper for steps that need > 44 GB (alpha-CROWN on small_6): checks the card has
+- `run_on_bigger_gpu.sh <chain args>` — sbatch wrapper for steps that need more than the L40S's 44.4 GiB (alpha-CROWN on small_6): checks the card has
   ≥ 60 GB, then runs `deept_chain.sh`; used with `-p ckpt-all -A ckpt-amath --qos=ckpt-gpu --gres=gpu:a100:1`.
 - `diagnostics/` — the one-off memory / NaN / sharing investigations behind the facts below (`_mem_probe*.py`, `_alpha_mem_probe*.py` +
   wrappers, `_nan_alpha_check.py`, `_nan_cliff_probe.py` + `run_nan_cliff_probe.sh` (is the bisection radius a zero crossing or the lse NaN
@@ -71,7 +76,7 @@ a verification spec. Nothing hand-made; all models are the authors' released che
 | verified at eps 0.02 / 0.03 | 181 / 41 | 183 / **95** (0 reverse flips) |
 | alpha-CROWN tier (A100 80 GB; 49 positions ≤ 6 tokens), verified at eps 0.02 | 24 | **27** (3 up, 0 down; tighter on 47/47 finite) |
 
-small_12 (5-box ≤ 5-token gauge, the most the 12-layer learner fits in 44 GB; 120 test positions ≤ 10 tokens): radius +26.6 % (120/120 larger), eps 0.01 verified 67 → 96 (0 reverse), NaN 39 → 13 — NaN-cliff-limited radii, so only indicative (`results/deept_small12_eval_short_seed0.json`).
+small_12 (5-box ≤ 5-token gauge, the most the 12-layer learner fits on the L40S (48 GB, 44.4 GiB usable); 120 test positions ≤ 10 tokens): radius +26.6 % (120/120 larger), eps 0.01 verified 67 → 96 (0 reverse), NaN 39 → 13 — NaN-cliff-limited radii, so only indicative (`results/deept_small12_eval_short_seed0.json`).
 
 ## More DeepT-release checkpoints (2026-09-06 evening; separately trained networks shipped in the same download, same one-word ℓ∞ protocol)
 Attribution first (attention share of the CROWN width at eps = stock radius), gain predicted from it *before* learning, then learn on
@@ -113,7 +118,7 @@ bound, decide. Full grids, protocol comparison and the other prior art: `RELATED
 - `sparse_intermediate_bounds` (default True) makes lse-CROWN on a 12-token BERT-style transformer peak at 18.7 GiB and
   OOM at 16 tokens; `False` gives the identical bound at 0.24 GiB. Always set it for transformers with >5 tokens.
 - With autograd enabled (gauge learning, alpha-CROWN) the retained graph costs ~21 GiB at 12 tokens (OOM at 20);
-  alpha-CROWN: 14.5 GiB at 6 tokens, 35.9 GiB at 8, OOM at 10 (L40S 44 GB). So tuning is done on sentences ≤ 10 tokens and
+  alpha-CROWN: 14.5 GiB at 6 tokens, 35.9 GiB at 8, OOM at 10 (L40S 48 GB, 44.4 GiB usable). So tuning is done on sentences ≤ 10 tokens and
   the alpha/BaB tier is only reachable for ≤ 8-token sentences on this hardware.
 - `softmax: complex` mode needs `fixed_reducemax_index: True` and hit an AssertionError on some boxes here; `lse` is used
   throughout (NaN only far above the certified radius — counted and treated as unverified).

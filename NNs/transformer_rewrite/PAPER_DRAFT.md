@@ -258,9 +258,14 @@ small_6 115, `model_sst_3` 120; verifier-trained gauges 5 and 13 boxes (memory-f
 uses held-out **test** sentences (40 sentences, ≤ 12 tokens, 277–294 positions), most of which are longer than
 anything in the tuning set.
 
+**Hardware.** All numbers in this draft were produced on NVIDIA L40S (48 GB) or, where stated, A100 80 GB cards on UW Hyak;
+the per-claim record is `PROVENANCE.md`. Time-capped counts (§5.2) are card-dependent and will be rerun on the final card;
+CROWN / α-CROWN bounds are card-independent up to fp32 noise (≈ 1e-4 on lower bounds); the α-tier instance sets (§6.3) were
+chosen by the 80 GB ceiling and will be extended, not replaced, on a larger card.
+
 **Memory limits that shaped the study.** α-CROWN on DeepT `small_6` peaks at 36 GiB (5 tokens) / 62 GiB
 (6 tokens) / ≈ 84 GiB (7 tokens), so the α tier for that model requires an 80 GB A100 and ≤ 6-token sentences.
-The 12-layer learner OOMs a 44 GB card at ≥ 6 tokens. Differentiating Huang et al.'s bound OOMs 80 GB at
+The 12-layer learner OOMs the 48 GB L40S (44.4 GiB usable) at ≥ 6 tokens. Differentiating Huang et al.'s bound OOMs 80 GB at
 ≤ 8 tokens on `small_6`. **BaB was not run on any DeepT model**: the abcrown loader was never wired for them, but
 the binding reason is memory — BaB multiplies an α-CROWN call that already needs 62 GiB by the number of live
 domains. The DeepT α-CROWN rows for `small_3` and `small_6` come from two versions of our `eval_alpha` (module
@@ -400,7 +405,7 @@ zero crossing. Where both bounds are finite the gauge is tighter on 212/213, 174
 `sst_bert_small_12` the bisection "radius" is where lse-CROWN turns NaN, not where the bound crosses zero (the
 stock lb at the found radius is +1.2 on the tuning boxes); of the 29 newly verified positions at ε = 0.01, 14 are
 zero crossings and 15 are NaN rescues, and the **zero-crossing subgroup gains +16.2 %** against the headline
-+26.6 %. That row also used a 5-box gauge, the most the 12-layer learner fits in 44 GB. Both numbers are
++26.6 %. That row also used a 5-box gauge, the most the 12-layer learner fits on the 48 GB L40S. Both numbers are
 indicative; neither is a headline.
 
 ### 6.2 The attention share as a screen

@@ -24,7 +24,7 @@ from --save_json (ckpt pre-emption safe).
 """
 import sys, os, json, time, argparse, numpy as np, torch, torch.nn as nn
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from deept_gauge import (build, load_data, short_instances, positions, stock_tensors, fold64, load_eff, eye_gauge, make_lirpas, certified_radius,
+from deept_gauge import (run_meta, build, load_data, short_instances, positions, stock_tensors, fold64, load_eff, eye_gauge, make_lirpas, certified_radius,
                          crown_lb, load_gauge, IntervalLinear, box, DeepTNet, load_deept)
 from auto_LiRPA import BoundedParameter, PerturbationLpNorm
 
@@ -162,7 +162,7 @@ def main():
                 d[f"{t}_rad"] = s["rad"]; [d["fixed"][str(eps)].__setitem__(t, s["fixed"][str(eps)]) for eps in eps_list]
                 if "rad_lb" in s: d[f"{t}_rad_lb"] = s["rad_lb"]
             else: d["partial"][t] = {**s, "inst_n": len(keys)}
-        json.dump(d, open(a.save_json + ".tmp", "w")); os.replace(a.save_json + ".tmp", a.save_json)
+        d["run"] = run_meta(); json.dump(d, open(a.save_json + ".tmp", "w")); os.replace(a.save_json + ".tmp", a.save_json)
     def run_set(tag, lirpas, ref_tag=None):
         s = res.setdefault(tag, {"rad": [], "fixed": {str(eps): [] for eps in eps_list}, "done": False, "calls": []}); t0 = time.time(); n0 = len(s["rad"])
         for n in range(n0, len(inst)):
