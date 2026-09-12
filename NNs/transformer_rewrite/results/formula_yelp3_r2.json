@@ -2740,7 +2740,7 @@
   "n_sst": 48,
   "l1_steps": 0,
   "hi": 0.1,
-  "out": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/transformer_rewrite/results/formula_yelp3_r2.json",
+  "out": "results/formula_yelp3_r2.json",
   "data": "random",
   "split": "dev",
   "softmax": "lse",

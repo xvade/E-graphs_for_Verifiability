@@ -3781,3 +3781,13 @@ the derived path. No hardcoded Hyak path remains in `NNs/transformer_rewrite` or
 defaults. Partition / account lines in the chain scripts are unchanged (override on the command line). Still absolute: the
 gauge paths stored inside 44 older results JSONs (`args.gauges`), read back by `screen_label_split.py` / `gauge_formula.py`
 main — those would need a prefix rewrite on load.
+
+**14:39 — absolute paths stripped from the results JSONs (user request).** 44 files under `NNs/transformer_rewrite/results/`
+carried the Hyak prefix in `args.out` (38), `args.save_json` (3), `args.gauge` (3) and a `gauges` list (3); `args.gauges`
+of the screens was already relative. Rewritten by plain text replacement of `<repo>/NNs/transformer_rewrite/` → `` (so every
+stored path is now relative to `NNs/transformer_rewrite`, like the newer files), with a structural check that every changed
+string is exactly a stripped prefix and every file still parses; 44 lines changed, no numeric content touched. The readers
+that load gauges named inside a JSON (`screen_label_split.py`, `diagnostics/lab_split.py`, `diagnostics/screen_overlap.py`,
+`gauge_formula.py` main) now resolve relative gauge paths against the module's directory instead of the cwd. Checked:
+`screen_label_split.py results/formula_big3_init.json` runs end to end on a rewritten file. No `/mmfs1` string remains in
+`results/`. (Pre-existing, unrelated: the oldest screen files lack `dev_split` in their args and the split reader raises on them.)

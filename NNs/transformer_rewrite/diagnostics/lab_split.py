@@ -1,10 +1,10 @@
 """Reconstruct the labels of the held-out screen boxes (same draws as gauge_formula.py main(): rngd = Random(seed+7), test split,
 max_len from the learner's args, n_dev sentences x dev_pos positions) and split every gauge's dev_radius by label."""
-import sys, json, random, argparse, numpy as np, torch
+import os, sys, json, random, argparse, numpy as np, torch
 sys.path.insert(0, "."); from deept_gauge import build, load_data, short_instances, pos_sets
 jf = sys.argv[1]; d = json.load(open(jf)); a = argparse.Namespace(**d["args"]); rows = d["rows"]
 torch.manual_seed(a.seed); random.seed(a.seed); m, tok, net = build(a.name, "cpu")
-gp = [p for p in a.gauges.split(",") if p]; ga = torch.load(gp[0]).get("args", {})
+gp = [p for p in a.gauges.split(",") if p]; ga = torch.load(gp[0] if os.path.isabs(gp[0]) else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", gp[0]) if "diagnostics" in os.path.abspath(__file__) else os.path.join(os.path.dirname(os.path.abspath(__file__)), gp[0])).get("args", {})
 la = argparse.Namespace(name=a.name, data=ga.get("data", "auto"), seed=ga.get("seed", 0)); Dv = load_data(la, ga.get("split", "dev"))
 Ss = short_instances(net, m, tok, Dv, ga.get("max_len", 8), ga.get("n_sent", 60), seed=la.seed); used = {j for j, ex, e, toks in Ss}
 rngd = random.Random(a.seed + 7); dsplit = a.dev_split or ga.get("split", "dev"); same = dsplit == ga.get("split", "dev")

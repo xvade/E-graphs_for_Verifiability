@@ -2908,7 +2908,7 @@
   "n_sst": 4,
   "l1_steps": 0,
   "hi": 0.05,
-  "out": "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/NNs/transformer_rewrite/results/formula_hyb_smoke.json",
+  "out": "results/formula_hyb_smoke.json",
   "data": "random",
   "split": "dev",
   "softmax": "lse",

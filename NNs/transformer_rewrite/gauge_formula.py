@@ -412,7 +412,7 @@ def main():
         Sr = [s_ for s_ in Sr if s_[1]["label"] == a.probe_label]; print(f"# probe_label {a.probe_label}: {len(Sr)} of the sampled random-token probe sentences are predicted as label {a.probe_label}", flush=True)
     boxes_r = [[e, i, ex["label"], e.shape[1], None] for j, ex, e, toks in Sr for i in pos_sets(toks, 1, rng, a.pos)]
     # the learner's own tuning boxes, rebuilt from the args stored in the first gauge file (cmd_learn's sampling, same seed); [:n_sst] = its eval subset
-    gpaths = [p for p in a.gauges.split(",") if p]; ga = torch.load(gpaths[0]).get("args", {}) if gpaths else {}
+    gpaths = [p if os.path.isabs(p) else os.path.join(os.path.dirname(os.path.abspath(__file__)), p) for p in a.gauges.split(",") if p]; ga = torch.load(gpaths[0]).get("args", {}) if gpaths else {}
     la = argparse.Namespace(name=a.name, data=ga.get("data", "auto"), seed=ga.get("seed", 0)); D = load_data(la, ga.get("split", "dev"))
     Ss = short_instances(net, m, tok, D, ga.get("max_len", 8), ga.get("n_sent", 60), seed=la.seed); rng2 = random.Random(la.seed)
     boxes_s = [[e, i, ex["label"], e.shape[1], None] for j, ex, e, toks in Ss for i in pos_sets(toks, ga.get("k_words", 1), rng2, ga.get("pos_per_sent", 3))][:a.n_sst]
