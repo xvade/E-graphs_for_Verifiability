@@ -3747,3 +3747,20 @@ protocol gave (manual ≥ learners ≥ single, given the label) survives, and th
 best (big_3: learners' per-class gauges fall to or below the single gauge under α, the manual ones do not). Caveats unchanged:
 17-box big_3 label-1 learner; 29 / 49-instance sets; as a single gauge the rule is 0.94 / 0.93 of the learned one at plain
 CROWN. Files `results/deept_{small6,big3}_eval_alpha_{man,lrn}lab{0,1}.json`, combiner `perclass_alpha.py`.
+
+**13:31 (09-12) — migration prep for the H200 cluster (user: "Go ahead with the patch, script relocation, and manifest").**
+(i) The verifier fork: a full-tree diff of our gitignored `alpha-beta-CROWN/` against upstream at e5c7e17 (abcrown 0.7.0,
+auto_LiRPA submodule 5a098e8 = 0.7.2) shows exactly ONE differing file, `complete_verifier/auto_LiRPA/operators/softmax.py`
+(the gradient-safe denominators every gauge learner needs; the exp_configs yamls we added are already tracked under NNs/,
+datasets are downloads). The diff is now `NNs/verifier_patches/auto_LiRPA_softmax_gradsafe.patch` with `apply.sh` (clone at
+the pin + patch; tested on a fresh upstream copy, result byte-identical to our tree); README's recreate section points at it.
+(ii) The 19 sbatch scripts and 9 helpers that lived in the session tmp dir are now `NNs/transformer_rewrite/jobs/` (README
+inside; `REPO="${REPO:-<hyak path>}"` so `export REPO=…` is the only change on another cluster; `-o logs/…` relative to the
+submit dir; #SBATCH partition lines are still Hyak's, override on the command line) and `diagnostics/` (+ `notes/` with the
+two fork reports). (iii) Committed the 84 untracked results JSONs and the 37 untracked gauges referenced by a results file or
+by FORMULA.md / PROGRESS.md (25 MB; the 280 unreferenced smoke / screen gauges stay untracked and go in the archive).
+Slurm stdout files moved to `_scratch/slurm_out/` and `slurm-*.out` ignored. (iv) Archive + checksum manifest of the
+non-regenerable set (deept_benchmarks, all gauges, results, `_scratch` incl. official_sequence.log, genbab_benchmarks, the
+Claude memory dir) building as a ckpt CPU job into `/mmfs1/gscratch/scrubbed/sgvtc/migration_2026-09-12/`. Still hardcoded
+(not in scope today): `deept_gauge.py:17` REPO and ~20 older chain scripts; 44 results JSONs store absolute gauge paths in
+their `args`.

@@ -1,0 +1,8 @@
+#!/bin/bash
+# held-out radius screen on sst_bert_big_3 with the per-class learned gauges (relative gauge paths: the repo path has spaces)
+REPO="${REPO:-/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability}"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"; S="$REPO/NNs/vit_rewrite/_scratch"; T="$REPO/NNs/transformer_rewrite"
+export OMP_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; cd "$T"
+mark() { echo "$1 formula_big3_lab $(date) job=${SLURM_JOB_ID:-none}" >> "$S/official_sequence.log"; }
+mark START
+"$PY" -u gauge_formula.py validate --name sst_bert_big_3 --seed 0 --n_sent 12 --pos 2 --n_sst 48 --l1_steps 400 --l1N 1 --hi 0.1 --radius_names identity,big3,big3_lab0,big3_lab1,cand:svd_jacN_all,cand:l1N_qk+av0 --n_dev 24 --dev_split test --tag _lab --gauges gauges/deept_big3_seed0.pt,gauges/deept_big3_lab0_seed0.pt,gauges/deept_big3_lab1_seed0.pt --out "$T/results/formula_big3_lab.json" > "$S/formula_big3_lab.log" 2>&1; RC=$?
+mark "DONE rc=$RC"; exit $RC

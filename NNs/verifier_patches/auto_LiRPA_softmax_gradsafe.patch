@@ -1,0 +1,37 @@
+--- a/complete_verifier/auto_LiRPA/operators/softmax.py
++++ b/complete_verifier/auto_LiRPA/operators/softmax.py
+@@ -78,14 +78,17 @@
+         x0_s = x0_p - max_u
+ 
+         diff = u_s - l_s
++        # Gradient-safe denominator: the unselected torch.where branch is 0/0 when diff==0, which is
++        # masked in the forward but yields NaN in the backward (0*NaN). Forward values are unchanged.
++        safe_diff = torch.where(diff > 1e-5, diff, torch.ones_like(diff))
+         # Chordal slope and intercept of exp on [l_i, u_i].
+         kappa = torch.where(
+             diff > 1e-5,
+-            (torch.exp(u_s) - torch.exp(l_s)) / diff,
++            (torch.exp(u_s) - torch.exp(l_s)) / safe_diff,
+             torch.exp(u_s))
+         beta = torch.where(
+             diff > 1e-5,
+-            (u_s * torch.exp(l_s) - l_s * torch.exp(u_s)) / diff,
++            (u_s * torch.exp(l_s) - l_s * torch.exp(u_s)) / safe_diff,
+             torch.exp(u_s) * (1 - u_s))
+ 
+         se_x0 = (kappa * x0_s + beta).sum(dim=-1, keepdim=True)
+@@ -129,10 +132,12 @@
+         log_p_under = torch.log(p_under + eps)
+         log_p_diff = log_p_bar - log_p_under
+ 
+-        c_k = torch.where(p_diff > 1e-5, p_diff / log_p_diff, p_bar)
++        # Gradient-safe denominator (see _softmax_lse_lower); forward values unchanged.
++        safe_lpd = torch.where(p_diff > 1e-5, log_p_diff, torch.ones_like(log_p_diff))
++        c_k = torch.where(p_diff > 1e-5, p_diff / safe_lpd, p_bar)
+         a_k = torch.where(
+             p_diff > 1e-5,
+-            (p_under * log_p_bar - p_bar * log_p_under) / log_p_diff,
++            (p_under * log_p_bar - p_bar * log_p_under) / safe_lpd,
+             p_bar * (1 - log_p_bar))
+ 
+         # OPTIMIZED: Return implicit components (D, u, v) instead of full Jacobian

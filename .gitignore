@@ -29,3 +29,4 @@ NNs/reassoc_results/fullop_d3_egg.CURRENT.multi.pb
 /genbab_benchmarks/
 /deept_benchmarks/
 /autolirpa_language/
+slurm-*.out

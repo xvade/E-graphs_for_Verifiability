@@ -71,13 +71,15 @@ quotas -- point them at scratch space, not `~`.)
 
 Not a submodule because our copy was a plain download with `.git` already
 stripped and includes an 8G `uv sync`'d `.venv` plus downloaded datasets --
-none of that belongs in version control. Recreate with:
+none of that belongs in version control. **Our copy differs from upstream in exactly one file**
+(`complete_verifier/auto_LiRPA/operators/softmax.py`, verified by a full-tree diff on 2026-09-12); the diff is
+tracked as `NNs/verifier_patches/auto_LiRPA_softmax_gradsafe.patch` and every gauge learner needs it. Recreate with:
 
 ```
-git clone https://github.com/Verified-Intelligence/alpha-beta-CROWN.git
+NNs/verifier_patches/apply.sh          # clones upstream at the pinned commit (abcrown 0.7.0 / auto_LiRPA 0.7.2)
+                                       # and applies our one local edit (gradient-safe softmax denominators)
 cd alpha-beta-CROWN
-git submodule update --init --recursive   # pulls in auto_LiRPA
-UV_CACHE_DIR=/path/to/scratch/uv_cache uv sync
+UV_CACHE_DIR=/path/to/scratch/uv_cache uv sync   # torch 2.11+cu130 per uv.lock: the target driver must support CUDA 13
 ```
 
 (Same quota issue as above -- `uv`'s cache defaults to `~/.cache/uv`.)

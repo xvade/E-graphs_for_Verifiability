@@ -1,0 +1,37 @@
+{
+    "examples": [
+        {
+            "tokens": [
+                "[CLS]",
+                "almost",
+                "everything",
+                "else",
+                "is",
+                "wan",
+                ".",
+                "[SEP]"
+            ],
+            "label": 0.0,
+            "bounds": [
+                {
+                    "position": 1,
+                    "eps": 0.019999999552965164,
+                    "eps_normalized": 0.22911328077316284
+                },
+                {
+                    "position": 2,
+                    "eps": 0.019999999552965164,
+                    "eps_normalized": 0.2906290888786316
+                },
+                {
+                    "position": 3,
+                    "eps": 0.019999999552965164,
+                    "eps_normalized": 0.25433599948883057
+                }
+            ],
+            "time": 210.19276332855225
+        }
+    ],
+    "minimum": 0.019999999552965164,
+    "average": 0.019999999552965164
+}
