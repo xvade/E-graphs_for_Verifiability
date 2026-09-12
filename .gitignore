@@ -30,3 +30,8 @@ NNs/reassoc_results/fullop_d3_egg.CURRENT.multi.pb
 /deept_benchmarks/
 /autolirpa_language/
 slurm-*.out
+
+# Symlinks left after the 2026-09-12 move of the data trees to ../attention-gauge (the trailing-slash rules above do not match symlinks)
+/deept_benchmarks
+/genbab_benchmarks
+/alpha-beta-CROWN

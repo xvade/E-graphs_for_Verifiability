@@ -3851,3 +3851,29 @@ bundle's README that egg / taso / tensat are not needed for the transformer-gaug
 amath group storage `/mmfs1/gscratch/amath/sgvtc/migration_2026-09-12/` (`sha256sum -c ARCHIVES.sha256`: all three OK).
 The original stays at `/mmfs1/gscratch/scrubbed/sgvtc/migration_2026-09-12/` until scrubbed. TILLICUM_SETUP §3.4 and the
 `tillicum-migration` memory now name the amath copy first.
+
+## 2026-09-12 (Tillicum, 16:00–16:40 PDT) — first session on the H200 cluster: restore, verifier, and the move to `../attention-gauge`
+
+Login node `tillicum-login02`, no GPU used (AGENTS.md: express permission needed first). Scheduler discovered with sinfo /
+sacctmgr: partition `gpu-h200` (22 × 8 H200 141 GB, no time limit, no preemption), `gpu-h200-mig`; accounts `mathai` / `stf`;
+QoS normal 24 h / debug 1 h / interactive 8 h / long 7 d; driver 610.57.04 (CUDA 13 → torch 2.11+cu130 unchanged); $0.90 per
+H200-hour. Storage: `/gpfs/projects/mathai` (1 TB group fileset) was 100 % full — 8.8 GB free — and `~` has a 10 GB quota, so
+the verifier venv + uv cache went to `/gpfs/scrubbed/sgvtc/` (100 TB, 60-day access purge; regenerable), symlinked as
+`alpha-beta-CROWN`. The bundle the user copied to `/gpfs/projects/mathai/sgvtc/migration_2026-09-12/` verified (ARCHIVES.sha256
+OK); `repo_untracked` extracted for the 1,100 non-tracked files (git's 712 tracked copies kept: the 44 differing ones are the
+prefix-stripped JSONs of 14f32d8), `deept_benchmarks` extracted; all 24,353 + 1,100 files matched MANIFEST.sha256. Memory
+directory restored (36 files). Verifier: `apply.sh` (patch applied) + `uv sync`: Python 3.11.16, torch 2.11.0+cu130, precision
+highest; `pytorch-pretrained-bert` added; harness imports and a 71 s CPU `eval` of `small_3` work.
+
+Then, per the user's instruction ("finalizing for presentation; reproducible from shell scripts, not necessarily Slurm; a new
+directory that becomes its own repo; all future experiments inside it"): created **`/gpfs/projects/mathai/sgvtc/attention-gauge`**
+(git initialised, first commit) with `src/{transformer_rewrite,vit_rewrite,verifier_patches}` = diff-identical copies of the
+`NNs/*` trees with 209 `NNs/` / Hyak-path references rewritten, `experiments/` (12 plain-bash scripts, one per archived
+experiment family, skip-if-done, `RUN_TAG` for reruns), `setup.sh` / `get_data.sh` / `env.sh` / `slurm/submit.sh`, `docs/`
+(DATA.md provenance of every data item, TILLICUM.md, sha256 manifest). `deept_benchmarks/` and `genbab_benchmarks/` were
+**moved** there (symlinks left here; `.gitignore` extended so they stay ignored); `NNs/vit_rewrite/_scratch` copied there as
+`logs/`. CPU checks there: `setup.sh --check` PASS, `export_gauged_ckpt.py` reproduces the archived gauged checkpoint bit-for-bit,
+`experiments/summarize.sh` regenerates every headline table from the archived JSONs. Redistributable data bundle packed at
+`/gpfs/scrubbed/sgvtc/attention-gauge-bundle/` (2.59 GB + 13 MB, sha256 in `ARCHIVES.sha256` there). Details: the new repo's
+`PROGRESS.md`. Pending for the user: permission for the golden smoke on one H200 (`experiments/smoke.sh`, ≤ 30 min), whether to
+`git rm` the `NNs/*` copies here, and hosting the bundle (scrubbed purges it after 60 days).

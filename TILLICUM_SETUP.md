@@ -1,3 +1,6 @@
+> **Superseded (2026-09-12, executed):** the setup below was carried out on Tillicum; the live instructions, discovered cluster facts and the
+> final experiment list are now `../attention-gauge/docs/TILLICUM.md` (repo `../attention-gauge`, README there).
+
 # TILLICUM_SETUP.md — first session on the H200 cluster
 
 For an agent (or person) who has never seen this project and is opening it on Tillicum, the UW cluster with H200s,

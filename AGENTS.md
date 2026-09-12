@@ -20,3 +20,6 @@ When writing new code
 
 # Record Progress
 Treat `PROGRESS.md` as a diary. You should record all successes, failures, and results in it. It will be the primary source for writing the paper that comes out of this work.
+
+# Tillicum
+Tillicum is a GPU cluster. The GPUs here are available for rent using slurm. They cost money. Before using an H200 or H200 slice (the only kinds of GPUs available), you must have express permission from the user. To get this permisson, state the objective of the allocation and the maximum amount of time it will be allowed. Tripple check your jobs before you run them.

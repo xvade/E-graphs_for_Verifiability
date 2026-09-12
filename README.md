@@ -1,3 +1,7 @@
+> **Moved (2026-09-12):** the transformer attention-gauge work (`NNs/transformer_rewrite`, `NNs/vit_rewrite`, `NNs/verifier_patches`,
+> the data trees and run logs) now lives in the sibling repository **`../attention-gauge`** as a self-contained reproducibility package
+> (plain shell scripts, no Slurm needed); all future experiments go there. The copies under `NNs/` here are the pre-migration record.
+
 # E-graphs for Verifiability
 
 Measuring how TENSAT (equality-saturation-based tensor graph optimization,
