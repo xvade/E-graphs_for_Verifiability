@@ -1,7 +1,7 @@
 #!/bin/bash
 # User-requested parallelism: run the two secondary controls on CPU now (device: cpu), concurrently with the GPU chain.
 # Comparable level: initial CROWN (deterministic, no time cap). alpha-CROWN/BaB on CPU are time-capped -> not comparable to GPU runs.
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 cd "$REPO/alpha-beta-CROWN/complete_verifier"; export CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2
 for name in base_export idinitG_patched; do
   ( echo "START_${name}_cpu $(date)" >> "$S/official_sequence.log"

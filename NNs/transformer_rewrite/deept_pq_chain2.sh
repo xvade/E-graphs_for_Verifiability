@@ -5,7 +5,7 @@
 #   deept_pq_chain.sh eps     -> 20 test sentences <= 12 tokens: verified counts at eps 0.02 / 0.03 (stock / fixed gauge / per-query)
 #   deept_pq_chain.sh radius  -> same instances: certified radius stock / fixed gauge / per-query (optimised at the fixed gauge's radius)
 set -u
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 T="$REPO/NNs/transformer_rewrite"; export OMP_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; cd "$T"
 W=$1; G="$T/gauges/deept_small6_seed0.pt"
 mark() { echo "$1 pq_$W $(date) job=${SLURM_JOB_ID:-none}" >> "$S/official_sequence.log"; }

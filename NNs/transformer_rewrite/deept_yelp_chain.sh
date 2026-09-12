@@ -7,7 +7,7 @@
 # fixed-eps verified counts are informative for models whose radius scale differs from SST's.  Logs: _scratch/deept_<tag>_*.log,
 # START/DONE markers in official_sequence.log.  Separate from deept_chain.sh so the two session instances never edit one running script.
 set -u
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 T="$REPO/NNs/transformer_rewrite"; export OMP_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; cd "$T"
 mark() { echo "$1 deept_$2 $(date) job=${SLURM_JOB_ID:-none}" >> "$S/official_sequence.log"; }
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader

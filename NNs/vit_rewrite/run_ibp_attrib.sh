@@ -1,6 +1,6 @@
 #!/bin/bash
 # Slack attribution for ibp_3_3_8 (INEXACT diagnostics): linearize one attention nonlinearity at a time; lse vanilla CROWN, 8 instances.
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 cd "$REPO"; export OMP_NUM_THREADS=4
 INST="9119,2351,2675,4879,6025,6263,5233,6948"
 for d in "" linQK linSM linAV linQK,linSM,linAV; do

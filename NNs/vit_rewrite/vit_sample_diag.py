@@ -2,7 +2,7 @@
 """Sampling diagnostic (not a bound): how input-dependent are the attention probabilities, and how many MLP ReLUs
 change sign, over uniform samples inside the benchmark eps-boxes?  Compares models."""
 import sys, os, re, numpy as np, torch
-REPO = "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; sys.path.insert(0, os.path.join(REPO, "NNs/vit_rewrite"))
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", "..")); sys.path.insert(0, os.path.join(REPO, "NNs/vit_rewrite"))
 from vit_model import ViT; from vit_bounds import parse_vnnlib, instance_files, BENCH
 model, n_box, n_samp = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
 net = ViT(os.path.join(BENCH, "onnx", model + ".onnx")).eval()

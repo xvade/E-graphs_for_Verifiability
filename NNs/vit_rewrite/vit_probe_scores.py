@@ -3,7 +3,7 @@
 centers, to check whether deleting the numerical-stability max-shift (softmax shift-invariance
 rewrite R1) is float-safe (exp overflows at ~88 in fp32). Also reports per-instance eps."""
 import sys, re, glob, os, numpy as np, onnx
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", ".."))
 BENCH=os.path.join(REPO,"vnncomp2023_benchmarks/benchmarks/vit")
 model_name=sys.argv[1] if len(sys.argv)>1 else "pgd_2_3_16"
 m=onnx.load(os.path.join(BENCH,"onnx",model_name+".onnx"))

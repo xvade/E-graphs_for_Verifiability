@@ -3,7 +3,7 @@
 eps-boxes for OTHER CIFAR images (disjoint from the benchmark) can be generated for gauge tuning.
 Hypothesis: x = (pixel/255 - mean)/std, box = clip(pixel/255 +- 1/255, 0, 1) normalized."""
 import sys, os, re, pickle, numpy as np
-REPO = "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", ".."))
 sys.path.insert(0, os.path.join(REPO, "NNs/vit_rewrite")); from vit_bounds import parse_vnnlib, BENCH
 CIF = os.path.join(REPO, "alpha-beta-CROWN/complete_verifier/datasets/cifar-10-batches-py")
 tb = pickle.load(open(os.path.join(CIF, "test_batch"), "rb"), encoding="bytes")

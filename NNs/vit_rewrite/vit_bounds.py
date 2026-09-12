@@ -13,7 +13,7 @@ Results -> results/<model>__<variant>__<softmax>[__tag].npz + .json
   python vit_bounds.py --model pgd_2_3_16 --variant base --softmax lse --methods CROWN,CROWN-Optimized
 """
 import sys, os, re, glob, json, time, argparse, numpy as np, torch
-REPO = "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", ".."))
 sys.path.insert(0, os.path.join(REPO, "alpha-beta-CROWN/complete_verifier")); sys.path.insert(0, os.path.join(REPO, "NNs/vit_rewrite"))
 from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 from vit_model import ViT, VARIANTS

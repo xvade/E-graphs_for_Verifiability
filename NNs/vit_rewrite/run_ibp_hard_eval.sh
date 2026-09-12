@@ -1,5 +1,5 @@
 #!/bin/bash
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 cd "$REPO"; export OMP_NUM_THREADS=3 CUDA_VISIBLE_DEVICES=
 until grep -q "^DONE_ibp_hard " "$S/official_sequence.log"; do sleep 60; done
 [ -f NNs/vit_rewrite/gauges/ibp_mix_hard.pt ] || { echo "NO_GAUGE_FILE $(date)" >> "$S/official_sequence.log"; exit 1; }

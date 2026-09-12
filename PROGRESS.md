@@ -3770,3 +3770,14 @@ their `args`.
 `repo_untracked.tar.zst` 358 MB (all 786 gauges, 177 results, `_scratch`, genbab models), `claude_memory_and_session_tmp.tar.gz`
 356 KB, `MANIFEST.sha256` (26,294 files), `ARCHIVES.sha256`, README with restore targets. Checks: archive entry counts equal the
 manifest (24,353 + 5 symlinks; 1,812), and five random files restored from the big archive match their manifest checksums.
+
+**14:30 — hardcoded repo paths removed from deept_gauge.py and every chain script (user request).** 59 files: 14 python
+(`deept_gauge.py`, `pbv_learn.py`, the vit_rewrite modules; `REPO = $REPO env or <file>/../..`) and 35 shell chain scripts
+(`REPO="${REPO:-<script dir>/../..}"`, falling back to `git rev-parse --show-toplevel` from the cwd — the case that matters
+when Slurm runs a spooled copy of the script — and exiting with "set REPO=<checkout>" if neither resolves). Verified: every
+mode by hand (script-dir derivation from another cwd, env override, git fallback with a fake spool path, must-fail outside
+the repo), `bash -n` on all 35, `py_compile` on all 14, and `deept_gauge.build` loading small_6 from `/tmp` through
+the derived path. No hardcoded Hyak path remains in `NNs/transformer_rewrite` or `NNs/vit_rewrite` outside the `jobs/`
+defaults. Partition / account lines in the chain scripts are unchanged (override on the command line). Still absolute: the
+gauge paths stored inside 44 older results JSONs (`args.gauges`), read back by `screen_label_split.py` / `gauge_formula.py`
+main — those would need a prefix rewrite on load.

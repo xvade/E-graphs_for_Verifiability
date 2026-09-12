@@ -1,7 +1,7 @@
 #!/bin/bash
 # Sequential GPU chain (run alone on the L40S so official BaB runs are not contaminated by memory contention):
 #   1. learn gauge for ibp_3_3_8   2-4. UNMODIFIED official abcrown pipeline (vit.yaml settings) on learnedG / stock / R45.
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }
 S="$REPO/NNs/vit_rewrite/_scratch"
 PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 export OMP_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

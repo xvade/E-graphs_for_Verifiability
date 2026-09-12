@@ -5,7 +5,7 @@
 #   attrib -> learn (dev boxes) -> paired auto_LiRPA eval (test) -> export stock+gauged Shi-layout ckpts -> their verifier
 #   (origin, originPlus, bilinear; l_inf, 20 sentences, 10 bisection steps, <= 32 tokens = their protocol) on stock and gauged.
 set -u
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 T="$REPO/NNs/transformer_rewrite"; PBV="$REPO/deept_benchmarks/PBVerification"; export OMP_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; cd "$T"
 NAME=$1; TAG=$2; ML=${3:-10}; NS=${4:-40}; PPS=${5:-3}; STEPS=${6:-120}; ACC=${7:-4}; G="$T/gauges/${TAG}_seed0.pt"
 mark() { echo "$1 pbvg_${TAG}_$2 $(date) job=${SLURM_JOB_ID:-none}" >> "$S/official_sequence.log"; }

@@ -1,5 +1,5 @@
 import sys, os, re, glob, importlib.util, numpy as np, torch
-REPO = "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; GB = os.path.join(REPO, "genbab_benchmarks/cifar")
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", "..")); GB = os.path.join(REPO, "genbab_benchmarks/cifar")
 sys.path.insert(0, os.path.join(REPO, "alpha-beta-CROWN/complete_verifier"))
 from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 name = sys.argv[1]; cls = "ViT_" + name.split("_", 1)[1]

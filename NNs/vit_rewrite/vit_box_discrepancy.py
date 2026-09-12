@@ -2,7 +2,7 @@
 """Sup over the eps-BOX (not just the center) of |stock(x) - rewritten(x)| via onnxruntime, uniform samples per box.
 Turns the fp32-storage caveat into a box statement for the certificate-transfer argument."""
 import sys, os, re, numpy as np, onnxruntime as ort
-REPO = "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; sys.path.insert(0, os.path.join(REPO, "NNs/vit_rewrite"))
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", "..")); sys.path.insert(0, os.path.join(REPO, "NNs/vit_rewrite"))
 from vit_bounds import parse_vnnlib, instance_files
 BENCH = os.path.join(REPO, "vnncomp2023_benchmarks/benchmarks")
 model, other, n_samp = sys.argv[1], sys.argv[2], int(sys.argv[3]); ids = [int(i) for i in sys.argv[4].split(",")] if len(sys.argv) > 4 else None

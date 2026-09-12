@@ -12,7 +12,7 @@
 #   small12: same for sst_bert_small_12 (dev sentences <= 7 tokens) — CUDA OOM at 44 GB (2026-09-06); small12b retries at <= 6 tokens, 5 positions/sentence -- OOM'd at the first grad-mode CROWN on the 12-layer graph (44 GB)
 #   small12b: retry with dev sentences <= 6 tokens (5 positions each), falling back to <= 5 tokens if that OOMs too; then the short eval
 #   long0/1: long-sentence paired eval (12 test sentences <= 32 tokens, 251 positions) of the small_3 seed-0 / seed-1 gauge
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 T="$REPO/NNs/transformer_rewrite"; export OMP_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; cd "$T"
 if [ -n "$JOBID" ]; then
   while squeue -s -u sgvtc -h -o "%j %N" | grep -v "interact\|extern" | grep -q " $NODE\$"; do sleep 60; done

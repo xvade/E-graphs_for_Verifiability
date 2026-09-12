@@ -4,7 +4,7 @@
 #   deept_wint_chain.sh smoke   -> 2 test sentences <= 6 tokens, 4 bisection steps (minutes)
 #   deept_wint_chain.sh full    -> the standard 40 test sentences <= 12 tokens / 294 positions (~4-5 h on an L40S)
 set -u
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 T="$REPO/NNs/transformer_rewrite"; export OMP_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; cd "$T"
 W=$1; G="$T/gauges/deept_small6_seed0.pt"
 mark() { echo "$1 wint_$W $(date) job=${SLURM_JOB_ID:-none}" >> "$S/official_sequence.log"; }

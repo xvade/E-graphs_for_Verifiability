@@ -4,7 +4,7 @@
 # manual procedure; it answers whether headroom above the learned gauge exists in the formula's basin.
 #   deept_init_chain.sh <tag> <init_gauge.pt> <learned_gauge.pt> <model> <eps_list> [steps=40] [lr=0.005] [n_sent=40]
 set -u
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 T="$REPO/NNs/transformer_rewrite"; export OMP_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; cd "$T"
 TAG=$1; INIT=$2; LEARNED=$3; NAME=$4; EPS=$5; STEPS=${6:-40}; LR=${7:-0.005}; NSENT=${8:-40}; OUT="gauges/deept_${TAG}_seed0.pt"
 mark() { echo "$1 init_$TAG $(date) job=${SLURM_JOB_ID:-none}" >> "$S/official_sequence.log"; }

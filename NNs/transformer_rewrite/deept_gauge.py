@@ -14,7 +14,7 @@ the 3-layer model); we replicate that sampling and evaluate both certified radii
 Rewrite: per-head G (query/key) and Ga (value/out.dense) exactly as in genbab_gauge.py (nn.Linear convention).
 """
 import sys, os, re, math, json, copy, time, random, argparse, numpy as np, torch, torch.nn as nn
-REPO = "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; DT = os.path.join(REPO, "deept_benchmarks/DeepT/Robustness-Verification-for-Transformers")
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", "..")); DT = os.path.join(REPO, "deept_benchmarks/DeepT/Robustness-Verification-for-Transformers")
 sys.path.insert(0, os.path.join(REPO, "alpha-beta-CROWN/complete_verifier")); sys.path.insert(0, DT)
 from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 NAMES = ["query.weight", "query.bias", "key.weight", "key.bias", "value.weight", "value.bias", "out.weight"]

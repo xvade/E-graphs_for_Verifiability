@@ -12,7 +12,7 @@ deept_benchmarks/PBVerification_grad/).  Output: gauges/<out>.pt in the same {"q
 """
 import argparse, copy, os, random, sys, time
 import numpy as np, torch
-REPO = "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; PBV = os.path.join(REPO, "deept_benchmarks/PBVerification_grad")
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", "..")); PBV = os.path.join(REPO, "deept_benchmarks/PBVerification_grad")
 DATA = os.path.join(REPO, "deept_benchmarks/data")
 ap = argparse.ArgumentParser(); ap.add_argument("--ckpt", required=True); ap.add_argument("--version", default="origin", choices=["origin", "inner"])
 ap.add_argument("--split", default="dev"); ap.add_argument("--max_len", type=int, default=8); ap.add_argument("--n_sent", type=int, default=40); ap.add_argument("--pos_per_sent", type=int, default=3)

@@ -1,6 +1,6 @@
 #!/bin/bash
 # usage: run_deept_eval_chain.sh <seed> <node> : wait for the learner's DONE marker, then paired eval (short test sentences, then a longer-sentence sample)
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"; seed=$1; node=$2
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"; seed=$1; node=$2
 while ! grep -q "^DONE_deept_learn_seed$seed " "$S/official_sequence.log"; do sleep 60; done
 G="$REPO/NNs/transformer_rewrite/gauges/deept_small3_seed$seed.pt"; [ -f "$G" ] || { echo "no gauge file $G" >> "$S/official_sequence.log"; exit 1; }
 export OMP_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; cd "$REPO/NNs/transformer_rewrite"

@@ -1,6 +1,6 @@
 #!/bin/bash
 # CPU smoke: exactness gate with a RANDOM gauge, stock eval on the benchmark, and 3 debug learner steps.
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"; S="$REPO/NNs/vit_rewrite/_scratch"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"; S="$REPO/NNs/vit_rewrite/_scratch"
 export CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=3; cd "$REPO/NNs/vit_rewrite"
 "$PY" - <<'PYEOF'
 import torch, sys; sys.argv=["x"]; sys.path.insert(0, "."); import genbab_gauge as g

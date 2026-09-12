@@ -5,7 +5,7 @@
 # The eval eps grid is 0.5 / 1 / 1.5 x the median stock two-word radius of the tuning boxes (parsed from the learner log).
 #   sbatch ... deept_2w_chain.sh
 set -u
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; S="$REPO/NNs/vit_rewrite/_scratch"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 T="$REPO/NNs/transformer_rewrite"; export OMP_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; cd "$T"
 NAME=sst_bert_small_6; TAG=small6_2w; G="$T/gauges/deept_${TAG}_seed0.pt"; G1="$T/gauges/deept_small6_seed0.pt"
 mark() { echo "$1 twoword_$2 $(date) job=${SLURM_JOB_ID:-none}" >> "$S/official_sequence.log"; }

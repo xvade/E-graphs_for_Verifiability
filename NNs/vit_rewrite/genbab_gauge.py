@@ -17,7 +17,7 @@ Subcommands:
          instances.csv (copy), specs -> symlink} for the UNMODIFIED official abcrown pipeline; fp64 gate + fp32 storage check.
 """
 import sys, os, re, copy, shutil, pickle, time, argparse, importlib.util, numpy as np, torch, torch.nn as nn
-REPO = "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; GB = os.path.join(REPO, "genbab_benchmarks/cifar")
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", "..")); GB = os.path.join(REPO, "genbab_benchmarks/cifar")
 sys.path.insert(0, os.path.join(REPO, "alpha-beta-CROWN/complete_verifier"))
 from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 CIF = os.path.join(REPO, "alpha-beta-CROWN/complete_verifier/datasets/cifar-10-batches-py")

@@ -1,4 +1,4 @@
 #!/bin/bash
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }; PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 export OMP_NUM_THREADS=4; cd "$REPO/NNs/transformer_rewrite"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; "$PY" -u deept_gauge.py probe --name "${1:-sst_bert_small_3}" --eps "${2:-0.03}"

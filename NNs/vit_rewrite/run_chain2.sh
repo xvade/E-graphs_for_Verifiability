@@ -1,7 +1,7 @@
 #!/bin/bash
 # Resumed chain after the user's interactive allocation ended (23:28). GPU stays exclusive to the official abcrown
 # runs (learnedG -> stock -> R45, untouched vit.yaml settings); CPU-only side jobs run concurrently.
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)}"; [ -d "$REPO/NNs" ] || REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -d "$REPO/NNs" ] || { echo "set REPO=<checkout>" >&2; exit 1; }
 S="$REPO/NNs/vit_rewrite/_scratch"
 PY="$REPO/alpha-beta-CROWN/.venv/bin/python"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

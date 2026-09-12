@@ -9,7 +9,7 @@ re-implementation with a different opset and shape-op structure) from the offici
 """
 import sys, os, argparse, numpy as np, torch, onnx
 from onnx import numpy_helper
-REPO = "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", ".."))
 sys.path.insert(0, os.path.join(REPO, "NNs/vit_rewrite"))
 from vit_model import ViT, VARIANTS
 from vit_bounds import centers

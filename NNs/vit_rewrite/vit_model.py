@@ -271,4 +271,4 @@ def gate_variants(onnx_path, n_pts=200, eps=0.02, seed=0, verbose=True, variants
 
 if __name__ == "__main__":
     import sys
-    gate_variants(sys.argv[1] if len(sys.argv) > 1 else "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability/vnncomp2023_benchmarks/benchmarks/vit/onnx/pgd_2_3_16.onnx")
+    gate_variants(sys.argv[1] if len(sys.argv) > 1 else __import__("os").path.join(__import__("os").environ.get("REPO") or __import__("os").path.abspath(__import__("os").path.join(__import__("os").path.dirname(__import__("os").path.abspath(__file__)), "..", "..")), "vnncomp2023_benchmarks/benchmarks/vit/onnx/pgd_2_3_16.onnx"))

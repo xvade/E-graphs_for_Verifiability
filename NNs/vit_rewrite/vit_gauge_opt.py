@@ -15,7 +15,7 @@ A tiny conditioning penalty keeps G well-conditioned (fp32 realization of the re
   python vit_gauge_opt.py --model pgd_2_3_16 --steps 300 --batch 32 --init svd --obj mix --out gauges/pgd_mix.pt
 """
 import sys, os, pickle, time, argparse, numpy as np, torch, torch.nn as nn
-REPO = "/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", ".."))
 sys.path.insert(0, os.path.join(REPO, "alpha-beta-CROWN/complete_verifier")); sys.path.insert(0, os.path.join(REPO, "NNs/vit_rewrite"))
 from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 from vit_model import ViT, stock_attn_weights, svd_gauges, gate_variants

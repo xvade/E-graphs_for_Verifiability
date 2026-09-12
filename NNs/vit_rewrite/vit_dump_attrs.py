@@ -4,7 +4,7 @@ scale constant, reshape target shapes, transpose perms, BN eps, softmax axis, Re
 conv attrs, concat order."""
 import sys, os, onnx, numpy as np
 from onnx import numpy_helper
-REPO="/mmfs1/gscratch/scrubbed/sgvtc/E-graphs for Verifiability"
+import os as _o; REPO = _o.environ.get("REPO") or _o.path.abspath(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "..", ".."))
 name=sys.argv[1] if len(sys.argv)>1 else "pgd_2_3_16"
 m=onnx.load(os.path.join(REPO,"vnncomp2023_benchmarks/benchmarks/vit/onnx",name+".onnx"))
 g=m.graph; init={x.name:numpy_helper.to_array(x) for x in g.initializer}
