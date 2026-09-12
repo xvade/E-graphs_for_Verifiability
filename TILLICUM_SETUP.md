@@ -64,7 +64,8 @@ bash NNs/verifier_patches/apply.sh      # clones upstream e5c7e17 (+ auto_LiRPA 
 cd alpha-beta-CROWN && uv sync && cd ..  # or the README "Recreating excluded artifacts" section
 ```
 The patch (`auto_LiRPA_softmax_gradsafe.patch`, 37 lines) is the **only** local edit to the verifier; it makes the lse
-softmax bounds gradient-safe (forward unchanged). The learner needs it; evaluation does not.
+softmax bounds gradient-safe (forward unchanged). **Every number in PROVENANCE.md was produced with the patch applied** — the
+learners need it, and α-CROWN (`eval_alpha`) also differentiates through those bounds — so apply it unconditionally.
 
 ### 3.4 Data, checkpoints, gauges, results
 
@@ -121,11 +122,12 @@ Reproduces the 7-instance `small_6` set of `results/deept_small6_unf_smoke.json`
 ```
 cd "$REPO/NNs/transformer_rewrite"
 sbatch -p <part> -A <acct> --gres=gpu:h200:1 -c 4 --mem=40G jobs/unf.sbatch smoke_h200
-# ≈ 10 min on an A100; writes results/deept_small6_unf_smoke_h200.json (plain stock/gauged radii + fixed-ε lbs + the interval sets)
-python diagnostics/smoke_compare.py results/deept_small6_unf_smoke.json results/deept_small6_unf_smoke_h200.json
+# 9 min 56 s on the A100 (job 39998394); writes results/deept_small6_unf_smoke_h200.json (plain stock/gauged radii + fixed-ε lbs + the interval sets)
+python diagnostics/smoke_compare.py results/deept_small6_unf_smoke.json results/deept_small6_unf_smoke_h200.json --grid 0.00625
 ```
 Pass criteria (class B in PROVENANCE.md): identical instance list, identical NaN pattern and verified counts at every ε,
-lower bounds within 1e-4, radii equal except one bisection step on at most one instance. Reference values: stock radii
+lower bounds within 1e-4, radii equal except one bisection step (the smoke's grid is 0.1 / 2⁴ = 0.00625, hence `--grid`; the full
+294-instance protocol used 1e-4) on at most one instance. Reference values: stock radii
 0.01875 ×4 / 0.0125 ×3, gauged 0.025 ×4 / 0.0125 ×3; ε 0.02 gauged lbs 3.374 / 3.395 / 3.344 / 3.393 / −4.166 / −4.052 / −3.922.
 A larger deviation means a precision or build problem (TF32, a different torch build, an unpatched verifier), not a
 result. Fix that before running anything else; record the smoke outcome in the diary with the job id and card.

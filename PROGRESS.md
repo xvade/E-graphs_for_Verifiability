@@ -3830,3 +3830,18 @@ bundle's README that egg / taso / tensat are not needed for the transformer-gaug
   golden-smoke rule); `MEMORY.md` hooks carry the card per starred entry and mark `hyak-gpu-allocation` Hyak-only.
 - Not done here, for the user: copy the bundle to Tillicum, check its driver, freeze the final experiment list (the one in
   TILLICUM_SETUP.md §5 is my ordering, not a decision).
+
+**15:36 — advisor pass on the handoff (three corrections) and bundle refresh.**
+- `diagnostics/smoke_compare.py` takes `--grid` (bisection step = hi / 2^iters; the 7-instance smoke runs at the
+  `deept_unfolded.py` defaults 0.1 / 2⁴ = 0.00625, the full protocol at 1e-4). The first version hardcoded 1.5e-4 as "one grid
+  step", so a one-step flip on the smoke would have FAILED against the documented pass criterion. TILLICUM_SETUP §4 now passes
+  `--grid 0.00625`; re-tested PASS on `unf_smoke` vs `unf_smoke_d5e9`. Smoke wall time corrected to the sacct value (9 min 56 s,
+  job 39998394, A100) instead of a guess.
+- TILLICUM_SETUP §3.3 no longer says "the learner needs the patch; evaluation does not": α-CROWN differentiates through the lse
+  softmax bounds too, and every number in PROVENANCE.md was produced with the patch applied — apply it unconditionally.
+- Result readers checked for the new `meta.run` / `run` keys: `deept_unfolded.load_sets`, `perclass_paired.py`,
+  `diagnostics/gap_bucket.py` all select `*_rad` keys or `fixed`, so a stamped file passed as `--ref_json` or to the combiners is
+  read unchanged.
+- Migration bundle: `claude_memory_and_session_tmp.tar.gz` rebuilt with the updated memory files (36 files, includes
+  `tillicum-migration.md`) and the current session tmp dir (94 files); their MANIFEST lines and ARCHIVES.sha256 regenerated;
+  the bundle README header notes the refresh and the commit that carries TILLICUM_SETUP.md / PROVENANCE.md.
