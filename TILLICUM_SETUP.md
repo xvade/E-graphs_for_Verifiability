@@ -69,7 +69,7 @@ learners need it, and α-CROWN (`eval_alpha`) also differentiates through those 
 
 ### 3.4 Data, checkpoints, gauges, results
 
-Copy the migration bundle from Hyak (`/mmfs1/gscratch/scrubbed/sgvtc/migration_2026-09-12/`, see its `README.md` and
+Copy the migration bundle from Hyak (`/mmfs1/gscratch/amath/sgvtc/migration_2026-09-12/`, a verified copy on non-scrubbed group storage; the original is on scrubbed scratch at `/mmfs1/gscratch/scrubbed/sgvtc/migration_2026-09-12/`, see its `README.md` and
 `ARCHIVES.sha256`) and extract **into the checkout**:
 ```
 sha256sum -c ARCHIVES.sha256

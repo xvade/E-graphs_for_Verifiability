@@ -3845,3 +3845,9 @@ bundle's README that egg / taso / tensat are not needed for the transformer-gaug
 - Migration bundle: `claude_memory_and_session_tmp.tar.gz` rebuilt with the updated memory files (36 files, includes
   `tillicum-migration.md`) and the current session tmp dir (94 files); their MANIFEST lines and ARCHIVES.sha256 regenerated;
   the bundle README header notes the refresh and the commit that carries TILLICUM_SETUP.md / PROVENANCE.md.
+
+**15:42 — migration bundle copied off scrubbed scratch.** Home (`~`) is at its 10 GB quota (9.5 GB used: `.local/share` 2.1 G,
+`.cache/uv` 1.4 G, `.conda` 0.6 G, `.cache/pip` 0.3 G), so the 3.2 GB bundle cannot go there. Copied instead to the non-scrubbed
+amath group storage `/mmfs1/gscratch/amath/sgvtc/migration_2026-09-12/` (`sha256sum -c ARCHIVES.sha256`: all three OK).
+The original stays at `/mmfs1/gscratch/scrubbed/sgvtc/migration_2026-09-12/` until scrubbed. TILLICUM_SETUP §3.4 and the
+`tillicum-migration` memory now name the amath copy first.
