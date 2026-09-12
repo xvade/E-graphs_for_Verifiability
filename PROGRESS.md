@@ -3764,3 +3764,9 @@ non-regenerable set (deept_benchmarks, all gauges, results, `_scratch` incl. off
 Claude memory dir) building as a ckpt CPU job into `/mmfs1/gscratch/scrubbed/sgvtc/migration_2026-09-12/`. Still hardcoded
 (not in scope today): `deept_gauge.py:17` REPO and ~20 older chain scripts; 44 results JSONs store absolute gauge paths in
 their `args`.
+
+**13:58 — migration archive built and verified (job 40076237, 23 min, ckpt CPU).** `/mmfs1/gscratch/scrubbed/sgvtc/migration_2026-09-12/`:
+`deept_benchmarks.tar.zst` 2.99 GB (5.3 GB uncompressed = the tree's apparent size; `du` reports 7.5 GB allocated),
+`repo_untracked.tar.zst` 358 MB (all 786 gauges, 177 results, `_scratch`, genbab models), `claude_memory_and_session_tmp.tar.gz`
+356 KB, `MANIFEST.sha256` (26,294 files), `ARCHIVES.sha256`, README with restore targets. Checks: archive entry counts equal the
+manifest (24,353 + 5 symlinks; 1,812), and five random files restored from the big archive match their manifest checksums.
