@@ -3877,3 +3877,5 @@ experiment family, skip-if-done, `RUN_TAG` for reruns), `setup.sh` / `get_data.s
 `/gpfs/scrubbed/sgvtc/attention-gauge-bundle/` (2.59 GB + 13 MB, sha256 in `ARCHIVES.sha256` there). Details: the new repo's
 `PROGRESS.md`. Pending for the user: permission for the golden smoke on one H200 (`experiments/smoke.sh`, ≤ 30 min), whether to
 `git rm` the `NNs/*` copies here, and hosting the bundle (scrubbed purges it after 60 days).
+
+**17:51 — golden smoke on the H200: PASS** (job 291170, g022, QoS debug, 5 min 36 s vs 9 min 56 s on the A100; radii identical 7/7 on all four sets, max |lb Δ| 3.45e-5). Record and results in `../attention-gauge/PROGRESS.md` and its PROVENANCE.md; from here on that diary is the diary.
